@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-key="title_html">氣體粒子溫度模擬</title>
+    <style>
+        /* --- RESET & BASIC SETUP --- */
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #111827; /* Dark BG */
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: row; /* Desktop: Side-by-side */
+        }
+
+        /* --- LAYOUT --- */
+        /* Sidebar (Controls) */
+        aside {
+            width: 350px;
+            background-color: #1f2937; /* Gray-800 */
+            border-right: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+            flex-shrink: 0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* Main Content (Canvas) */
+        main {
+            flex: 1;
+            position: relative;
+            background-color: #111827;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #60a5fa; /* Blue-400 */
+            margin: 0 0 4px 0;
+            line-height: 1.2;
+        }
+        p.subtitle {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin: 0;
+        }
+        label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #d1d5db;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .value-display {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            color: #93c5fd;
+        }
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        /* --- CONTROLS --- */
+        .control-group { margin-bottom: 24px; }
+        .header-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 20px;
+        }
+        .flex-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        /* Language Toggle */
+        .lang-toggle {
+            background-color: #374151;
+            border-radius: 4px;
+            padding: 2px;
+            display: flex;
+        }
+        .lang-btn {
+            border: none;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lang-btn.active {
+            background-color: #2563eb; /* Blue-600 */
+            color: white;
+            font-weight: bold;
+        }
+        .lang-btn.inactive {
+            background-color: transparent;
+            color: #9ca3af;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 10px;
+            border-top: 1px solid #374151;
+            padding-top: 20px;
+        }
+        .stat-box { display: flex; flex-direction: column; }
+        .stat-value-large {
+            font-size: 1.25rem;
+            font-weight: bold;
+            font-family: monospace;
+            color: white;
+        }
+        .unit-small { font-size: 0.75rem; color: #9ca3af; font-weight: normal; margin-left: 4px; }
+        .theo-text { font-size: 0.65rem; color: #6b7280; font-family: monospace; margin-top: 2px; }
+        .theo-val { color: #fb923c; }
+
+        /* Pressure Bar */
+        .bar-container {
+            height: 8px;
+            width: 100%;
+            background-color: #374151;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .bar-fill {
+            height: 100%;
+            background-color: #22c55e;
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+        .bar-fill.warning { background-color: #eab308; }
+        .bar-fill.danger { background-color: #ef4444; }
+
+        /* Graph */
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 150px;
+        }
+        .graph-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 8px;
+        }
+        .legend { font-size: 0.65rem; color: #fb923c; display: flex; align-items: center; }
+        .legend-line { width: 12px; height: 2px; background-color: #fb923c; margin-right: 4px; }
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 160px; /* Fixed height for graph */
+            background-color: rgba(17, 24, 39, 0.5);
+            border: 1px solid #374151;
+            border-radius: 6px;
+        }
+        #graphCanvas { width: 100%; height: 100%; }
+        .axis-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #6b7280;
+            font-family: monospace;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        /* --- SLIDER STYLING --- */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type=range]:focus { outline: none; }
+        /* Webkit (Chrome, Safari, iPad) */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            margin-top: -6px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #4B5563;
+            border-radius: 2px;
+        }
+
+        /* --- RESPONSIVE (iPad Portrait / Mobile) --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            aside {
+                width: 100%;
+                height: 45vh; /* Take top part of screen */
+                border-right: none;
+                border-bottom: 1px solid #374151;
+            }
+            main { height: 55vh; }
+            .header-group { margin-bottom: 15px; padding-bottom: 15px; }
+            .control-group { margin-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside>
+        <div class="header-group">
+            <div>
+                <h1 data-key="title">Gas Simulation</h1>
+                <p class="subtitle" data-key="subtitle">Kinetic Theory of Molecules & Maxwell-Boltzmann Distribution</p>
+            </div>
+            <div class="lang-toggle">
+                <button id="btnZhTW" class="lang-btn active" data-key="lang_tw">繁</button>
+                <button id="btnZhCN" class="lang-btn inactive" data-key="lang_cn">简</button>
+            </div>
+        </div>
+
+        <!-- Temperature -->
+        <div class="control-group">
+            <div class="flex-row">
+                <label data-key="temp_label">Temperature</label>
+                <span id="tempValue" class="value-display">300 K</span>
+            </div>
+            <input type="range" id="tempSlider" min="50" max="1000" value="300" step="10">
+            <div class="range-labels">
+                <span data-key="cold_label">Cold</span>
+                <span data-key="hot_label">Hot</span>
+            </div>
+        </div>
+
+        <!-- Particle Count -->
+        <div class="control-group">
+            <div class="flex-row">
+                <label data-key="count_label">Particle Count</label>
+                <span id="countValue" class="value-display">150</span>
+            </div>
+            <input type="range" id="countSlider" min="50" max="400" value="150" step="10">
+        </div>
+
+        <!-- Container Scale -->
+        <div class="control-group">
+            <div class="flex-row">
+                <label data-key="container_label">Container Scale</label>
+                <span id="containerValue" class="value-display">75%</span>
+            </div>
+            <input type="range" id="containerSlider" min="0.5" max="1.0" value="0.75" step="0.05">
+            <div class="range-labels">
+                <span data-key="small_volume">Small</span>
+                <span data-key="large_volume">Large</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <label data-key="rms_label" style="margin-bottom:0;">RMS Speed</label>
+                <div style="display:flex; align-items:baseline;">
+                    <span id="rmsRealDisplay" class="stat-value-large">0.00</span>
+                    <span class="unit-small" data-key="ms_unit">m/s</span>
+                </div>
+                <div class="theo-text">
+                    <span data-key="theo_label">Theo:</span> <span id="rmsTheoDisplay" class="theo-val">0.00</span>
+                </div>
+            </div>
+            <div class="stat-box">
+                <label data-key="pressure_label" style="margin-bottom:0;">Pressure</label>
+                <div class="bar-container">
+                    <div id="pressureBar" class="bar-fill" style="width: 10%"></div>
+                </div>
+                <div class="flex-row" style="margin-top:4px;">
+                    <span id="pressureText" class="value-display" style="color:#d1d5db;">0 kPa</span>
+                    <span style="font-size:0.65rem; color:#6b7280;"><span data-key="max_label">Max:</span> 2000</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graph -->
+        <div class="graph-container">
+            <div class="graph-header">
+                <label data-key="dist_label" style="margin:0;">Speed Distribution</label>
+                <div class="legend">
+                    <div class="legend-line"></div> <span data-key="theo_fixed">Theoretical</span>
+                </div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="graphCanvas"></canvas>
+            </div>
+            <div class="axis-labels">
+                <span>0</span>
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4+ <span data-key="ms_unit_small_axis">m/s</span></span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- SIMULATION -->
+    <main id="canvasContainer">
+        <canvas id="simCanvas"></canvas>
+    </main>
+
+<script>
+    // --- SETUP ---
+    const canvas = document.getElementById('simCanvas');
+    const canvasContainer = document.getElementById('canvasContainer');
+    const ctx = canvas.getContext('2d');
+    
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphCtx = graphCanvas.getContext('2d');
+
+    // Controls
+    const tempSlider = document.getElementById('tempSlider');
+    const tempValue = document.getElementById('tempValue');
+    const countSlider = document.getElementById('countSlider');
+    const countValue = document.getElementById('countValue');
+    const containerSlider = document.getElementById('containerSlider'); 
+    const containerValue = document.getElementById('containerValue');
+    
+    const rmsRealDisplay = document.getElementById('rmsRealDisplay');
+    const rmsTheoDisplay = document.getElementById('rmsTheoDisplay');
+    const pressureBar = document.getElementById('pressureBar');
+    const pressureText = document.getElementById('pressureText');
+    
+    const btnZhTW = document.getElementById('btnZhTW'); 
+    const btnZhCN = document.getElementById('btnZhCN'); 
+
+    // --- STATE ---
+    let particles = [];
+    let width, height;
+    let container = { x: 0, y: 0, w: 0, h: 0 };
+    let temperature = 300; 
+    let containerScale = 0.75; 
+    let currentLanguage = 'zh-TW'; 
+
+    let pressureAccumulator = 0;
+    let pressureHistory = [];
+    let lastSampleTime = 0;
+    const SAMPLE_INTERVAL = 100;
+    const HISTORY_DURATION = 5000;
+    const MAX_HISTORY_LENGTH = HISTORY_DURATION / SAMPLE_INTERVAL;
+
+    const TEMP_ENERGY_RATIO = 0.002; 
+    const PARTICLE_MASS = 2; 
+    const PARTICLE_RADIUS = 3.5;
+    const MAX_PARTICLE_COUNT = 400; 
+
+    // --- LANGUAGES ---
+    const LANGUAGES = {
+        'zh-TW': {
+            title_html: "氣體粒子溫度模擬",
+            title: "氣體模擬",
+            subtitle: "分子運動論與馬克士威-波茲曼分佈",
+            temp_label: "溫度",
+            cold_label: "冷",
+            hot_label: "熱",
+            count_label: "粒子數量",
+            container_label: "容器比例",
+            small_volume: "小",
+            large_volume: "大",
+            rms_label: "均方根速率",
+            theo_label: "理論值:",
+            pressure_label: "壓強",
+            max_label: "最大:",
+            dist_label: "速率分佈",
+            theo_fixed: "理論值",
+            lang_tw: "繁",
+            lang_cn: "简",
+            
+            unit_kPa: "kPa",
+            unit_K: "K",
+            unit_percent: "%",
+            ms_unit: "m/s",
+            ms_unit_small_axis: "m/s", 
+        },
+        'zh-CN': {
+            title_html: "气体粒子温度模拟",
+            title: "气体模拟",
+            subtitle: "分子运动论与麦克斯韦-玻尔兹曼分布",
+            temp_label: "温度",
+            cold_label: "冷",
+            hot_label: "热",
+            count_label: "粒子数量",
+            container_label: "容器比例",
+            small_volume: "小",
+            large_volume: "大",
+            rms_label: "均方根速率",
+            theo_label: "理论值:",
+            pressure_label: "压强",
+            max_label: "最大:",
+            dist_label: "速率分布",
+            theo_fixed: "理论值",
+            lang_tw: "繁",
+            lang_cn: "简",
+
+            unit_kPa: "kPa",
+            unit_K: "K",
+            unit_percent: "%",
+            ms_unit: "m/s",
+            ms_unit_small_axis: "m/s",
+        }
+    };
+
+    function updateLanguage(lang) {
+        currentLanguage = lang;
+        const dict = LANGUAGES[lang];
+
+        document.querySelectorAll('[data-key]').forEach(el => {
+            const key = el.getAttribute('data-key');
+            if (dict[key]) el.textContent = dict[key];
+        });
+
+        // Update Button Styles
+        if (lang === 'zh-TW') {
+            btnZhTW.className = 'lang-btn active';
+            btnZhCN.className = 'lang-btn inactive';
+        } else {
+            btnZhCN.className = 'lang-btn active';
+            btnZhTW.className = 'lang-btn inactive';
+        }
+
+        const temp = parseInt(tempSlider.value);
+        tempValue.textContent = `${temp} ${dict.unit_K}`;
+        containerValue.textContent = `${Math.floor(containerScale * 100)}${dict.unit_percent}`;
+        updateStats(true); 
+        document.title = dict.title_html;
+    }
+
+    // --- PHYSICS ---
+    class Particle {
+        constructor() { this.reset(); }
+        reset() {
+            this.radius = PARTICLE_RADIUS;
+            this.mass = PARTICLE_MASS; 
+            const margin = 20;
+            const w = container.w || width || 100;
+            const h = container.h || height || 100;
+            this.x = container.x + margin + Math.random() * (w - margin*2);
+            this.y = container.y + margin + Math.random() * (h - margin*2);
+            const angle = Math.random() * Math.PI * 2;
+            const initialSpeed = 2; 
+            this.vx = Math.cos(angle) * initialSpeed;
+            this.vy = Math.sin(angle) * initialSpeed;
+        }
+        update() {
+            if (isNaN(this.x) || isNaN(this.y)) this.reset();
+            this.x += this.vx;
+            this.y += this.vy;
+            let hitWall = false;
+            let impactImpulse = 0;
+
+            if (this.x - this.radius < container.x) {
+                this.x = container.x + this.radius;
+                this.vx = Math.abs(this.vx); 
+                hitWall = true; impactImpulse += Math.abs(this.vx * this.mass);
+            } else if (this.x + this.radius > container.x + container.w) {
+                this.x = container.x + container.w - this.radius;
+                this.vx = -Math.abs(this.vx); 
+                hitWall = true; impactImpulse += Math.abs(this.vx * this.mass);
+            }
+            if (this.y - this.radius < container.y) {
+                this.y = container.y + this.radius;
+                this.vy = Math.abs(this.vy);
+                hitWall = true; impactImpulse += Math.abs(this.vy * this.mass);
+            } else if (this.y + this.radius > container.y + container.h) {
+                this.y = container.y + container.h - this.radius;
+                this.vy = -Math.abs(this.vy);
+                hitWall = true; impactImpulse += Math.abs(this.vy * this.mass);
+            }
+            if (hitWall) pressureAccumulator += impactImpulse;
+        }
+        draw() {
+            const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+            const MAX_COLOR_SPEED = 3.0;
+            const ratio = Math.min(Math.max(speed / MAX_COLOR_SPEED, 0), 1);
+            const r = Math.floor(255 * ratio);
+            const g = Math.floor(100 * (1 - Math.abs(ratio - 0.5) * 2));
+            const b = Math.floor(255 * (1 - ratio));
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fill();
+        }
+    }
+
+    function checkCollisions() {
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const p1 = particles[i], p2 = particles[j];
+                const dx = p2.x - p1.x, dy = p2.y - p1.y;
+                const distSq = dx*dx + dy*dy;
+                const minDist = p1.radius + p2.radius;
+                if (distSq < minDist*minDist) {
+                    const dist = Math.sqrt(distSq) || 0.001;
+                    const nx = dx/dist, ny = dy/dist;
+                    const overlap = minDist - dist;
+                    const m1 = p1.mass, m2 = p2.mass, tm = m1+m2;
+                    p1.x -= nx*overlap*(m2/tm); p1.y -= ny*overlap*(m2/tm);
+                    p2.x += nx*overlap*(m1/tm); p2.y += ny*overlap*(m1/tm);
+                    const v1n = p1.vx*nx + p1.vy*ny, v2n = p2.vx*nx + p2.vy*ny;
+                    if (v1n - v2n < 0) continue;
+                    const v1nF = ((v1n*(m1-m2)) + (2*m2*v2n))/tm;
+                    const v2nF = ((v2n*(m2-m1)) + (2*m1*v1n))/tm;
+                    const dp1 = v1nF - v1n, dp2 = v2nF - v2n;
+                    p1.vx += dp1*nx; p1.vy += dp1*ny;
+                    p2.vx += dp2*nx; p2.vy += dp2*ny;
+                }
+            }
+        }
+    }
+
+    function applyThermostat() {
+        let currentKE = 0;
+        for (let p of particles) currentKE += 0.5 * p.mass * (p.vx*p.vx + p.vy*p.vy);
+        if (currentKE < 0.0001) currentKE = 0.0001;
+        const targetKE = temperature * particles.length * TEMP_ENERGY_RATIO;
+        let scale = Math.sqrt(targetKE / currentKE);
+        scale = 1 + 0.05 * (scale - 1); // Damping
+        if (isNaN(scale)) scale = 1;
+        for (let p of particles) { p.vx *= scale; p.vy *= scale; }
+    }
+
+    function drawDistribution(speeds) {
+        const w = graphCanvas.clientWidth, h = graphCanvas.clientHeight;
+        if (graphCanvas.width !== w || graphCanvas.height !== h) {
+            graphCanvas.width = w; graphCanvas.height = h;
+        }
+        graphCtx.clearRect(0, 0, w, h);
+        if (speeds.length === 0) return;
+
+        const rangeMax = 4, binCount = 40, binW = rangeMax / binCount;
+        const minTemp = 50;
+        const minSigmaSq = (minTemp * TEMP_ENERGY_RATIO) / PARTICLE_MASS;
+        const maxPeakPDF = 0.6065 / Math.sqrt(minSigmaSq);
+        const maxCount = MAX_PARTICLE_COUNT * binW * maxPeakPDF;
+        const barScaleY = (h * 0.90) / maxCount;
+        const barWidth = w / binCount;
+
+        const bins = new Array(binCount).fill(0);
+        for (let v of speeds) {
+            const idx = Math.floor((v / rangeMax) * binCount);
+            if (idx >= 0 && idx < binCount) bins[idx]++;
+        }
+
+        // Draw Bars
+        graphCtx.fillStyle = 'rgba(96, 165, 250, 0.6)'; 
+        for (let i = 0; i < binCount; i++) {
+            const bh = bins[i] * barScaleY;
+            graphCtx.fillRect(i * barWidth, h - bh, barWidth - 1, bh);
+        }
+
+        // Draw Curve
+        graphCtx.beginPath();
+        graphCtx.strokeStyle = '#fb923c'; 
+        graphCtx.lineWidth = 2;
+        const N = speeds.length;
+        const curSigmaSq = (temperature * TEMP_ENERGY_RATIO) / PARTICLE_MASS;
+        for (let x = 0; x < w; x+=2) {
+            const v = (x / w) * rangeMax;
+            const pdf = (v / curSigmaSq) * Math.exp(-(v*v)/(2*curSigmaSq));
+            const y = h - (pdf * binW * N * barScaleY);
+            if (y > -100) { if (x===0) graphCtx.moveTo(x,y); else graphCtx.lineTo(x,y); }
+        }
+        graphCtx.stroke();
+    }
+
+    function init() {
+        resize();
+        updateParticleCount(150);
+        currentLanguage = 'zh-TW';
+        updateLanguage('zh-TW'); 
+        animate(0);
+    }
+
+    function resize() {
+        width = canvasContainer.clientWidth;
+        height = canvasContainer.clientHeight;
+        canvas.width = width; canvas.height = height;
+        const maxW = Math.min(width * 0.95, 1200);
+        const maxH = Math.min(height * 0.95, 800);
+        const contW = maxW * containerScale;
+        const contH = maxH * containerScale; 
+        container = { w: contW, h: contH, x: (width - contW)/2, y: (height - contH)/2 };
+        particles.forEach(p => {
+            p.x = Math.max(container.x+10, Math.min(p.x, container.x+container.w-10));
+            p.y = Math.max(container.y+10, Math.min(p.y, container.y+container.h-10));
+        });
+    }
+
+    function updateParticleCount(count) {
+        if (count > particles.length) {
+            for (let i = 0; i < count - particles.length; i++) particles.push(new Particle());
+        } else {
+            particles.splice(count);
+        }
+        countValue.textContent = count;
+    }
+
+    function updateStats(force) {
+        const dict = LANGUAGES[currentLanguage];
+        let sumVSq = 0;
+        particles.forEach(p => sumVSq += (p.vx*p.vx + p.vy*p.vy));
+        const realRMS = Math.sqrt(sumVSq / particles.length) || 0;
+        const theoRMS = Math.sqrt(temperature * TEMP_ENERGY_RATIO);
+        
+        rmsRealDisplay.textContent = realRMS.toFixed(2);
+        rmsTheoDisplay.textContent = theoRMS.toFixed(2);
+
+        if (force) {
+            let avgP = 0;
+            if (pressureHistory.length > 0) avgP = (pressureHistory.reduce((a,b)=>a+b,0)/5) * 2.6;
+            pressureText.textContent = `${Math.floor(avgP)} ${dict.unit_kPa}`;
+        }
+    }
+
+    function drawContainer() {
+        const wt = 20;
+        // Outer
+        ctx.fillStyle = '#4B5563'; 
+        ctx.fillRect(container.x-wt, container.y-wt, container.w+wt*2, container.h+wt*2);
+        // Inner
+        ctx.fillStyle = '#1F2937';
+        ctx.fillRect(container.x, container.y, container.w, container.h);
+        // Bolts
+        ctx.fillStyle = '#9CA3AF';
+        const bs = 6, bo = wt/2;
+        const pts = [
+            [container.x-bo, container.y-bo], [container.x+container.w+bo, container.y-bo],
+            [container.x-bo, container.y+container.h+bo], [container.x+container.w+bo, container.y+container.h+bo]
+        ];
+        pts.forEach(([px, py]) => { ctx.beginPath(); ctx.arc(px, py, bs, 0, Math.PI*2); ctx.fill(); });
+        // Bevel
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(container.x+container.w, container.y);
+        ctx.lineTo(container.x, container.y);
+        ctx.lineTo(container.x, container.y+container.h);
+        ctx.stroke();
+    }
+
+    function animate(ts) {
+        requestAnimationFrame(animate);
+        ctx.fillStyle = '#111827'; ctx.fillRect(0,0,width,height);
+        drawContainer();
+        applyThermostat();
+        particles.forEach(p => p.update());
+        checkCollisions();
+
+        let speeds = [];
+        particles.forEach(p => speeds.push(Math.sqrt(p.vx*p.vx + p.vy*p.vy)));
+        particles.forEach(p => p.draw());
+        drawDistribution(speeds);
+        updateStats(false);
+
+        if (ts - lastSampleTime > SAMPLE_INTERVAL) {
+            pressureHistory.push(pressureAccumulator);
+            pressureAccumulator = 0;
+            lastSampleTime = ts;
+            if (pressureHistory.length > MAX_HISTORY_LENGTH) pressureHistory.shift();
+            // Update pressure text every sample tick to avoid flicker
+            const dict = LANGUAGES[currentLanguage];
+            let avgP = 0;
+            if (pressureHistory.length > 0) avgP = (pressureHistory.reduce((a,b)=>a+b,0)/5) * 2.6;
+            pressureText.textContent = `${Math.floor(avgP)} ${dict.unit_kPa}`;
+            
+            const pPct = Math.min(avgP / 20, 100);
+            pressureBar.style.width = `${pPct}%`;
+            pressureBar.className = (pPct > 80) ? 'bar-fill danger' : (pPct > 50 ? 'bar-fill warning' : 'bar-fill');
+        }
+    }
+
+    // Events
+    window.addEventListener('resize', resize);
+    tempSlider.addEventListener('input', (e) => {
+        temperature = parseInt(e.target.value);
+        const dict = LANGUAGES[currentLanguage];
+        tempValue.textContent = `${temperature} ${dict.unit_K}`;
+    });
+    countSlider.addEventListener('input', (e) => updateParticleCount(parseInt(e.target.value)));
+    containerSlider.addEventListener('input', (e) => {
+        containerScale = parseFloat(e.target.value);
+        const dict = LANGUAGES[currentLanguage];
+        containerValue.textContent = `${Math.floor(containerScale * 100)}${dict.unit_percent}`;
+        resize();
+    });
+    btnZhTW.addEventListener('click', () => updateLanguage('zh-TW'));
+    btnZhCN.addEventListener('click', () => updateLanguage('zh-CN'));
+
+    init();
+</script>
+</body>
+</html>
