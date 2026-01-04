@@ -612,15 +612,28 @@
     function resize() {
         width = canvasContainer.clientWidth;
         height = canvasContainer.clientHeight;
-        canvas.width = width; canvas.height = height;
-        const maxW = Math.min(width * 0.95, 1200);
-        const maxH = Math.min(height * 0.95, 800);
-        const contW = maxW * containerScale;
-        const contH = maxH * containerScale; 
-        container = { w: contW, h: contH, x: (width - contW)/2, y: (height - contH)/2 };
+        canvas.width = width;
+        canvas.height = height;
+
+        // FIXED SIZE LOGIC:
+        // Use a fixed base size (e.g. 1000x700) so the box doesn't warp when window resizes.
+        // The container scale slider (0.5 - 1.0) will scale relative to this fixed base.
+        const BASE_WIDTH = 1000;
+        const BASE_HEIGHT = 700;
+
+        const contW = BASE_WIDTH * containerScale;
+        const contH = BASE_HEIGHT * containerScale; 
+
+        container = {
+            w: contW,
+            h: contH,
+            x: (width - contW) / 2, // Keep centered horizontally
+            y: (height - contH) / 2 // Keep centered vertically
+        };
+        
         particles.forEach(p => {
-            p.x = Math.max(container.x+10, Math.min(p.x, container.x+container.w-10));
-            p.y = Math.max(container.y+10, Math.min(p.y, container.y+container.h-10));
+            p.x = Math.max(container.x + 10, Math.min(p.x, container.x + container.w - 10));
+            p.y = Math.max(container.y + 10, Math.min(p.y, container.y + container.h - 10));
         });
     }
 
