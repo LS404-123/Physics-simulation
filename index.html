@@ -1,14 +1,223 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Hub Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Simulations Library</title>
+    <style>
+        /* --- CSS STYLES --- */
+        :root {
+            --primary-color: #2c3e50;    /* Dark Blue */
+            --accent-color: #3498db;     /* Light Blue */
+            --bg-color: #f4f7f6;         /* Light Gray Background */
+            --card-bg: #ffffff;          /* White */
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* Header Design */
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        header p {
+            margin-top: 10px;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Container for the content */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Book Section Styling */
+        .book-section {
+            margin-bottom: 3rem;
+        }
+
+        .book-title {
+            border-bottom: 3px solid var(--accent-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+
+        /* Grid Layout for Simulation Cards */
+        .simulation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* Individual Card Styling */
+        .sim-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            border-left: 5px solid var(--accent-color);
+        }
+
+        .sim-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+
+        .card-content {
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .card-content h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .card-content p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* Button Styling */
+        .card-action {
+            padding: 15px 20px;
+            background-color: #fafafa;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: var(--accent-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background-color: var(--primary-color);
+            color: white;
+            margin-top: 3rem;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.8rem; }
+            .container { padding: 1rem; }
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Website Hub</h1>
-    <p>Check out my other pages:</p>
-    
-    <ul>
-        <li><a href="physics/Book1/Brownian motion.html">About Me</a></li>
-    </ul>
+
+    <header>
+        <h1>Physics Simulations</h1>
+        <p>Interactive experiments and visualizations based on course textbooks.</p>
+    </header>
+
+    <div class="container">
+
+        <!-- ========================================= -->
+        <!-- BOOK SECTION 1: MECHANICS                 -->
+        <!-- ========================================= -->
+        <div class="book-section">
+            <!-- Edit the Book Title Here -->
+            <h2 class="book-title">Book 1: Classical Mechanics</h2>
+            
+            <div class="simulation-grid">
+                
+                <!-- SIMULATION CARD 1 -->
+                <div class="sim-card">
+                    <div class="card-content">
+                        <h3>Projectile Motion</h3>
+                        <p>Simulating parabolic trajectories under gravity with air resistance.</p>
+                    </div>
+                    <div class="card-action">
+                        <!-- REPLACE '#' with your file name, e.g., 'projectile.html' -->
+                        <a href="#" class="btn">Launch Simulation</a>
+                    </div>
+                </div>
+
+                <!-- SIMULATION CARD 2 -->
+                <div class="sim-card">
+                    <div class="card-content">
+                        <h3>Spring Oscillation</h3>
+                        <p>Visualizing Hooke's Law and simple harmonic motion.</p>
+                    </div>
+                    <div class="card-action">
+                        <!-- REPLACE '#' with your file name -->
+                        <a href="#" class="btn">Launch Simulation</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================================= -->
+        <!-- BOOK SECTION 2: ELECTROMAGNETISM          -->
+        <!-- ========================================= -->
+        <div class="book-section">
+            <!-- Edit the Book Title Here -->
+            <h2 class="book-title">Book 2: Electromagnetism</h2>
+            
+            <div class="simulation-grid">
+                
+                <!-- SIMULATION CARD 3 -->
+                <div class="sim-card">
+                    <div class="card-content">
+                        <h3>Electric Fields</h3>
+                        <p>Interaction between positive and negative point charges.</p>
+                    </div>
+                    <div class="card-action">
+                        <!-- REPLACE '#' with your file name -->
+                        <a href="#" class="btn">Launch Simulation</a>
+                    </div>
+                </div>
+                
+                <!-- Add more cards here by copying the block above -->
+
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Physics Simulation Project. Hosted on GitHub Pages.</p>
+    </footer>
+
 </body>
 </html>
