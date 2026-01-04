@@ -1,294 +1,443 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>煙霧粒子布朗運動 (Brownian Motion)</title>
+    <title>布朗運動模擬 (Brownian Motion)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f8fafc; color: #1e293b; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; color: white; font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         canvas { display: block; }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        .controls {
+            position: absolute;
+            top: 60px; /* Moved down to accommodate button */
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+            
+            /* Animation properties */
+            transform: translateX(120%); /* Start off-screen */
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none; /* Prevent clicks when hidden */
         }
+        .controls.open {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* New Settings Button */
+        .settings-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 50;
+            width: auto;
+            background: #3b82f6;
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.95rem;
+        }
+        .settings-toggle:hover {
+            background: #2563eb;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: flex; justify-content: space-between; font-size: 0.9rem; color: #ccc; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; accent-color: #3b82f6; }
+        button {
+            width: 100%;
+            padding: 8px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #2563eb; }
+        button.secondary { background: #4b5563; margin-top: 8px; }
+        button.secondary:hover { background: #374151; }
+        .legend { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; margin-top: 10px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     </style>
 </head>
-<body class="h-screen w-screen relative">
+<body>
 
-    <!-- HUD / Stats Panel -->
-    <div class="absolute top-4 left-4 glass-panel p-5 rounded-xl z-10 w-72">
-        <h2 class="text-xl font-bold mb-3 text-slate-800 flex items-center gap-2">
-            <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
-            粒子數據
-        </h2>
-        
-        <div class="mb-4">
-            <div class="flex justify-between items-baseline">
-                <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">總移動距離 (Distance)</div>
-                <div class="text-2xl font-mono text-blue-600 font-bold" id="distDisplay">0.00</div>
-            </div>
-            <div class="w-full bg-slate-100 h-1.5 mt-1 rounded-full overflow-hidden">
-                <div class="bg-blue-200 h-full w-full animate-pulse"></div>
-            </div>
-            <div class="text-[10px] text-slate-400 mt-1 text-right">累積行走的所有路徑長度</div>
-        </div>
-
-        <div>
-            <div class="flex justify-between items-baseline">
-                <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">位移 (Displacement)</div>
-                <div class="text-2xl font-mono text-red-500 font-bold" id="dispDisplay">0.00</div>
-            </div>
-            <div class="w-full bg-slate-100 h-1.5 mt-1 rounded-full overflow-hidden">
-                <div class="bg-red-200 h-full w-full animate-pulse"></div>
-            </div>
-            <div class="text-[10px] text-slate-400 mt-1 text-right">起點與終點的直線距離</div>
-        </div>
-    </div>
-
-    <!-- Controls Panel -->
-    <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 glass-panel px-8 py-4 rounded-full z-10 flex items-center gap-6 shadow-xl">
-        <button id="btnToggle" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-bold shadow-md transition-all active:scale-95 min-w-[100px] text-lg">
-            開始
-        </button>
-        
-        <button id="btnReset" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-2.5 rounded-full font-bold transition-all active:scale-95">
-            重置
-        </button>
-
-        <div class="h-10 w-px bg-slate-300"></div>
-
-        <div class="flex flex-col gap-1 items-center">
-            <div class="flex justify-between w-full text-xs text-slate-500 font-bold uppercase">
-                <span>慢</span>
-                <span>模擬速度</span>
-                <span>快</span>
-            </div>
-            <input type="range" id="speedSlider" min="1" max="10" value="2" class="w-40 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
-        </div>
-    </div>
-
-    <!-- Canvas -->
     <canvas id="simCanvas"></canvas>
+
+    <!-- Settings Toggle Button -->
+    <button id="settingsToggle" class="settings-toggle">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        設定
+    </button>
+
+    <div class="controls" id="controlsPanel">
+        <h2 class="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-2">設定</h2>
+        
+        <div class="control-group">
+            <label>溫度 (氣體速度) <span id="speedVal">2</span></label>
+            <input type="range" id="speedRange" min="1" max="15" value="2" step="0.5">
+        </div>
+
+        <div class="control-group">
+            <label>氣體密度 <span id="countVal">150</span></label>
+            <input type="range" id="countRange" min="0" max="400" value="150" step="10">
+        </div>
+
+        <div class="control-group">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <span>顯示氣體分子</span>
+                <input type="checkbox" id="toggleGas" class="accent-blue-500 w-4 h-4">
+            </label>
+        </div>
+
+        <div class="control-group">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <span>顯示路徑軌跡</span>
+                <input type="checkbox" id="toggleTrace" checked class="accent-blue-500 w-4 h-4">
+            </label>
+        </div>
+
+        <button id="resetBtn">重置模擬</button>
+        
+        <div class="mt-4 pt-4 border-t border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2">圖例</h3>
+            <div class="legend"><span class="dot bg-yellow-400"></span> 大粒子 (花粉)</div>
+            <div class="legend"><span class="dot bg-blue-400 opacity-50"></span> 氣體分子</div>
+        </div>
+        
+        <div class="mt-4 text-xs text-gray-500 italic">
+            注意：大粒子的移動僅由較小氣體分子的不平衡碰撞所引起。
+        </div>
+    </div>
 
     <script>
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
-        const distDisplay = document.getElementById('distDisplay');
-        const dispDisplay = document.getElementById('dispDisplay');
-        const btnToggle = document.getElementById('btnToggle');
-        const btnReset = document.getElementById('btnReset');
-        const speedSlider = document.getElementById('speedSlider');
 
-        // State
+        // --- UI Interactions ---
+        const settingsBtn = document.getElementById('settingsToggle');
+        const controlsPanel = document.getElementById('controlsPanel');
+
+        settingsBtn.addEventListener('click', (e) => {
+            controlsPanel.classList.toggle('open');
+            e.stopPropagation(); // Prevent immediate closing if we add body click listener later
+        });
+
+        // Optional: Close panel when clicking outside
+        document.addEventListener('click', (e) => {
+            if (controlsPanel.classList.contains('open') && 
+                !controlsPanel.contains(e.target) && 
+                !settingsBtn.contains(e.target)) {
+                controlsPanel.classList.remove('open');
+            }
+        });
+
+        // Configuration
+        let CONFIG = {
+            gasCount: 150,
+            gasSpeedBase: 2, // Slowed down from 5
+            gasRadius: 3,
+            gasMass: 1,
+            smokeRadius: 25,
+            smokeMass: 100, // Significantly heavier
+            showGas: false, // Hidden by default
+            showTrace: true
+        };
+
         let width, height;
-        let isRunning = false;
-        let animationId;
-        
-        // Particle Physics State
-        let startX, startY;
-        let currentX, currentY;
-        let vx, vy;                  // Velocity vector
-        let collisionCountdown = 0;  // Frames until next direction change
-        const PARTICLE_SPEED = 2;    // Constant speed (pixels per step)
-        
-        // Path History (Only stores collision points/vertices to optimize drawing)
-        let pathVertices = []; 
-        let totalDistance = 0;
+        let particles = [];
+        let smokeParticle;
+        let tracePath = []; // Array of {x, y} for the smoke trail
+        const MAX_TRACE_LENGTH = 200;
 
-        // Resize Canvas
+        // --- Resize Handling ---
         function resize() {
             width = window.innerWidth;
             height = window.innerHeight;
             canvas.width = width;
             canvas.height = height;
-            if (pathVertices.length === 0) reset();
-            else draw();
         }
         window.addEventListener('resize', resize);
-
-        function reset() {
-            startX = width / 2;
-            startY = height / 2;
-            currentX = startX;
-            currentY = startY;
-            
-            // Initialize path with start point
-            pathVertices = [{x: startX, y: startY}];
-            totalDistance = 0;
-            
-            // Force immediate direction pick on start
-            collisionCountdown = 0;
-            
-            updateStats();
-            draw();
-        }
-
-        function updateStats() {
-            const dx = currentX - startX;
-            const dy = currentY - startY;
-            const displacement = Math.sqrt(dx*dx + dy*dy);
-
-            distDisplay.innerText = totalDistance.toFixed(2);
-            dispDisplay.innerText = displacement.toFixed(2);
-        }
-
-        function step() {
-            // 1. Move Particle
-            currentX += vx;
-            currentY += vy;
-            
-            // Update distance (since speed is constant, just add speed)
-            totalDistance += PARTICLE_SPEED;
-
-            // 2. Wall Bounce Logic
-            // If it hits a wall, we reflect the velocity
-            let hitWall = false;
-            if (currentX < 0 || currentX > width) {
-                vx = -vx;
-                currentX += vx; // unstuck
-                hitWall = true;
-            }
-            if (currentY < 0 || currentY > height) {
-                vy = -vy;
-                currentY += vy;
-                hitWall = true;
-            }
-
-            // 3. Collision / Direction Change Logic
-            collisionCountdown--;
-
-            // Change direction if countdown is zero OR we haven't started yet
-            if (collisionCountdown <= 0) {
-                // Record the turning point (vertex) for the zig-zag line
-                // We don't record every pixel, just the corners
-                pathVertices.push({x: currentX, y: currentY});
-                
-                // Pick a new random direction (Random Angle)
-                const angle = Math.random() * Math.PI * 2;
-                vx = Math.cos(angle) * PARTICLE_SPEED;
-                vy = Math.sin(angle) * PARTICLE_SPEED;
-                
-                // Set time until next collision (longer duration for clear straight lines)
-                // Random duration between 40 and 100 steps
-                collisionCountdown = Math.floor(Math.random() * 60) + 40;
-            }
-        }
-
-        function draw() {
-            // Clear background
-            ctx.fillStyle = "#f8fafc"; 
-            ctx.fillRect(0, 0, width, height);
-
-            if (pathVertices.length === 0) return;
-
-            // 1. Draw Start Point (Hollow Green Circle)
-            ctx.beginPath();
-            ctx.arc(startX, startY, 8, 0, Math.PI * 2);
-            ctx.strokeStyle = "#10b981"; // Green
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            // Label Start
-            ctx.fillStyle = "#10b981";
-            ctx.font = "12px sans-serif";
-            ctx.fillText("起點 Start", startX - 25, startY - 15);
-
-            // 2. Draw Zig-Zag Path (Connecting vertices)
-            ctx.beginPath();
-            ctx.moveTo(pathVertices[0].x, pathVertices[0].y);
-            
-            // Loop through all recorded collision points
-            for (let i = 1; i < pathVertices.length; i++) {
-                ctx.lineTo(pathVertices[i].x, pathVertices[i].y);
-            }
-            // Draw line to current moving head
-            ctx.lineTo(currentX, currentY);
-            
-            ctx.strokeStyle = "#64748b"; // Slate-500
-            ctx.lineWidth = 2;
-            ctx.lineJoin = "round";
-            ctx.stroke();
-
-            // 3. Draw Collision Points (Dots at vertices)
-            // This emphasizes the "Zig Zag" nature
-            ctx.fillStyle = "#cbd5e1"; // Light slate
-            for (let i = 1; i < pathVertices.length; i++) {
-                ctx.beginPath();
-                ctx.arc(pathVertices[i].x, pathVertices[i].y, 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // 4. Draw Displacement Vector (Red Dashed Line)
-            ctx.beginPath();
-            ctx.setLineDash([6, 6]); 
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(currentX, currentY);
-            ctx.strokeStyle = "#ef4444"; // Red-500
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
-
-            // 5. Draw Current Particle
-            ctx.beginPath();
-            ctx.arc(currentX, currentY, 12, 0, Math.PI * 2);
-            ctx.fillStyle = "#334155"; // Slate-700
-            ctx.fill();
-            // Inner highlight
-            ctx.beginPath();
-            ctx.arc(currentX - 3, currentY - 3, 4, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255,255,255,0.2)";
-            ctx.fill();
-        }
-
-        function loop() {
-            if (!isRunning) return;
-
-            // Steps per frame controlled by slider
-            let steps = parseInt(speedSlider.value);
-            for(let i=0; i<steps; i++) {
-                step();
-            }
-            
-            updateStats();
-            draw();
-            animationId = requestAnimationFrame(loop);
-        }
-
-        // --- Event Listeners ---
-
-        btnToggle.addEventListener('click', () => {
-            isRunning = !isRunning;
-            if (isRunning) {
-                btnToggle.innerText = "暫停 (Pause)";
-                btnToggle.classList.remove("bg-blue-600", "hover:bg-blue-700");
-                btnToggle.classList.add("bg-amber-500", "hover:bg-amber-600");
-                if (collisionCountdown === 0) {
-                     // Initial Kickstart
-                     step(); 
-                }
-                loop();
-            } else {
-                btnToggle.innerText = "繼續 (Resume)";
-                btnToggle.classList.remove("bg-amber-500", "hover:bg-amber-600");
-                btnToggle.classList.add("bg-blue-600", "hover:bg-blue-700");
-                cancelAnimationFrame(animationId);
-            }
-        });
-
-        btnReset.addEventListener('click', () => {
-            isRunning = false;
-            cancelAnimationFrame(animationId);
-            btnToggle.innerText = "開始 (Start)";
-            btnToggle.classList.remove("bg-amber-500", "hover:bg-amber-600");
-            btnToggle.classList.add("bg-blue-600", "hover:bg-blue-700");
-            reset();
-        });
-
-        // Initialize
         resize();
-        reset();
+
+        // --- Vector Math Helpers ---
+        function rotate(velocity, angle) {
+            return {
+                x: velocity.x * Math.cos(angle) - velocity.y * Math.sin(angle),
+                y: velocity.x * Math.sin(angle) + velocity.y * Math.cos(angle)
+            };
+        }
+
+        function resolveCollision(particle, otherParticle) {
+            const xVelocityDiff = particle.velocity.x - otherParticle.velocity.x;
+            const yVelocityDiff = particle.velocity.y - otherParticle.velocity.y;
+
+            const xDist = otherParticle.x - particle.x;
+            const yDist = otherParticle.y - particle.y;
+
+            // Prevent accidental overlap logic triggering if they are moving apart
+            if (xVelocityDiff * xDist + yVelocityDiff * yDist >= 0) {
+
+                const angle = -Math.atan2(otherParticle.y - particle.y, otherParticle.x - particle.x);
+
+                // Store masses
+                const m1 = particle.mass;
+                const m2 = otherParticle.mass;
+
+                // Rotate velocities to collision coordinate system
+                const u1 = rotate(particle.velocity, angle);
+                const u2 = rotate(otherParticle.velocity, angle);
+
+                // One-dimensional elastic collision equations
+                const v1 = { x: u1.x * (m1 - m2) / (m1 + m2) + u2.x * 2 * m2 / (m1 + m2), y: u1.y };
+                const v2 = { x: u2.x * (m1 - m2) / (m1 + m2) + u1.x * 2 * m1 / (m1 + m2), y: u2.y };
+
+                // Rotate velocities back
+                const vFinal1 = rotate(v1, -angle);
+                const vFinal2 = rotate(v2, -angle);
+
+                // Swap particle velocities
+                particle.velocity.x = vFinal1.x;
+                particle.velocity.y = vFinal1.y;
+                otherParticle.velocity.x = vFinal2.x;
+                otherParticle.velocity.y = vFinal2.y;
+            }
+        }
+
+        // --- Classes ---
+
+        class Particle {
+            constructor(x, y, radius, mass, color, isGas) {
+                this.x = x;
+                this.y = y;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * CONFIG.gasSpeedBase, 
+                    y: (Math.random() - 0.5) * CONFIG.gasSpeedBase
+                };
+                
+                // Smoke starts stationary
+                if (!isGas) {
+                    this.velocity = { x: 0, y: 0 };
+                }
+
+                this.radius = radius;
+                this.mass = mass;
+                this.color = color;
+                this.isGas = isGas;
+            }
+
+            draw() {
+                if (this.isGas && !CONFIG.showGas) return;
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Add a subtle stroke for gas to make them distinct
+                if(this.isGas) {
+                    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+                    ctx.stroke();
+                } else {
+                    // Highlight the smoke particle
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.lineWidth = 1;
+                }
+            }
+
+            update() {
+                // Wall collisions
+                if (this.x - this.radius <= 0) {
+                    this.velocity.x = Math.abs(this.velocity.x);
+                    this.x = this.radius;
+                } else if (this.x + this.radius >= width) {
+                    this.velocity.x = -Math.abs(this.velocity.x);
+                    this.x = width - this.radius;
+                }
+
+                if (this.y - this.radius <= 0) {
+                    this.velocity.y = Math.abs(this.velocity.y);
+                    this.y = this.radius;
+                } else if (this.y + this.radius >= height) {
+                    this.velocity.y = -Math.abs(this.velocity.y);
+                    this.y = height - this.radius;
+                }
+
+                // Move
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                
+                // Friction for the big particle only (simulating fluid viscosity slightly)
+                // This prevents it from gaining infinite energy over time
+                if(!this.isGas) {
+                    this.velocity.x *= 0.99;
+                    this.velocity.y *= 0.99;
+                }
+            }
+        }
+
+        // --- Initialization ---
+
+        function init() {
+            particles = [];
+            tracePath = [];
+
+            // Create Smoke Particle (Center)
+            smokeParticle = new Particle(width / 2, height / 2, CONFIG.smokeRadius, CONFIG.smokeMass, '#facc15', false);
+            particles.push(smokeParticle);
+
+            // Create Gas Molecules
+            createGas(CONFIG.gasCount);
+        }
+
+        function createGas(count) {
+            // Keep the smoke particle, remove others
+            particles = particles.filter(p => !p.isGas);
+            
+            for (let i = 0; i < count; i++) {
+                let x, y, r = CONFIG.gasRadius;
+                
+                // Spawn away from the smoke particle to avoid initial overlap sticking
+                let safe = false;
+                while (!safe) {
+                    x = Math.random() * (width - 2 * r) + r;
+                    y = Math.random() * (height - 2 * r) + r;
+                    
+                    let dx = x - smokeParticle.x;
+                    let dy = y - smokeParticle.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist > smokeParticle.radius + r + 10) safe = true;
+                }
+
+                const gas = new Particle(x, y, r, CONFIG.gasMass, '#60a5fa', true);
+                // Adjust speed based on slider
+                gas.velocity.x = (Math.random() - 0.5) * CONFIG.gasSpeedBase * 2;
+                gas.velocity.y = (Math.random() - 0.5) * CONFIG.gasSpeedBase * 2;
+                
+                particles.push(gas);
+            }
+        }
+
+        // --- Animation Loop ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Trace
+            if (CONFIG.showTrace && tracePath.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(tracePath[0].x, tracePath[0].y);
+                for (let i = 1; i < tracePath.length; i++) {
+                    ctx.lineTo(tracePath[i].x, tracePath[i].y);
+                }
+                ctx.strokeStyle = 'rgba(250, 204, 21, 0.4)'; // Yellow transparent
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // 2. Physics & Logic
+            
+            // Only update trace every few frames to save performance and make line smoother
+            if (CONFIG.showTrace && Math.random() > 0.8) {
+                tracePath.push({x: smokeParticle.x, y: smokeParticle.y});
+                if (tracePath.length > MAX_TRACE_LENGTH) tracePath.shift();
+            }
+
+            // Check Collisions (Naive O(N^2) is fine for N < 500)
+            // Optimization: We mainly care about Gas hitting Smoke. 
+            // Gas hitting Gas is nice for realism but computationally expensive if N is high.
+            // Let's include Gas-Gas collisions but check distance squared to avoid Sqrt.
+            
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    // Distance check
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < particles[i].radius + particles[j].radius) {
+                        resolveCollision(particles[i], particles[j]);
+                    }
+                }
+            }
+
+            // Update & Draw
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+        }
+
+        // --- Controls Logic ---
+
+        const speedInput = document.getElementById('speedRange');
+        const countInput = document.getElementById('countRange');
+        const speedVal = document.getElementById('speedVal');
+        const countVal = document.getElementById('countVal');
+        const toggleGas = document.getElementById('toggleGas');
+        const toggleTrace = document.getElementById('toggleTrace');
+        const resetBtn = document.getElementById('resetBtn');
+
+        speedInput.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            CONFIG.gasSpeedBase = val;
+            speedVal.innerText = val;
+            
+            // Update existing gas speeds proportionally
+            particles.forEach(p => {
+                if (p.isGas) {
+                    // Normalize and re-apply magnitude
+                    const currentSpeed = Math.sqrt(p.velocity.x**2 + p.velocity.y**2);
+                    if(currentSpeed > 0) {
+                         // Add some randomness so they aren't all uniform
+                        p.velocity.x = (p.velocity.x / currentSpeed) * val * (0.8 + Math.random()*0.4);
+                        p.velocity.y = (p.velocity.y / currentSpeed) * val * (0.8 + Math.random()*0.4);
+                    }
+                }
+            });
+        });
+
+        countInput.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            CONFIG.gasCount = val;
+            countVal.innerText = val;
+            createGas(val);
+        });
+
+        toggleGas.addEventListener('change', (e) => {
+            CONFIG.showGas = e.target.checked;
+        });
+
+        toggleTrace.addEventListener('change', (e) => {
+            CONFIG.showTrace = e.target.checked;
+            if(!CONFIG.showTrace) tracePath = [];
+        });
+
+        resetBtn.addEventListener('click', init);
+
+        // Start
+        init();
+        animate();
 
     </script>
 </body>
