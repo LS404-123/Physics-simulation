@@ -195,6 +195,27 @@
             margin-top: 4px;
             padding: 0 4px;
         }
+        
+        .legend-bottom {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #374151;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.65rem;
+            color: #d1d5db;
+        }
+        .legend-dash {
+            width: 12px;
+            height: 2px;
+            margin-right: 4px;
+        }
 
         /* --- SLIDER STYLING --- */
         input[type=range] {
@@ -329,6 +350,20 @@
                 <span>3</span>
                 <span>4+ <span data-key="ms_unit_small_axis">m/s</span></span>
             </div>
+            <div class="legend-bottom">
+                <div class="legend-item">
+                    <div class="legend-dash" style="background-color: #22d3ee; border-bottom: 2px dotted #22d3ee;"></div>
+                    <span data-key="legend_vp">Most Probable</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dash" style="background-color: #fbbf24; border-bottom: 2px dotted #fbbf24;"></div>
+                    <span data-key="legend_avg">Average</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dash" style="background-color: #f472b6; border-bottom: 2px dotted #f472b6;"></div>
+                    <span data-key="legend_rms">RMS</span>
+                </div>
+            </div>
         </div>
     </aside>
 
@@ -409,6 +444,9 @@
             unit_percent: "%",
             ms_unit: "m/s",
             ms_unit_small_axis: "m/s", 
+            legend_vp: "最概然速率",
+            legend_avg: "平均速率",
+            legend_rms: "均方根速率",
         },
         'zh-CN': {
             title_html: "气体粒子温度模拟",
@@ -435,6 +473,9 @@
             unit_percent: "%",
             ms_unit: "m/s",
             ms_unit_small_axis: "m/s",
+            legend_vp: "最概然速率",
+            legend_avg: "平均速率",
+            legend_rms: "均方根速率",
         }
     };
 
@@ -599,6 +640,33 @@
             if (y > -100) { if (x===0) graphCtx.moveTo(x,y); else graphCtx.lineTo(x,y); }
         }
         graphCtx.stroke();
+
+        // Draw Speed Indicators (Vp, Vavg, Vrms) for 2D Gas
+        // 2D Gas Relations:
+        // Vrms = sqrt(2kT/m)
+        // Vp (Most Probable) = sqrt(kT/m) = Vrms / sqrt(2)
+        // Vavg (Average) = sqrt(pi * kT / 2m) = Vrms * sqrt(pi)/2
+
+        const vRMS = Math.sqrt(temperature * TEMP_ENERGY_RATIO);
+        const vMp = vRMS / Math.sqrt(2);
+        const vAvg = vRMS * (Math.sqrt(Math.PI) / 2);
+
+        function drawStatLine(val, color) {
+            const x = (val / rangeMax) * w;
+            if (x < 0 || x > w) return;
+            graphCtx.beginPath();
+            graphCtx.strokeStyle = color;
+            graphCtx.lineWidth = 2;
+            graphCtx.setLineDash([4, 4]); // Dotted line
+            graphCtx.moveTo(x, h);
+            graphCtx.lineTo(x, 0); 
+            graphCtx.stroke();
+            graphCtx.setLineDash([]); // Reset
+        }
+
+        drawStatLine(vMp, '#22d3ee');  // Cyan
+        drawStatLine(vAvg, '#fbbf24'); // Yellow/Amber
+        drawStatLine(vRMS, '#f472b6'); // Pink/Red
     }
 
     function init() {
