@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理力學模擬：連接體系統</title>
+    <!-- 引入 MathJax 進行 LaTeX 渲染 -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        /* 基礎設定 */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --bg-color: #ecf0f1;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        /* 畫布容器 */
+        .canvas-container {
+            position: relative;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* 懸浮提示 */
+        .hover-hint {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            color: #444;
+            border-left: 5px solid var(--accent-color);
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-weight: bold;
+        }
+
+        /* 控制面板 */
+        .controls-panel {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 850px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 強制 span 內的文字不換行 */
+        label span {
+            white-space: nowrap;
+            color: var(--primary-color);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        /* 數據顯示區 */
+        .data-display {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-family: "Microsoft JhengHei", monospace;
+            font-size: 1.2em;
+            flex-wrap: wrap;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .data-item {
+            margin: 5px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .data-value {
+            font-family: monospace;
+            font-weight: bold;
+            color: #f1c40f;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* 按鈕群組 */
+        .btn-group {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.05em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s, background-color 0.2s;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+
+        .btn-combine {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .btn-combine:hover { background-color: #c0392b; }
+
+        .btn-explain {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-explain:hover { background-color: #2980b9; }
+
+        /* 彈出視窗 (Modal) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 650px;
+            padding: 35px;
+            border-radius: 15px;
+            position: relative;
+            animation: slideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #aaa;
+            transition: color 0.2s;
+        }
+        
+        .close-btn:hover { color: #333; }
+
+        .physics-note {
+            background-color: #fff8e1;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+
+        .label-text {
+            color: #555555; /* Gray for the label name */
+        }
+
+        h2 { color: var(--secondary-color); margin-top: 0; }
+        h3 { color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 25px;}
+        p, li { line-height: 1.6; font-size: 1.05em; }
+
+        /* 數學公式微調 */
+        mjx-container { font-size: 1.1em !important; }
+
+    </style>
+</head>
+<body>
+
+    <h1>物理力學實驗室：連接體分析 (Connected Particles)</h1>
+    <div class="subtitle">模擬情境：光滑平面上，兩個物體被向左的力拉動</div>
+
+    <div class="canvas-container">
+        <canvas id="simCanvas" width="900" height="450"></canvas>
+        <div class="hover-hint">💡 老師提示：將滑鼠移動到物體上方，即可查看詳細的「隔離體受力圖 (FBD)」</div>
+    </div>
+
+    <div class="controls-panel">
+        
+        <!-- 數據儀表板 -->
+        <div class="data-display">
+            <div class="data-item">加速度 \( a \): <span id="valAcc" class="data-value">0.00</span> \( m/s^2 \)</div>
+            <div class="data-item" id="tensionDisplay">繩張力 \( T \): <span id="valTension" class="data-value">0.00</span> N</div>
+            <div class="data-item">摩擦力總和 \( f_{total} \): <span id="valFriction" class="data-value">0.00</span> N</div>
+        </div>
+
+        <!-- 滑桿控制 -->
+        <div class="control-group">
+            <label>物體 A 質量 (左) <span id="txtM1">5 kg</span></label>
+            <input type="range" id="slM1" min="1" max="20" value="5" step="0.5">
+        </div>
+
+        <div class="control-group">
+            <label>物體 B 質量 (右) <span id="txtM2">3 kg</span></label>
+            <input type="range" id="slM2" min="1" max="20" value="3" step="0.5">
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span class="label-text">向左拉力 \( F \)</span> 
+                <span id="txtF">50 N</span>
+            </label>
+            <input type="range" id="slF" min="0" max="75" value="25" step="1">
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span class="label-text">動摩擦係數 \( \mu \) </span>
+                <span id="txtMu">0.2</span>
+            </label>
+            <input type="range" id="slMu" min="0" max="0.8" value="0.2" step="0.05">
+        </div>
+
+        <!-- 按鈕 -->
+        <div class="btn-group">
+            <button class="btn-combine" id="btnCombine" onclick="toggleMode()">切換模式：合體 (System)</button>
+            <button class="btn-explain" onclick="showModal()">📖 老師講解原理</button>
+        </div>
+    </div>
+
+    <!-- 彈出教學視窗 -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>👨‍🏫 老師的物理筆記</h2>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+            
+            <h3>1. 為何要有「合體模式」？</h3>
+            <p>當我們將 A 和 B 視為一個<strong>整體系統</strong>時：</p>
+            <ul>
+                <li>繩子的張力 \( T \) 變成系統的<strong>內力 (Internal Force)</strong>。</li>
+                <li>根據牛頓第三定律，內力互相抵銷，所以在計算加速度 \( a \) 時不需要考慮 \( T \)。</li>
+                <li>系統方程： $$ F - f_{total} = (m_A + m_B)a $$</li>
+            </ul>
+
+            <h3>2. 怎樣找回張力 \( T \)？(隔離法)</h3>
+            <p>題目如果問張力，我們必須將物體<strong>隔離 (Isolate)</strong>，切斷繩子來看：</p>
+            <ul>
+                <li>只看物體 B (右邊那個)：它向左被繩拉 (\( T \))，向右被地摩擦 (\( f_B \))。</li>
+                <li>隔離體方程：$$ T - f_B = m_B a $$</li>
+            </ul>
+
+            <div class="physics-note">
+                <strong>💡 靜摩擦小知識：</strong><br>
+                如果拉力太小拉不動，摩擦力不會是 $\mu mg$，而是等於外力（因為合力為0）。<br>
+                例如：你用 10N 力推一個重箱子，箱子不動，摩擦力就是 10N，而不是最大靜摩擦力。
+            </div>
+            <br>
+            <button class="btn-explain" style="width:100%" onclick="closeModal()">明白了，開始實驗！</button>
+        </div>
+    </div>
+
+<script>
+    /**
+     * 物理模擬核心邏輯
+     */
+    
+    // Canvas 設定
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 顏色定義
+    const COLORS = {
+        force: '#e74c3c',    // 紅 (拉力)
+        tension: '#d35400',  // 橙 (張力)
+        friction: '#2980b9', // 藍 (摩擦力) - 已更改
+        normal: '#27ae60',   // 綠 (正向力)
+        gravity: '#34495e',  // 深灰/黑 (重力)
+        blockA: '#3498db',
+        blockB: '#e74c3c',
+        blockCombined: '#9b59b6'
+    };
+    
+    // 狀態變數
+    let state = {
+        m1: 5,      // 左邊物體質量 (kg)
+        m2: 3,      // 右邊物體質量 (kg)
+        F: 25,      // 向左拉力 (N)
+        mu: 0.2,    // 摩擦係數
+        g: 9.81,    // 重力加速度
+        isCombined: false, // 合體模式
+        time: 0,    // 動畫時間
+        animSpeed: 0, // 地板移動速度
+        isMoving: false
+    };
+
+    // 計算結果
+    let physics = {
+        a: 0,       // 加速度
+        T: 0,       // 張力
+        f1: 0,      // m1 實際摩擦力
+        f2: 0,      // m2 實際摩擦力
+        N1: 0,      // m1 正向力
+        N2: 0       // m2 正向力
+    };
+
+    // 互動相關
+    let mouse = { x: 0, y: 0 };
+    let hoveredObject = null; // 'm1', 'm2', 'combined' or null
+
+    // DOM 元素引用
+    const els = {
+        slM1: document.getElementById('slM1'),
+        slM2: document.getElementById('slM2'),
+        slF: document.getElementById('slF'),
+        slMu: document.getElementById('slMu'),
+        txtM1: document.getElementById('txtM1'),
+        txtM2: document.getElementById('txtM2'),
+        txtF: document.getElementById('txtF'),
+        txtMu: document.getElementById('txtMu'),
+        valAcc: document.getElementById('valAcc'),
+        valTension: document.getElementById('valTension'),
+        valFriction: document.getElementById('valFriction'),
+        tensionDisplay: document.getElementById('tensionDisplay'),
+        btnCombine: document.getElementById('btnCombine')
+    };
+
+    // 初始化事件監聽
+    function init() {
+        // 滑桿監聽
+        els.slM1.addEventListener('input', updateParams);
+        els.slM2.addEventListener('input', updateParams);
+        els.slF.addEventListener('input', updateParams);
+        els.slMu.addEventListener('input', updateParams);
+
+        // 滑鼠監聽
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        // 啟動循環
+        updateParams();
+        requestAnimationFrame(loop);
+    }
+
+    function updateParams() {
+        state.m1 = parseFloat(els.slM1.value);
+        state.m2 = parseFloat(els.slM2.value);
+        state.F = parseFloat(els.slF.value);
+        state.mu = parseFloat(els.slMu.value);
+
+        // 更新文字顯示
+        els.txtM1.textContent = `${state.m1} kg`;
+        els.txtM2.textContent = `${state.m2} kg`;
+        els.txtF.textContent = `${state.F} N`;
+        els.txtMu.textContent = `${state.mu}`;
+
+        calculatePhysics();
+    }
+
+    function calculatePhysics() {
+        const totalMass = state.m1 + state.m2;
+        
+        // 1. 計算正向力
+        physics.N1 = state.m1 * state.g;
+        physics.N2 = state.m2 * state.g;
+
+        // 2. 計算最大靜摩擦力 (Limiting Friction)
+        const f1_max = state.mu * physics.N1;
+        const f2_max = state.mu * physics.N2;
+        const f_total_max = f1_max + f2_max;
+
+        // 3. 判斷運動狀態
+        // 如果拉力大於最大總摩擦力，系統才會動
+        if (state.F > f_total_max) {
+            // --- 動態 (Kinetic) ---
+            state.isMoving = true;
+            physics.f1 = f1_max;
+            physics.f2 = f2_max;
+            
+            const F_net = state.F - (physics.f1 + physics.f2);
+            physics.a = F_net / totalMass;
+            
+            physics.T = (state.m2 * physics.a) + physics.f2;
+
+        } else {
+            // --- 靜態 (Static) ---
+            state.isMoving = false;
+            physics.a = 0;
+            
+            if (state.F <= f1_max) {
+                physics.f1 = state.F; 
+                physics.T = 0;        
+                physics.f2 = 0;       
+            } 
+            else {
+                physics.f1 = f1_max;           
+                physics.T = state.F - f1_max;  
+                physics.f2 = physics.T;        
+            }
+        }
+
+        const f_total_actual = physics.f1 + physics.f2;
+
+        // 介面更新
+        els.valAcc.textContent = physics.a.toFixed(2);
+        els.valTension.textContent = physics.T.toFixed(2);
+        els.valFriction.textContent = f_total_actual.toFixed(2);
+
+        // 動畫速度
+        state.animSpeed = physics.a * 2; 
+    }
+
+    // 繪圖循環
+    function loop() {
+        ctx.font = '16px "Microsoft JhengHei", Arial, sans-serif';
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 定義地面高度
+        const floorY = canvas.height - 80;
+
+        // 繪製背景 (地板)
+        drawFloor(floorY);
+
+        // 定義物體位置 (居中)
+        const centerX = canvas.width / 2;
+        const size1 = Math.min(100, Math.max(50, 40 + state.m1 * 3));
+        const size2 = Math.min(100, Math.max(50, 40 + state.m2 * 3));
+        const gap = 180;
+        const stringY = floorY - 30; // 繩子高度固定
+
+        // 物體定義
+        let obj1 = { 
+            x: centerX - gap/2 - size1, y: floorY - size1, w: size1, h: size1, 
+            color: COLORS.blockA, label: 'A', mass: state.m1 
+        };
+        let obj2 = { 
+            x: centerX + gap/2, y: floorY - size2, w: size2, h: size2, 
+            color: COLORS.blockB, label: 'B', mass: state.m2 
+        };
+        
+        // 重置 Hover 狀態
+        hoveredObject = null;
+
+        if (state.isCombined) {
+            // --- 合體模式 ---
+            const totalW = size1 + size2;
+            const maxHeight = Math.max(size1, size2);
+            const combineX = centerX - totalW/2;
+            const combineY = floorY - maxHeight;
+            
+            drawBlock(combineX, combineY, totalW, maxHeight, COLORS.blockCombined, 'A+B', state.m1 + state.m2);
+            
+            // 靜止警告
+            if (!state.isMoving && state.F > 0) {
+                drawStaticWarning(combineX, combineY, totalW, maxHeight, floorY);
+            }
+            
+            // 檢查 Hover
+            checkHover(combineX, combineY, totalW, maxHeight, 'combined');
+            
+            // 只有當沒有 Hover 在合體上時，才畫主視圖的拉力
+            if (hoveredObject !== 'combined') {
+                drawForceArrow(combineX, stringY, state.F, 'left', 'F', COLORS.force);
+            }
+
+            drawForceArrow(combineX + totalW/2, floorY, (physics.f1 + physics.f2), 'right', 'f_total', COLORS.friction);
+
+            
+            if (hoveredObject === 'combined') {
+                drawFBD_Combined(combineX + totalW/2, combineY + maxHeight/2, totalW, maxHeight);
+            }
+
+        } else {
+            // --- 分體模式 ---
+            
+            // 繩子
+            ctx.beginPath();
+            ctx.moveTo(obj1.x + obj1.w, stringY);
+            ctx.lineTo(obj2.x, stringY);
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // 物體
+            drawBlock(obj1.x, obj1.y, obj1.w, obj1.h, obj1.color, obj1.label, obj1.mass);
+            drawBlock(obj2.x, obj2.y, obj2.w, obj2.h, obj2.color, obj2.label, obj2.mass);
+
+            // 靜止警告
+            if (!state.isMoving && state.F > 0) {
+                drawStaticWarning(obj1.x, obj1.y, obj1.w, obj1.h, floorY, true);
+                drawStaticWarning(obj2.x, obj2.y, obj2.w, obj2.h, floorY, false);
+            }
+
+            // 檢查 Hover
+            if (isMouseOver(obj1)) hoveredObject = 'm1';
+            else if (isMouseOver(obj2)) hoveredObject = 'm2';
+
+            // 只有當沒有 Hover 在 m1 上時，才畫主視圖的拉力
+            if (hoveredObject !== 'm1') {
+                drawForceArrow(obj1.x, stringY, state.F, 'left', 'F', COLORS.force);
+            }
+
+            // FBD 顯示
+            if (hoveredObject === 'm1') {
+                highlightBlock(obj1);
+                drawFBD_M1(obj1.x + obj1.w/2, obj1.y + obj1.h/2, obj1.w, obj1.h);
+            } else if (hoveredObject === 'm2') {
+                highlightBlock(obj2);
+                drawFBD_M2(obj2.x + obj2.w/2, obj2.y + obj2.h/2, obj2.w, obj2.h);
+            }
+        }
+
+        if (state.isMoving) {
+            state.time += state.animSpeed;
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    // --- 繪圖函數 ---
+
+    function drawBlock(x, y, w, h, color, label, mass) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#34495e';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x + w/2, y + h/2);
+        
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 16px "Microsoft JhengHei", Arial';
+        ctx.fillText(`${mass} kg`, x + w/2, y - 12);
+    }
+
+    function drawStaticWarning(x, y, w, h, floorY, skipText = false) {
+        ctx.strokeStyle = '#c0392b';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(x-5, y-5, w+10, h+10);
+        ctx.setLineDash([]);
+        
+        if (!skipText) {
+            ctx.fillStyle = '#c0392b';
+            ctx.font = 'bold 22px "Microsoft JhengHei", Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("⚠️ 靜摩擦平衡 (Static)", canvas.width/2, floorY + 45);
+        }
+    }
+
+    function highlightBlock(obj) {
+        ctx.strokeStyle = '#f1c40f';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+    }
+
+    function drawFloor(y) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.strokeStyle = '#95a5a6';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        const offset = state.time % 40;
+        ctx.beginPath();
+        for (let i = -40; i < canvas.width; i += 40) {
+            let x = i + offset; 
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 15, y + 15);
+        }
+        ctx.strokeStyle = '#bdc3c7';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    function drawForceArrow(x, y, magnitude, direction, label, color) {
+        if (magnitude < 1) return; 
+
+        const maxLen = 140; 
+        const scale = 1.0; 
+        let len = Math.min(magnitude * scale, maxLen);
+
+        ctx.beginPath();
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+
+        let endX = x;
+        let endY = y;
+        let labelAlign = 'center';
+        let labelX = x;
+        let labelY = y;
+        
+        ctx.font = 'bold 18px "Microsoft JhengHei", Arial';
+
+        if (direction === 'left') {
+            endX = x - len;
+            drawStylishArrowHead(ctx, x, y, endX, endY);
+            labelAlign = 'right';
+            labelX = endX - 10;
+            labelY = y + 6;
+        } else if (direction === 'right') {
+            endX = x + len;
+            drawStylishArrowHead(ctx, x, y, endX, endY);
+            labelAlign = 'left';
+            labelX = endX + 10;
+            labelY = y + 6;
+        } else if (direction === 'up') {
+            endY = y - len;
+            drawStylishArrowHead(ctx, x, y, endX, endY);
+            labelAlign = 'center';
+            labelX = x;
+            labelY = endY - 10;
+        } else if (direction === 'down') {
+            endY = y + len;
+            drawStylishArrowHead(ctx, x, y, endX, endY);
+            labelAlign = 'center';
+            labelX = x;
+            labelY = endY + 22;
+        }
+        
+        drawLabelWithSubscript(ctx, label, labelX, labelY, labelAlign);
+    }
+    
+    // 繪製帶有下標的標籤
+    function drawLabelWithSubscript(ctx, text, x, y, align) {
+        ctx.textAlign = align;
+        ctx.textBaseline = 'middle';
+        
+        // 簡單解析：用 "_" 分隔主文本和下標
+        let parts = text.split('_');
+        let mainText = parts[0];
+        let subText = parts.length > 1 ? parts[1] : "";
+        
+        // 如果包含 "="，我們需要處理數值部分，不應把數值當作下標
+        // 假設格式是 "f_total = 10N" -> main: f, sub: total, remainder: " = 10N"
+        // 簡單起見，這裡手動處理特定標籤
+        
+        if (text.startsWith("f_tot")) {
+            mainText = "f";
+            subText = "total";
+            // 處理數值部分
+            let valPart = text.substring(text.indexOf("="));
+            if (valPart && valPart.length > 1) {
+                // 繪製
+                let mainWidth = ctx.measureText(mainText).width;
+                ctx.fillText(mainText, x, y);
+                
+                // 下標
+                ctx.font = 'bold 12px "Microsoft JhengHei", Arial';
+                let subX = x + (align === 'right' ? -ctx.measureText(valPart).width : mainWidth);
+                if (align === 'center') subX = x + mainWidth/2;
+                if (align === 'right') subX = x - ctx.measureText(valPart).width - ctx.measureText(subText).width;
+                
+                // 這裡太複雜，用更簡單的方法：直接按順序畫
+                // 因為 align 不同，計算起點比較麻煩
+                // 讓我們切換回簡單模式：只處理 "f_total", "N_tot" 等標籤，數值直接跟在後面
+            }
+        }
+        
+        // 重新實作一個通用的左對齊繪製函數，然後根據 align 調整起始 x
+        // 這需要計算總寬度
+        
+        // 分解字串
+        let components = []; // {text, isSub, font}
+        let currentFont = 'bold 18px "Microsoft JhengHei", Arial';
+        let subFont = 'bold 13px "Microsoft JhengHei", Arial';
+        
+        // 處理常見模式
+        if (text.includes("_")) {
+            let split1 = text.split(" = ");
+            let lhs = split1[0]; // 左邊符號 (e.g. f_total)
+            let rhs = split1.length > 1 ? " = " + split1[1] : ""; // 右邊數值 (e.g. = 50 N)
+            
+            let lhsParts = lhs.split("_");
+            components.push({text: lhsParts[0], isSub: false});
+            if (lhsParts[1]) components.push({text: lhsParts[1], isSub: true});
+            if (rhs) components.push({text: rhs, isSub: false});
+        } else {
+            components.push({text: text, isSub: false});
+        }
+        
+        // 計算總寬度
+        let totalWidth = 0;
+        components.forEach(c => {
+            ctx.font = c.isSub ? subFont : currentFont;
+            c.width = ctx.measureText(c.text).width;
+            totalWidth += c.width;
+        });
+        
+        // 決定起始 X
+        let startX = x;
+        if (align === 'center') startX = x - totalWidth / 2;
+        else if (align === 'right') startX = x - totalWidth;
+        
+        // 繪製
+        let cursorX = startX;
+        components.forEach(c => {
+            ctx.font = c.isSub ? subFont : currentFont;
+            // 下標向下偏移
+            let offY = c.isSub ? 5 : 0; 
+            ctx.textAlign = 'left'; // 強制左對齊以便排版
+            ctx.fillText(c.text, cursorX, y + offY);
+            cursorX += c.width;
+        });
+        
+        // 恢復字體
+        ctx.font = currentFont;
+    }
+
+    function drawStylishArrowHead(ctx, fromX, fromY, toX, toY) {
+        const headlen = 15; 
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const angle = Math.atan2(dy, dx);
+        
+        // 計算箭頭背部的中心點，讓線身停在這裡，而不是穿過尖端
+        // 箭頭是實心的，我們讓線停在箭頭底部稍微進去一點的地方，確保連接緊密但不出頭
+        const backX = toX - headlen * Math.cos(angle);
+        const backY = toY - headlen * Math.sin(angle);
+
+        // 畫線身 (只畫到箭頭背部)
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(backX, backY);
+        ctx.stroke();
+        
+        // 畫實心箭頭
+        ctx.beginPath();
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 7), toY - headlen * Math.sin(angle - Math.PI / 7));
+        ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 7), toY - headlen * Math.sin(angle + Math.PI / 7));
+        ctx.lineTo(toX, toY);
+        ctx.fill(); 
+    }
+
+    // --- FBD 繪圖 ---
+
+    function drawFBD_M1(cx, cy, w, h) {
+        drawOverlayBase(cx, cy, "A (左)");
+        
+        drawForceArrow(cx - w/2, cy, state.F/2+20, 'left', `F = ${state.F} N`, COLORS.force);
+        drawForceArrow(cx + w/2, cy, physics.T, 'right', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
+        drawForceArrow(cx, cy + h/2, physics.f1, 'right', `f = ${physics.f1.toFixed(2)} N`, COLORS.friction);
+        
+        drawForceArrow(cx, cy + h/2, physics.N1, 'up', 'N', COLORS.normal);
+        drawForceArrow(cx, cy, state.m1 * state.g, 'down', 'mg', COLORS.gravity);
+    }
+
+    function drawFBD_M2(cx, cy, w, h) {
+        drawOverlayBase(cx, cy, "B (右)");
+        
+        drawForceArrow(cx - w/2, cy, physics.T, 'left', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
+        drawForceArrow(cx, cy + h/2, physics.f2, 'right', `f = ${physics.f2.toFixed(2)} N`, COLORS.friction);
+        
+        drawForceArrow(cx, cy + h/2, physics.N2, 'up', 'N', COLORS.normal);
+        drawForceArrow(cx, cy, state.m2 * state.g, 'down', 'mg', COLORS.gravity);
+    }
+
+    function drawFBD_Combined(cx, cy, w, h) {
+        drawOverlayBase(cx, cy, "系統 (A+B)");
+        
+        drawForceArrow(cx - w/2, cy, state.F/2, 'left', `F = ${state.F} N`, COLORS.force);
+        drawForceArrow(cx, cy + h/2, physics.f1 + physics.f2, 'right', `f_total = ${(physics.f1+physics.f2).toFixed(2)} N`, COLORS.friction);
+        
+        drawForceArrow(cx, cy + h/2, (physics.N1+physics.N2), 'up', 'N_total', COLORS.normal);
+        drawForceArrow(cx, cy, (state.m1+state.m2)*state.g, 'down', 'Mg', COLORS.gravity);
+    }
+
+    function drawOverlayBase(x, y, title) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.beginPath();
+        ctx.arc(x, y, 130, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#bdc3c7';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    // --- 輔助邏輯 ---
+
+    function isMouseOver(obj) {
+        return mouse.x > obj.x && mouse.x < obj.x + obj.w &&
+               mouse.y > obj.y && mouse.y < obj.y + obj.h;
+    }
+
+    function checkHover(x, y, w, h, id) {
+        if (mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h) {
+            hoveredObject = id;
+        }
+    }
+
+    function toggleMode() {
+        state.isCombined = !state.isCombined;
+        if (state.isCombined) {
+            els.btnCombine.textContent = "切換模式：分體 (Isolated)";
+            els.btnCombine.style.backgroundColor = "#9b59b6";
+            els.tensionDisplay.style.opacity = "0.4";
+        } else {
+            els.btnCombine.textContent = "切換模式：合體 (System)";
+            els.btnCombine.style.backgroundColor = "#e74c3c";
+            els.tensionDisplay.style.opacity = "1";
+        }
+    }
+
+    function showModal() {
+        document.getElementById('helpModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('helpModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('helpModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    init();
+
+</script>
+
+</body>
+</html>
