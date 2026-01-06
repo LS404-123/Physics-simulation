@@ -49,12 +49,13 @@
             max-width: 1000px;
             margin: 0 auto;
             padding: 2rem;
-            min-height: 60vh; /* Ensures footer stays at bottom even with few items */
+            min-height: 60vh;
         }
 
         /* Book Section Styling */
         .book-section {
             margin-bottom: 3rem;
+            animation: fadeIn 0.5s ease-in;
         }
 
         .book-title {
@@ -89,24 +90,30 @@
             box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }
 
-        /* --- NEW: Screenshot Image Styling --- */
+        /* Screenshot Image Styling */
         .card-image {
-            height: 250px; /* Increased height */
+            height: 250px;
             width: 100%;
-            background-color: #e0e6ed; /* Placeholder background color */
+            background-color: #e0e6ed;
             overflow: hidden;
             border-bottom: 1px solid #f0f0f0;
+            position: relative;
         }
 
         .card-image img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures image fills the box without stretching */
+            object-fit: cover;
             display: block;
+            transition: transform 0.3s;
+        }
+        
+        .sim-card:hover .card-image img {
+            transform: scale(1.05); /* Subtle zoom effect on hover */
         }
 
         .card-content {
-            padding: 15px; /* Reduced padding */
+            padding: 15px;
             flex-grow: 1;
         }
 
@@ -114,11 +121,11 @@
             margin-top: 0;
             margin-bottom: 10px;
             color: var(--primary-color);
-            font-size: 1.3rem; /* Slightly smaller title */
+            font-size: 1.3rem;
         }
 
         .card-content p {
-            font-size: 0.95rem; /* Slightly smaller text */
+            font-size: 0.95rem;
             color: #666;
             margin: 0;
             line-height: 1.5;
@@ -126,7 +133,7 @@
 
         /* Button Styling */
         .card-action {
-            padding: 12px 15px; /* Compact padding */
+            padding: 12px 15px;
             background-color: #fafafa;
             border-top: 1px solid #eee;
             text-align: right;
@@ -157,7 +164,11 @@
             font-size: 0.9rem;
         }
         
-        /* Responsive adjustments */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         @media (max-width: 600px) {
             header h1 { font-size: 1.8rem; }
             .container { padding: 1rem; }
@@ -171,130 +182,108 @@
         <p>配合教科書的互動式物理實驗與視覺化演示</p>
     </header>
 
-    <div class="container">
-
-        <!-- ========================================= -->
-        <!-- BOOK SECTION 1: HEAT AND GAS             -->
-        <!-- ========================================= -->
-        <div class="book-section">
-            <!-- 書名標題 (可修改) -->
-            <h2 class="book-title">第一冊：熱與氣體</h2>
-            
-            <div class="simulation-grid">
-                
-                <!-- 這是你目前唯一的檔案卡片 -->
-                <div class="sim-card">
-                    <!-- 截圖區域 -->
-                    <div class="card-image">
-                        <!-- 請將 src 改為你的截圖檔案路徑 (例如: 'images/brownian.png') -->
-                        <img src="screenshot/book1/brownian_motion.png" alt="布朗運動截圖">
-                    </div>
-                    <div class="card-content">
-                        <h3>布朗運動</h3>
-                        <p>這是你目前唯一的模擬實驗。請在下方連結填入正確的檔案名稱。</p>
-                    </div>
-                    <div class="card-action">
-                        <!-- 請將 '#' 改為你的 HTML 檔案名稱 (例如: 'projectile.html') -->
-                        <a href="physics/Book1/Brownian_motion.html" class="btn">進入模擬</a>
-                    </div>
-                </div>
-
-                <div class="sim-card">
-                    <!-- 截圖區域 -->
-                    <div class="card-image">
-                        <img src="screenshot/book1/gas_simulation.png" alt="氣體模擬截圖">
-                    </div>
-                    <div class="card-content">
-                        <h3>氣體模擬</h3>
-                        <p>模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。</p>
-                    </div>
-                    <div class="card-action">
-                        <a href="physics/Book1/kinetic_theory.html" class="btn">進入模擬</a>
-                    </div>
-                </div>
-                
-                
-                <!-- 
-                =======================================================
-                【新增檔案模板】
-                當你有新的 HTML 檔案時，複製下方的程式碼區塊，
-                並貼到上面的 </div> (sim-card 結束標籤) 之後。
-                =======================================================
-                
-                <div class="sim-card">
-                    <div class="card-image">
-                        <img src="你的圖片路徑.jpg" alt="模擬截圖">
-                    </div>
-                    <div class="card-content">
-                        <h3>新模擬標題</h3>
-                        <p>這裡填寫模擬的簡短說明。</p>
-                    </div>
-                    <div class="card-action">
-                        <a href="你的新檔案名稱.html" class="btn">進入模擬</a>
-                    </div>
-                </div>
-                
-                =======================================================
-                -->
-            
-            </div>
-        </div>
-        
-        <!-- ========================================= -->
-        <!-- BOOK SECTION 2: MECHANICS                 -->
-        <!-- ========================================= -->
-        <div class="book-section">
-            <!-- 書名標題 (可修改) -->
-            <h2 class="book-title">第一冊：力與運動</h2>
-            
-            <div class="simulation-grid">
-                
-                <!-- 這是你目前唯一的檔案卡片 -->
-                <div class="sim-card">
-                    <!-- 截圖區域 -->
-                    <div class="card-image">
-                        <img src="screenshot/book2/velocity_displacement.png" alt="位移和平均速率截圖">
-                    </div>
-                    <div class="card-content">
-                        <h3>位移和平均速率</h3>
-                        <p>這是你目前唯一的模擬實驗。請在下方連結填入正確的檔案名稱。</p>
-                    </div>
-                    <div class="card-action">
-                        <!-- 請將 '#' 改為你的 HTML 檔案名稱 (例如: 'projectile.html') -->
-                        <a href="physics/Book2/displacement_avg_velocity.html" class="btn">進入模擬</a>
-                    </div>
-                </div>
-                
-                
-                <!-- 
-                =======================================================
-                【新增檔案模板】
-                當你有新的 HTML 檔案時，複製下方的程式碼區塊，
-                並貼到上面的 </div> (sim-card 結束標籤) 之後。
-                =======================================================
-                
-                <div class="sim-card">
-                    <div class="card-content">
-                        <h3>新模擬標題</h3>
-                        <p>這裡填寫模擬的簡短說明。</p>
-                    </div>
-                    <div class="card-action">
-                        <a href="你的新檔案名稱.html" class="btn">進入模擬</a>
-                    </div>
-                </div>
-                
-                =======================================================
-                -->
-            
-            </div>
-        </div>
-        <!-- 如果以後有第二本書，可以複製整個 "book-section"區塊貼到這裡 -->
-
-    </div>
+    <!-- Content will be injected here by JavaScript -->
+    <div class="container" id="app-container"></div>
 
     <footer>
         <p>&copy; 2024 物理模擬專案。託管於 GitHub Pages。</p>
     </footer>
+
+    <!-- ======================================================= -->
+    <!-- JAVASCRIPT: DATA & LOGIC                                -->
+    <!-- ======================================================= -->
+    <script>
+        // 1. 設定：如果您沒有圖片，會使用這個預設圖片
+        const DEFAULT_IMAGE = "https://placehold.co/600x400/e0e6ed/2c3e50?text=No+Image";
+
+        // 2. 資料庫：所有內容都在這裡管理！
+        //    只要在這裡新增項目，網頁就會自動更新。
+        const libraryData = [
+            {
+                category: "第一冊：熱與氣體",
+                items: [
+                    {
+                        title: "布朗運動",
+                        desc: "這是你目前唯一的模擬實驗。請在下方連結填入正確的檔案名稱。",
+                        link: "physics/Book1/Brownian_motion.html",
+                        image: "screenshot/book1/brownian_motion.png" // 空白會顯示預設圖片，或者填入 "images/brownian.png"
+                    },
+                    {
+                        title: "氣體模擬",
+                        desc: "模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。",
+                        link: "physics/Book1/kinetic_theory.html",
+                        image: "screenshot/book1/gas_simulation.png" 
+                    }
+                ]
+            },
+            {
+                category: "第二冊：力與運動",
+                items: [
+                    {
+                        title: "位移和平均速率",
+                        desc: "這是你目前唯一的模擬實驗。請在下方連結填入正確的檔案名稱。",
+                        link: "physics/Book2/displacement_avg_velocity.html",
+                        image: "screenshot/book2/velocity_displacement.png" 
+                    },
+                    // 您可以在這裡輕鬆複製並貼上新的區塊:
+                    // {
+                    //    title: "新模擬標題",
+                    //    desc: "說明...",
+                    //    link: "檔案路徑.html",
+                    //    image: "圖片路徑.png"
+                    // }
+                ]
+            }
+        ];
+
+        // 3. 程式邏輯 (不需要修改)
+        //    這個函式會讀取上面的資料並產生 HTML
+        function renderLibrary() {
+            const container = document.getElementById('app-container');
+            let htmlContent = '';
+
+            libraryData.forEach(section => {
+                // 建立書本區塊
+                let sectionHtml = `
+                <div class="book-section">
+                    <h2 class="book-title">${section.category}</h2>
+                    <div class="simulation-grid">
+                `;
+
+                // 建立每個卡片
+                section.items.forEach(item => {
+                    const imageUrl = item.image ? item.image : DEFAULT_IMAGE;
+                    
+                    sectionHtml += `
+                        <div class="sim-card">
+                            <div class="card-image">
+                                <img src="${imageUrl}" alt="${item.title}" onerror="this.src='${DEFAULT_IMAGE}'">
+                            </div>
+                            <div class="card-content">
+                                <h3>${item.title}</h3>
+                                <p>${item.desc}</p>
+                            </div>
+                            <div class="card-action">
+                                <a href="${item.link}" class="btn">進入模擬</a>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // 關閉標籤
+                sectionHtml += `
+                    </div>
+                </div>`;
+                
+                htmlContent += sectionHtml;
+            });
+
+            container.innerHTML = htmlContent;
+        }
+
+        // 執行程式
+        document.addEventListener('DOMContentLoaded', renderLibrary);
+    </script>
 
 </body>
 </html>
