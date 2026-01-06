@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -319,17 +320,17 @@
                 <li>系統方程： $$ F - f_{total} = (m_A + m_B)a $$</li>
             </ul>
 
-            <h3>2. 怎樣找回張力 \( T \)？(隔離法)</h3>
-            <p>題目如果問張力，我們必須將物體<strong>隔離 (Isolate)</strong>，切斷繩子來看：</p>
+            <h3>2. 怎樣找回張力 \( T \)？</h3>
+            <p>題目如果問張力，我們必須關注在<strong> 其中一個 </strong>物體，切斷繩子來看：</p>
             <ul>
                 <li>只看物體 B (右邊那個)：它向左被繩拉 (\( T \))，向右被地摩擦 (\( f_B \))。</li>
-                <li>隔離體方程：$$ T - f_B = m_B a $$</li>
+                <li>物體 B 力學公式：$$ T - f_B = m_B a $$</li>
             </ul>
 
             <div class="physics-note">
-                <strong>💡 靜摩擦小知識：</strong><br>
-                如果拉力太小拉不動，摩擦力不會是 $\mu mg$，而是等於外力（因為合力為0）。<br>
-                例如：你用 10N 力推一個重箱子，箱子不動，摩擦力就是 10N，而不是最大靜摩擦力。
+                <strong>💡 摩擦小知識：</strong><br>
+                如果拉力太小拉不動，摩擦力不會是 \(\mu N\)，而是等於外力（因為合力為0）。<br>
+                例如：你用 10N 力推一個重箱子，箱子不動，摩擦力就是 10N，而不是最大摩擦力。
             </div>
             <br>
             <button class="btn-explain" style="width:100%" onclick="closeModal()">明白了，開始實驗！</button>
@@ -499,7 +500,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // 定義地面高度
-        const floorY = canvas.height - 80;
+        const floorY = canvas.height - 100;
 
         // 繪製背景 (地板)
         drawFloor(floorY);
@@ -686,14 +687,14 @@
             endX = x - len;
             drawStylishArrowHead(ctx, x, y, endX, endY);
             labelAlign = 'right';
-            labelX = endX - 10;
-            labelY = y + 6;
+            labelX = endX + 20;
+            labelY = y - 15;
         } else if (direction === 'right') {
             endX = x + len;
             drawStylishArrowHead(ctx, x, y, endX, endY);
             labelAlign = 'left';
-            labelX = endX + 10;
-            labelY = y + 6;
+            labelX = endX - 20;
+            labelY = y - 15;
         } else if (direction === 'up') {
             endY = y - len;
             drawStylishArrowHead(ctx, x, y, endX, endY);
@@ -828,7 +829,7 @@
         drawOverlayBase(cx, cy, "A (左)");
         
         drawForceArrow(cx - w/2, cy, state.F/7*12+20, 'left', `F = ${state.F} N`, COLORS.force);
-        drawForceArrow(cx + w/2, cy, physics.T/7*12+20, 'right', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
+        drawForceArrow(cx + w/2, cy+h/2-30, physics.T/7*12+20, 'right', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
         drawForceArrow(cx, cy + h/2, physics.f1/7*12+20, 'right', `f = ${physics.f1.toFixed(2)} N`, COLORS.friction);
         
         drawForceArrow(cx+h/20, cy + h/2, physics.N1/20*10+20, 'up', 'N', COLORS.normal);
@@ -838,7 +839,7 @@
     function drawFBD_M2(cx, cy, w, h) {
         drawOverlayBase(cx, cy, "B (右)");
         
-        drawForceArrow(cx - w/2, cy, physics.T/7*12+20, 'left', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
+        drawForceArrow(cx - w/2, cy+h/2-30, physics.T/7*12+20, 'left', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
         drawForceArrow(cx, cy + h/2, physics.f2/7*12+20, 'right', `f = ${physics.f2.toFixed(2)} N`, COLORS.friction);
         
         drawForceArrow(cx+h/20, cy + h/2, physics.N2/20*10+20, 'up', 'N', COLORS.normal);
