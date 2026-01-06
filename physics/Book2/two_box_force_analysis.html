@@ -357,6 +357,9 @@
         blockCombined: '#9b59b6'
     };
     
+    // 自動彈出原理視窗
+    setTimeout(() => showModal(true), 800);
+    
     // 狀態變數
     let state = {
         m1: 5,      // 左邊物體質量 (kg)
@@ -902,10 +905,11 @@
             modal.style.display = "none";
         }
     }
-
+    
     init();
 
 </script>
 
 </body>
 </html>
+
