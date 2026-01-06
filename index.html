@@ -89,25 +89,44 @@
             box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }
 
+        /* --- NEW: Screenshot Image Styling --- */
+        .card-image {
+            height: 250px; /* Increased height */
+            width: 100%;
+            background-color: #e0e6ed; /* Placeholder background color */
+            overflow: hidden;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures image fills the box without stretching */
+            display: block;
+        }
+
         .card-content {
-            padding: 20px;
+            padding: 15px; /* Reduced padding */
             flex-grow: 1;
         }
 
         .card-content h3 {
             margin-top: 0;
+            margin-bottom: 10px;
             color: var(--primary-color);
-            font-size: 1.4rem;
+            font-size: 1.3rem; /* Slightly smaller title */
         }
 
         .card-content p {
-            font-size: 1rem;
+            font-size: 0.95rem; /* Slightly smaller text */
             color: #666;
+            margin: 0;
+            line-height: 1.5;
         }
 
         /* Button Styling */
         .card-action {
-            padding: 15px 20px;
+            padding: 12px 15px; /* Compact padding */
             background-color: #fafafa;
             border-top: 1px solid #eee;
             text-align: right;
@@ -155,7 +174,7 @@
     <div class="container">
 
         <!-- ========================================= -->
-        <!-- BOOK SECTION 1: HEAT AND GAS                 -->
+        <!-- BOOK SECTION 1: HEAT AND GAS             -->
         <!-- ========================================= -->
         <div class="book-section">
             <!-- 書名標題 (可修改) -->
@@ -165,6 +184,11 @@
                 
                 <!-- 這是你目前唯一的檔案卡片 -->
                 <div class="sim-card">
+                    <!-- 截圖區域 -->
+                    <div class="card-image">
+                        <!-- 請將 src 改為你的截圖檔案路徑 (例如: 'images/brownian.png') -->
+                        <img src="https://placehold.co/600x400/e0e6ed/2c3e50?text=Simulation+Preview" alt="布朗運動截圖">
+                    </div>
                     <div class="card-content">
                         <h3>布朗運動</h3>
                         <p>這是你目前唯一的模擬實驗。請在下方連結填入正確的檔案名稱。</p>
@@ -176,6 +200,10 @@
                 </div>
 
                 <div class="sim-card">
+                    <!-- 截圖區域 -->
+                    <div class="card-image">
+                        <img src="https://placehold.co/600x400/e0e6ed/2c3e50?text=Gas+Simulation" alt="氣體模擬截圖">
+                    </div>
                     <div class="card-content">
                         <h3>氣體模擬</h3>
                         <p>模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。</p>
@@ -194,6 +222,9 @@
                 =======================================================
                 
                 <div class="sim-card">
+                    <div class="card-image">
+                        <img src="你的圖片路徑.jpg" alt="模擬截圖">
+                    </div>
                     <div class="card-content">
                         <h3>新模擬標題</h3>
                         <p>這裡填寫模擬的簡短說明。</p>
@@ -220,6 +251,10 @@
                 
                 <!-- 這是你目前唯一的檔案卡片 -->
                 <div class="sim-card">
+                    <!-- 截圖區域 -->
+                    <div class="card-image">
+                        <img src="screenshot/book2/velocity_displacement.png" alt="位移和平均速率截圖">
+                    </div>
                     <div class="card-content">
                         <h3>位移和平均速率</h3>
                         <p>這是你目前唯一的模擬實驗。請在下方連結填入正確的檔案名稱。</p>
