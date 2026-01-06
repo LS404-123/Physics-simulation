@@ -286,7 +286,7 @@
                 <span class="label-text">向左拉力 \( F \)</span> 
                 <span id="txtF">50 N</span>
             </label>
-            <input type="range" id="slF" min="0" max="75" value="25" step="1">
+            <input type="range" id="slF" min="0" max="70" value="25" step="1">
         </div>
 
         <div class="control-group">
@@ -369,7 +369,7 @@
         animSpeed: 0, // 地板移動速度
         isMoving: false
     };
-
+    
     // 計算結果
     let physics = {
         a: 0,       // 加速度
@@ -486,7 +486,7 @@
         els.valFriction.textContent = f_total_actual.toFixed(2);
 
         // 動畫速度
-        state.animSpeed = physics.a * 2; 
+        state.animSpeed = physics.a / 4; 
     }
 
     // 繪圖循環
@@ -540,10 +540,10 @@
             
             // 只有當沒有 Hover 在合體上時，才畫主視圖的拉力
             if (hoveredObject !== 'combined') {
-                drawForceArrow(combineX, stringY, state.F, 'left', 'F', COLORS.force);
+                drawForceArrow(combineX, combineY + maxHeight/2, state.F/7*12+20, 'left', 'F', COLORS.force);
             }
 
-            drawForceArrow(combineX + totalW/2, floorY, (physics.f1 + physics.f2), 'right', 'f_total', COLORS.friction);
+            drawForceArrow(combineX + totalW/2, floorY, (physics.f1 + physics.f2)/7*12+20, 'right', 'f_total', COLORS.friction);
 
             
             if (hoveredObject === 'combined') {
@@ -577,7 +577,7 @@
 
             // 只有當沒有 Hover 在 m1 上時，才畫主視圖的拉力
             if (hoveredObject !== 'm1') {
-                drawForceArrow(obj1.x, stringY, state.F, 'left', 'F', COLORS.force);
+                drawForceArrow(obj1.x, obj1.y+obj1.h/2, state.F/7*12+20, 'left', 'F', COLORS.force);
             }
 
             // FBD 顯示
@@ -659,7 +659,7 @@
     }
 
     function drawForceArrow(x, y, magnitude, direction, label, color) {
-        if (magnitude < 1) return; 
+        if (magnitude <= 20) return; 
 
         const maxLen = 140; 
         const scale = 1.0; 
@@ -701,8 +701,8 @@
             endY = y + len;
             drawStylishArrowHead(ctx, x, y, endX, endY);
             labelAlign = 'center';
-            labelX = x;
-            labelY = endY + 22;
+            labelX = x - 22;
+            labelY = y + magnitude/2;
         }
         
         drawLabelWithSubscript(ctx, label, labelX, labelY, labelAlign);
@@ -824,32 +824,32 @@
     function drawFBD_M1(cx, cy, w, h) {
         drawOverlayBase(cx, cy, "A (左)");
         
-        drawForceArrow(cx - w/2, cy, state.F/2+20, 'left', `F = ${state.F} N`, COLORS.force);
-        drawForceArrow(cx + w/2, cy, physics.T, 'right', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
-        drawForceArrow(cx, cy + h/2, physics.f1, 'right', `f = ${physics.f1.toFixed(2)} N`, COLORS.friction);
+        drawForceArrow(cx - w/2, cy, state.F/7*12+20, 'left', `F = ${state.F} N`, COLORS.force);
+        drawForceArrow(cx + w/2, cy, physics.T/7*12+20, 'right', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
+        drawForceArrow(cx, cy + h/2, physics.f1/7*12+20, 'right', `f = ${physics.f1.toFixed(2)} N`, COLORS.friction);
         
-        drawForceArrow(cx, cy + h/2, physics.N1, 'up', 'N', COLORS.normal);
-        drawForceArrow(cx, cy, state.m1 * state.g, 'down', 'mg', COLORS.gravity);
+        drawForceArrow(cx+h/20, cy + h/2, physics.N1/20*10+20, 'up', 'N', COLORS.normal);
+        drawForceArrow(cx, cy, (state.m1 * state.g)/20*10+20, 'down', 'mg', COLORS.gravity);
     }
 
     function drawFBD_M2(cx, cy, w, h) {
         drawOverlayBase(cx, cy, "B (右)");
         
-        drawForceArrow(cx - w/2, cy, physics.T, 'left', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
-        drawForceArrow(cx, cy + h/2, physics.f2, 'right', `f = ${physics.f2.toFixed(2)} N`, COLORS.friction);
+        drawForceArrow(cx - w/2, cy, physics.T/7*12+20, 'left', `T = ${physics.T.toFixed(2)} N`, COLORS.tension);
+        drawForceArrow(cx, cy + h/2, physics.f2/7*12+20, 'right', `f = ${physics.f2.toFixed(2)} N`, COLORS.friction);
         
-        drawForceArrow(cx, cy + h/2, physics.N2, 'up', 'N', COLORS.normal);
-        drawForceArrow(cx, cy, state.m2 * state.g, 'down', 'mg', COLORS.gravity);
+        drawForceArrow(cx+h/20, cy + h/2, physics.N2/20*10+20, 'up', 'N', COLORS.normal);
+        drawForceArrow(cx, cy, state.m2 * state.g /20*10+20, 'down', 'mg', COLORS.gravity);
     }
 
     function drawFBD_Combined(cx, cy, w, h) {
         drawOverlayBase(cx, cy, "系統 (A+B)");
         
-        drawForceArrow(cx - w/2, cy, state.F/2, 'left', `F = ${state.F} N`, COLORS.force);
-        drawForceArrow(cx, cy + h/2, physics.f1 + physics.f2, 'right', `f_total = ${(physics.f1+physics.f2).toFixed(2)} N`, COLORS.friction);
+        drawForceArrow(cx - w/2, cy, state.F/7*12+20, 'left', `F = ${state.F} N`, COLORS.force);
+        drawForceArrow(cx, cy + h/2, (physics.f1 + physics.f2)/7*12+20, 'right', `f_total = ${(physics.f1+physics.f2).toFixed(2)} N`, COLORS.friction);
         
-        drawForceArrow(cx, cy + h/2, (physics.N1+physics.N2), 'up', 'N_total', COLORS.normal);
-        drawForceArrow(cx, cy, (state.m1+state.m2)*state.g, 'down', 'Mg', COLORS.gravity);
+        drawForceArrow(cx+h/20, cy + h/2, (physics.N1+physics.N2)/20*10+20, 'up', 'N_total', COLORS.normal);
+        drawForceArrow(cx, cy, (state.m1+state.m2)*state.g /20*10+20, 'down', 'Mg', COLORS.gravity);
     }
 
     function drawOverlayBase(x, y, title) {
