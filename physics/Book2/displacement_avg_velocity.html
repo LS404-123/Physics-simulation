@@ -1,0 +1,743 @@
+
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理模擬：路程與位移 (Distance vs Displacement)</title>
+    <style>
+        :root {
+            --primary-bg: #f0f2f5;
+            --panel-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-sub: #666666;
+            --blue-path: #2980b9; /* 路程顏色 */
+            --red-vect: #c0392b;  /* 位移顏色 */
+            --accent: #27ae60;    /* 操作提示 */
+            --grid-color: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--primary-bg);
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 標題區域 */
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        h1 { margin: 0; color: var(--text-main); font-size: 1.8rem; }
+        .subtitle { color: var(--text-sub); font-size: 1rem; margin-top: 5px; }
+
+        /* 主佈局：左畫布，右數據 */
+        .main-container {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            min-height: 0; /* 防止溢出 */
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* 畫布容器 */
+        .canvas-wrapper {
+            flex: 3;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 畫布上的浮動提示 */
+        .overlay-hint {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border-left: 5px solid var(--accent);
+            font-weight: bold;
+            color: var(--text-main);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        /* 網格比例尺標示 */
+        .grid-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #555;
+            pointer-events: none;
+        }
+
+        /* 右側控制面板 */
+        .control-panel {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        /* 數據卡片 */
+        .card {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+        .data-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* 顏色標記 */
+        .c-blue { color: var(--blue-path); }
+        .c-red { color: var(--red-vect); }
+
+        /* 按鈕樣式 */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: auto; 
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn-explain { background: #34495e; color: white; }
+        
+        /* 開始按鈕特效 */
+        #btnStart {
+            background: var(--accent);
+            color: white;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 6px rgba(39, 174, 96, 0.3);
+            display: block; /* 永遠顯示 */
+        }
+        /* 禁用狀態 */
+        #btnStart:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+        /* 激活後的脈衝動畫 - 改為 box-shadow 避免撐開版面 */
+        #btnStart:not(:disabled) {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(39, 174, 96, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+        }
+
+        /* 彈出視窗 (Modal) */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .concept-section {
+            background: #f8f9fa;
+            border-left: 4px solid #ccc;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .note-highlight {
+            background-color: #e8f5e9;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+
+        /* 手機版適配 */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .canvas-wrapper { height: 400px; flex: none; }
+            .control-panel { flex: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>物理運動模擬器</h1>
+    <div class="subtitle">Displacement vs Average Velocity Simulation</div>
+</header>
+
+<div class="main-container">
+    <!-- 左側畫布 -->
+    <div class="canvas-wrapper" id="canvasBox">
+        <canvas id="simCanvas"></canvas>
+        <div class="overlay-hint" id="statusText">請在畫布上點擊「起始點」</div>
+        <div class="grid-legend">📏 1 格 = 1 公尺 (m)</div>
+    </div>
+
+    <!-- 右側控制面板 -->
+    <div class="control-panel">
+        <!-- 數據顯示 -->
+        <div class="card">
+            <div class="card-title">預測與實時數據 (t = 5.0s)</div>
+            
+            <!-- 路程數據 -->
+            <div class="data-row c-blue">
+                <span>總路程 (Distance)</span>
+                <span class="data-value" id="valDist">0.0 m</span>
+            </div>
+            <div class="data-row c-blue">
+                <span>平均速率 (Avg Speed)</span>
+                <span class="data-value" id="valSpeed">0.00 m/s</span>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px dashed #ddd; margin: 15px 0;">
+
+            <!-- 位移數據 -->
+            <div class="data-row c-red">
+                <span>位移 (Displacement)</span>
+                <span class="data-value" id="valDisp">0.0 m</span>
+            </div>
+            <div class="data-row c-red">
+                <span>平均速度 (Avg Velocity)</span>
+                <span class="data-value" id="valVel">0.00 m/s</span>
+            </div>
+        </div>
+
+        <!-- 教學筆記 -->
+        <div class="card" style="flex:1; background-color: #fffcf5; border: 1px solid #ffeebb; display: flex; flex-direction: column;">
+            <div class="card-title">👨‍🏫 老師教學筆記</div>
+            <div style="flex:1; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #444;">
+                <p><strong>1. 觀念核心：</strong><br>
+                位移只在乎<span class="note-highlight">起點</span>與<span class="note-highlight">終點</span>，完全不理會過程中的繞路。</p>
+                
+                <p><strong>2. 深入思考：</strong><br>
+                ❓ <strong>如果學生畫了一個封閉圖形（終點回到起點）：</strong><br>
+                位移將變為 0 m，因此平均速度也是 0 m/s，即便他跑得很累（路程很大）。</p>
+
+                <p>❓ <strong>關於方向性：</strong><br>
+                平均速度是一個向量（Vector），它的方向永遠指向位移的方向（紅虛線）。注意看藍球在轉彎時，雖然速率不變，但運動方向改變了，這意味著它有加速度。</p>
+                
+                <p style="margin-bottom:0; color:#d35400;"><strong>💡 教學建議：</strong><br>
+                請學生先畫一條直線，觀察兩者數據相同。再畫折線，觀察差異。這能有效建立「直線運動 vs 曲線運動」的概念差異。</p>
+            </div>
+        </div>
+
+        <!-- 按鈕 -->
+        <div class="btn-group">
+            <button id="btnStart" onclick="runSimulation()" disabled>▶ 開始模擬 (Start)</button>
+            <div class="btn-row">
+                <button class="btn-reset" onclick="resetSim()">重置 (Reset)</button>
+                <button class="btn-explain" onclick="toggleModal(true)">原理詳解</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 彈出教學視窗 (Modal) -->
+<div class="modal-backdrop" id="conceptModal" onclick="if(event.target === this) toggleModal(false)">
+    <div class="modal-content">
+        <span class="close-btn" onclick="toggleModal(false)">&times;</span>
+        <h2 style="margin-top:0; color:var(--text-main)">關鍵概念解析</h2>
+        
+        <p>各位同學，在這個模擬中，我們可以看到同一段時間 (5秒) 內的兩種不同觀點：</p>
+
+        <div class="concept-section" style="border-color: var(--blue-path);">
+            <h3 style="margin:0 0 10px 0; color:var(--blue-path)">1. 路程與速率 (Scalar - 標量)</h3>
+            <p style="margin:0;">
+                <strong>路程 (Distance)</strong> 是物體實際走過的軌跡總長。<br>
+                <strong>平均速率</strong> = 總路程 ÷ 時間。<br>
+                <em>這只關心「你走了多少步」以及「跑得有多快」。</em>
+            </p>
+        </div>
+
+        <div class="concept-section" style="border-color: var(--red-vect);">
+            <h3 style="margin:0 0 10px 0; color:var(--red-vect)">2. 位移與速度 (Vector - 矢量)</h3>
+            <p style="margin:0;">
+                <strong>位移 (Displacement)</strong> 是起點指向終點的直線距離與方向。<br>
+                <strong>平均速度</strong> = 位移 ÷ 時間。<br>
+                <em>這只關心「你最終位置改變了多少」以及「往哪個方向變」。</em>
+            </p>
+        </div>
+
+        <div style="background:#eee; padding:15px; border-radius:8px;">
+            <strong>🧠 進階思考題：</strong><br>
+            <ul style="margin:10px 0 0 20px; padding:0;">
+                <li>如果藍球在每一段線上的「速率」都是恆定的，那它在轉彎的那一瞬間發生了什麼事？(提示：速度的方向改變了)</li>
+                <li>這就是為什麼我們需要區分「平均速度」和「瞬時速度」。</li>
+            </ul>
+        </div>
+        <br>
+        <button onclick="toggleModal(false)" style="width:100%; background:var(--accent); color:white;">我明白了</button>
+    </div>
+</div>
+
+<script>
+    // --- 系統變數 ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasBox');
+    
+    // 狀態
+    let points = [];
+    const MAX_POINTS = 4; // 起點 + 3個轉折點 = 3條線
+    let isAnimating = false;
+    let startTime = 0;
+    const DURATION = 5000; // 5秒
+    let ghostPoint = null; // 鼠標懸停時的吸附預覽點
+    
+    // 比例尺設定：固定 50px = 1 公尺
+    const GRID_SIZE = 50; 
+    const scaleRatio = 1 / GRID_SIZE; // 米/像素
+
+    // UI 綁定
+    const ui = {
+        hint: document.getElementById('statusText'),
+        dist: document.getElementById('valDist'),
+        disp: document.getElementById('valDisp'),
+        speed: document.getElementById('valSpeed'),
+        vel: document.getElementById('valVel'),
+        btnStart: document.getElementById('btnStart')
+    };
+
+    // --- 初始化與響應式 ---
+    function resize() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        if(!isAnimating) drawStatic();
+    }
+    window.addEventListener('resize', resize);
+    
+    // 初始執行一次
+    setTimeout(resize, 100); 
+    // 自動彈出原理視窗
+    setTimeout(() => toggleModal(true), 800);
+
+    // --- 交互邏輯 (滑鼠移動 - 吸附預覽) ---
+    canvas.addEventListener('mousemove', (e) => {
+        if (isAnimating || points.length >= MAX_POINTS) {
+            if(ghostPoint) {
+                ghostPoint = null;
+                drawStatic();
+            }
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const rawX = e.clientX - rect.left;
+        const rawY = e.clientY - rect.top;
+
+        // 計算吸附後的坐標
+        const snapX = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
+        const snapY = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
+
+        ghostPoint = { x: snapX, y: snapY };
+        drawStatic();
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        ghostPoint = null;
+        if (!isAnimating) drawStatic();
+    });
+
+    // --- 交互邏輯 (點擊 - 放置點) ---
+    canvas.addEventListener('mousedown', (e) => {
+        if (isAnimating || points.length >= MAX_POINTS) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const rawX = e.clientX - rect.left;
+        const rawY = e.clientY - rect.top;
+
+        // 核心邏輯：吸附到最近的網格點
+        const snapX = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
+        const snapY = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
+
+        points.push({
+            x: snapX,
+            y: snapY
+        });
+
+        updateUIState();
+        ghostPoint = null; // 點擊後暫時隱藏預覽點
+        drawStatic();
+    });
+
+    function updateUIState() {
+        const count = points.length;
+        
+        // 提示文字更新
+        if (count === 0) {
+            ui.hint.innerText = "請在畫布上點擊「起始點」";
+        } else if (count < MAX_POINTS) {
+            ui.hint.innerText = `點擊畫出第 ${count} 條線 (還可以畫 ${MAX_POINTS - count} 條)`;
+        } else {
+            ui.hint.innerText = "繪製完成！按「開始模擬」觀察運動";
+        }
+
+        // 按鈕狀態：只要有一條線 (2個點) 就可以開始
+        if (count >= 2) {
+            ui.btnStart.disabled = false;
+            // 即時計算並顯示數據
+            calculateStats();
+        } else {
+            ui.btnStart.disabled = true;
+        }
+    }
+
+    // 按下開始按鈕觸發
+    function runSimulation() {
+        if (points.length < 2) return;
+        ui.btnStart.disabled = true; // 模擬中禁止重複按
+        ui.hint.innerText = "模擬進行中... (5秒恆定運動)";
+        ghostPoint = null; // 確保動畫中沒有鬼影點
+        startAnimation();
+    }
+
+    // --- 繪圖邏輯 ---
+    
+    // 畫背景網格 (固定尺寸)
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        
+        // 繪製垂直線
+        for (let x = 0; x < canvas.width; x += GRID_SIZE) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        // 繪製水平線
+        for (let y = 0; y < canvas.height; y += GRID_SIZE) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+    }
+
+    // 畫靜態路徑 (含預覽點)
+    function drawStatic() {
+        drawGrid();
+        
+        // 畫已確定的路徑
+        if (points.length > 0) {
+            // 線段 (藍色)
+            if (points.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#2980b9';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // 實心點
+            points.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.fillStyle = i === 0 ? '#27ae60' : '#2c3e50';
+                ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 文字標籤
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 12px Arial';
+                let label = "";
+                if (i === 0) label = "起始點";
+                else if (i === points.length - 1 && points.length > 1) label = "End";
+                
+                if (label) ctx.fillText(label, p.x + 10, p.y - 10);
+            });
+        }
+
+        // 畫吸附預覽點 (Ghost Point)
+        if (ghostPoint && !isAnimating && points.length < MAX_POINTS) {
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(39, 174, 96, 0.4)'; // 半透明綠色
+            ctx.arc(ghostPoint.x, ghostPoint.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // 如果是畫線中，顯示一條預覽線
+            if (points.length > 0) {
+                const lastP = points[points.length-1];
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(41, 128, 185, 0.4)'; // 半透明藍線
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(lastP.x, lastP.y);
+                ctx.lineTo(ghostPoint.x, ghostPoint.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+    }
+
+    // --- 動畫核心 ---
+    function startAnimation() {
+        isAnimating = true;
+        startTime = Date.now();
+        calculateStats(); // 確保數據最新
+        requestAnimationFrame(loop);
+    }
+
+    function calculateStats() {
+        // 計算總路程 (Pixels)
+        let totalDistPx = 0;
+        for(let i=0; i<points.length-1; i++) {
+            totalDistPx += Math.hypot(points[i+1].x - points[i].x, points[i+1].y - points[i].y);
+        }
+
+        // 計算位移 (Pixels)
+        let dispPx = Math.hypot(points[points.length-1].x - points[0].x, points[points.length-1].y - points[0].y);
+
+        // 轉換為米 (Scale: 1px = scaleRatio meters)
+        const distM = totalDistPx * scaleRatio;
+        const dispM = dispPx * scaleRatio;
+        
+        // 更新 UI
+        ui.dist.innerText = distM.toFixed(1) + " m";
+        ui.disp.innerText = dispM.toFixed(1) + " m";
+        ui.speed.innerText = (distM / 5.0).toFixed(2) + " m/s";
+        ui.vel.innerText = (dispM / 5.0).toFixed(2) + " m/s";
+    }
+
+    function loop() {
+        if (!isAnimating) return;
+
+        const elapsed = Date.now() - startTime;
+        let progress = elapsed / DURATION;
+
+        if (progress >= 1) {
+            progress = 1;
+            isAnimating = false;
+            ui.hint.innerText = "模擬完成。點擊「重置」再來一次。";
+            ui.btnStart.disabled = false; // 允許再次播放
+        } else {
+            requestAnimationFrame(loop);
+        }
+
+        drawFrame(progress);
+    }
+
+    function drawFrame(progress) {
+        drawStatic(); // 重繪背景和線條
+
+        // --- 1. 計算藍色跑者位置 & 方向 ---
+        let totalLen = 0;
+        let segLens = [];
+        for(let i=0; i<points.length-1; i++) {
+            let len = Math.hypot(points[i+1].x - points[i].x, points[i+1].y - points[i].y);
+            segLens.push(len);
+            totalLen += len;
+        }
+
+        let currentDist = totalLen * progress;
+        let covered = 0;
+        let bluePos = { x: points[0].x, y: points[0].y };
+        let blueDx = 1; // 預設面向右
+
+        for(let i=0; i<segLens.length; i++) {
+            if (currentDist <= covered + segLens[i]) {
+                // 在這一段線上
+                let segProgress = (currentDist - covered) / segLens[i];
+                bluePos.x = points[i].x + (points[i+1].x - points[i].x) * segProgress;
+                bluePos.y = points[i].y + (points[i+1].y - points[i].y) * segProgress;
+                
+                // 計算這一段的方向
+                blueDx = points[i+1].x - points[i].x;
+                break;
+            }
+            covered += segLens[i];
+            if(i === segLens.length - 1) {
+                bluePos = points[points.length-1];
+                blueDx = points[i].x - points[i-1].x; // 保持最後一段的方向
+            }
+        }
+
+        // --- 2. 計算紅色跑者位置 & 方向 ---
+        let redPos = {
+            x: points[0].x + (points[points.length-1].x - points[0].x) * progress,
+            y: points[0].y + (points[points.length-1].y - points[0].y) * progress
+        };
+        let redDx = points[points.length-1].x - points[0].x;
+
+        // --- 3. 繪製元素 ---
+        
+        // 畫位移虛線 (紅色)
+        ctx.beginPath();
+        ctx.setLineDash([8, 8]);
+        ctx.strokeStyle = 'rgba(192, 57, 43, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.moveTo(points[0].x, points[0].y);
+        ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+        ctx.stroke();
+        ctx.setLineDash([]); 
+
+        // 畫跑者
+        drawMan(ctx, redPos.x, redPos.y, '#c0392b', redDx, 's'); // 紅色 (位移)
+        drawMan(ctx, bluePos.x, bluePos.y, '#2980b9', blueDx, 'd'); // 藍色 (路程)
+    }
+
+    // 畫火柴人函式
+    function drawMan(ctx, x, y, color, dx, label) {
+        ctx.save();
+        ctx.translate(x, y);
+        
+        // 根據移動方向翻轉 (dx < 0 則水平翻轉)
+        if (dx < 0) ctx.scale(-1, 1);
+
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // 1. 頭部 (Head)
+        ctx.beginPath();
+        ctx.arc(0, -12, 4, 0, Math.PI*2);
+        ctx.fill();
+
+        // 2. 身體 (Body)
+        ctx.beginPath();
+        ctx.moveTo(0, -8);
+        ctx.lineTo(0, 5);
+        ctx.stroke();
+
+        // 3. 腿部 (Legs) - 跑步姿勢
+        ctx.beginPath();
+        ctx.moveTo(0, 5); 
+        ctx.lineTo(-6, 14); // 後腿
+        ctx.moveTo(0, 5);
+        ctx.lineTo(6, 12);  // 前腿
+        ctx.stroke();
+
+        // 4. 手臂 (Arms) - 擺動姿勢
+        ctx.beginPath();
+        ctx.moveTo(0, -5);
+        ctx.lineTo(-5, 0); // 後手
+        ctx.moveTo(0, -5);
+        ctx.lineTo(5, -6); // 前手
+        ctx.stroke();
+
+        ctx.restore();
+
+        // 5. 標籤 (保持正向，不隨人翻轉)
+        ctx.fillStyle = color;
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, y - 22);
+    }
+
+    // --- 功能函數 ---
+    function resetSim() {
+        points = [];
+        isAnimating = false;
+        ghostPoint = null;
+        
+        ui.hint.innerText = "請在畫布上點擊「起始點」";
+        ui.btnStart.disabled = true; // 重置時禁用
+        ui.dist.innerText = "0.0 m";
+        ui.disp.innerText = "0.0 m";
+        ui.speed.innerText = "0.00 m/s";
+        ui.vel.innerText = "0.00 m/s";
+        
+        resize(); // 重畫乾淨的畫布
+    }
+
+    function toggleModal(show) {
+        const modal = document.getElementById('conceptModal');
+        if(show) modal.classList.add('active');
+        else modal.classList.remove('active');
+    }
+</script>
+
+</body>
+</html>
