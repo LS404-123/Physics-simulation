@@ -296,14 +296,14 @@
                 位移只在乎<span class="note-highlight">起點</span>與<span class="note-highlight">終點</span>，完全不理會過程中的繞路。</p>
                 
                 <p><strong>2. 深入思考：</strong><br>
-                ❓ <strong>如果學生畫了一個封閉圖形（終點回到起點）：</strong><br>
+                ❓ <strong>如果學生畫了一個封閉圖形（終點 = 起點）：</strong><br>
                 位移將變為 0 m，因此平均速度也是 0 m/s，即便他跑得很累（路程很大）。</p>
 
                 <p>❓ <strong>關於方向性：</strong><br>
-                平均速度是一個向量（Vector），它的方向永遠指向位移的方向（紅虛線）。注意看藍球在轉彎時，雖然速率不變，但運動方向改變了，這意味著它有加速度。</p>
+                速度是一個向量（Vector），它的方向永遠指向位移的方向（紅虛線）。</p>
                 
-                <p style="margin-bottom:0; color:#d35400;"><strong>💡 教學建議：</strong><br>
-                請學生先畫一條直線，觀察兩者數據相同。再畫折線，觀察差異。這能有效建立「直線運動 vs 曲線運動」的概念差異。</p>
+                <p style="margin-bottom:0; color:#d35400;"><strong>💡 建議：</strong><br>
+                請先畫一條直線，觀察兩者數據。再畫折線，觀察差異。這能有效建立「直線運動 vs 曲線運動」的概念差異。</p>
             </div>
         </div>
 
@@ -329,7 +329,7 @@
         <div class="concept-section" style="border-color: var(--blue-path);">
             <h3 style="margin:0 0 10px 0; color:var(--blue-path)">1. 路程與速率 (Scalar - 標量)</h3>
             <p style="margin:0;">
-                <strong>路程 (Distance)</strong> 是物體實際走過的軌跡總長。<br>
+                <strong>路程 (Distance)</strong> 是物體實際走過的路徑總長。<br>
                 <strong>平均速率</strong> = 總路程 ÷ 時間。<br>
                 <em>這只關心「你走了多少步」以及「跑得有多快」。</em>
             </p>
@@ -339,19 +339,11 @@
             <h3 style="margin:0 0 10px 0; color:var(--red-vect)">2. 位移與速度 (Vector - 矢量)</h3>
             <p style="margin:0;">
                 <strong>位移 (Displacement)</strong> 是起點指向終點的直線距離與方向。<br>
-                <strong>平均速度</strong> = 位移 ÷ 時間。<br>
+                <strong>平均速度</strong> = 總位移 ÷ 時間。<br>
                 <em>這只關心「你最終位置改變了多少」以及「往哪個方向變」。</em>
             </p>
         </div>
 
-        <div style="background:#eee; padding:15px; border-radius:8px;">
-            <strong>🧠 進階思考題：</strong><br>
-            <ul style="margin:10px 0 0 20px; padding:0;">
-                <li>如果藍球在每一段線上的「速率」都是恆定的，那它在轉彎的那一瞬間發生了什麼事？(提示：速度的方向改變了)</li>
-                <li>這就是為什麼我們需要區分「平均速度」和「瞬時速度」。</li>
-            </ul>
-        </div>
-        <br>
         <button onclick="toggleModal(false)" style="width:100%; background:var(--accent); color:white;">我明白了</button>
     </div>
 </div>
@@ -364,7 +356,7 @@
     
     // 狀態
     let points = [];
-    const MAX_POINTS = 4; // 起點 + 3個轉折點 = 3條線
+    const MAX_POINTS = 1 + 5; // 起點 + 3個轉折點 = 3條線
     let isAnimating = false;
     let startTime = 0;
     const DURATION = 5000; // 5秒
