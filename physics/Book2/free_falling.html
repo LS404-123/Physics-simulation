@@ -297,7 +297,7 @@
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-red-400 rounded-t-3xl opacity-80"></div>
                     <div class="p-4 flex flex-col h-full">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center">
-                            <span class="w-1.5 h-4 bg-orange-400 rounded-sm mr-2"></span> Velocity-Time
+                            <span class="w-1.5 h-4 bg-orange-400 rounded-sm mr-2"></span> 速度 - 時間
                         </h3>
                         <!-- BIG STYLISH EQUATION DISPLAY -->
                         <div id="vt-equations" class="mb-3 px-3 py-2 rounded-xl bg-orange-50/80 border border-orange-100 flex flex-col gap-1 shadow-sm">
@@ -314,7 +314,7 @@
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-blue-400 rounded-t-3xl opacity-80"></div>
                     <div class="p-4 flex flex-col h-full">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center">
-                            <span class="w-1.5 h-4 bg-teal-400 rounded-sm mr-2"></span> Displacement-Time
+                            <span class="w-1.5 h-4 bg-teal-400 rounded-sm mr-2"></span> 位移 - 時間
                         </h3>
                         <!-- BIG STYLISH EQUATION DISPLAY -->
                         <div id="st-equations" class="mb-3 px-3 py-2 rounded-xl bg-teal-50/80 border border-teal-100 flex flex-col gap-1 shadow-sm">
@@ -467,11 +467,11 @@
             const stHTML = `
                 <div class="math-font text-base sm:text-lg flex justify-around items-center w-full">
                     <div class="text-red-600">
-                        <span class="italic font-bold">s</span><sub class="text-xs">A</sub> = ${uA == 0 ? '' : uA + '<span class="italic">t</span> + '} <span class="text-sm">½</span>(${gVal})<span class="italic">t</span>²
+                        <span class="italic font-bold">100</span> = ${uA == 0 ? '' : uA + '<span class="italic">t</span> + '} <span class="text-sm">½</span>(${gVal})<span class="italic">t</span>²
                     </div>
                     <div class="w-px h-6 bg-teal-200"></div>
                     <div class="text-blue-600">
-                        <span class="italic font-bold">s</span><sub class="text-xs">B</sub> = ${uB == 0 ? '' : uB + '<span class="italic">t</span> + '} <span class="text-sm">½</span>(${gVal})<span class="italic">t</span>²
+                        <span class="italic font-bold">100</span> = ${uB == 0 ? '' : uB + '<span class="italic">t</span> + '} <span class="text-sm">½</span>(${gVal})<span class="italic">t</span>²
                     </div>
                 </div>
                 ${warning}
@@ -846,3 +846,4 @@
     </script>
 </body>
 </html>
+
