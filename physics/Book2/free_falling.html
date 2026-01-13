@@ -14,12 +14,20 @@
     <style>
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
-            height: 100vh; 
+            /* Changed from fixed height to min-height to allow scrolling on smaller devices */
+            min-height: 100vh; 
             display: flex; 
             flex-direction: column; 
-            overflow: hidden; 
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
+        /* Only fix height on large screens to prevent page scroll */
+        @media (min-width: 1024px) {
+            body {
+                height: 100vh;
+                overflow: hidden;
+            }
+        }
+        
         .canvas-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; }
         .modal { transition: opacity 0.3s ease; backdrop-filter: blur(4px); }
@@ -111,11 +119,13 @@
     </header>
 
     <!-- Main Layout -->
-    <div class="flex-grow p-4 overflow-hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
+    <div class="flex-grow p-4 overflow-hidden-x">
+        <!-- Responsive Grid: Height auto on mobile, fixed calculated height on desktop -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-auto lg:h-[calc(100vh-80px)]">
             
             <!-- LEFT: Controls & Data -->
-            <div class="lg:col-span-2 flex flex-col gap-3 overflow-y-auto custom-scroll pr-1">
+            <!-- Added overflow-y-auto for desktop scrolling if needed -->
+            <div class="lg:col-span-2 flex flex-col gap-3 lg:overflow-y-auto custom-scroll pr-1">
                 
                 <!-- Object A Card -->
                 <div class="bg-gradient-to-b from-white to-red-50 p-3 rounded-2xl shadow-sm border border-red-100 group hover:border-red-300 transition duration-300 relative overflow-hidden">
@@ -233,7 +243,7 @@
                 </div>
 
                 <!-- Global Actions -->
-                <div class="mt-auto space-y-3">
+                <div class="mt-auto space-y-3 pb-2">
                     <label class="flex items-center gap-3 p-3 bg-white/80 rounded-xl border border-white shadow-sm cursor-pointer hover:bg-white transition backdrop-blur-sm">
                         <div class="relative">
                             <input type="checkbox" id="air-toggle" class="sr-only peer" onclick="updateEquationDisplay()">
@@ -254,7 +264,8 @@
             </div>
 
             <!-- CENTER: Immersive Simulation -->
-            <div class="lg:col-span-4 flex flex-col bg-white rounded-3xl shadow-lg border border-white/60 overflow-hidden relative group ring-1 ring-black/5">
+            <!-- Fixed height on mobile to ensure visibility, auto fill on desktop -->
+            <div class="lg:col-span-4 flex flex-col bg-white rounded-3xl shadow-lg border border-white/60 overflow-hidden relative group ring-1 ring-black/5 h-[500px] lg:h-full">
                 <div class="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
                     <div class="bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 shadow-sm border border-white">
                         <i class="fas fa-ruler-vertical mr-1"></i> 100m
@@ -278,10 +289,11 @@
             </div>
 
             <!-- RIGHT: Clean Graphs -->
-            <div class="lg:col-span-6 flex flex-col gap-4 h-full">
+            <!-- Added overflow-y-auto for desktop scrolling if needed -->
+            <div class="lg:col-span-6 flex flex-col gap-4 h-auto lg:h-full lg:overflow-y-auto custom-scroll pr-1">
                 
                 <!-- v-t Graph -->
-                <div class="bg-white/80 backdrop-blur-sm p-1 rounded-3xl shadow-sm border border-white/60 flex flex-col flex-1 min-h-0 relative ring-1 ring-black/5">
+                <div class="bg-white/80 backdrop-blur-sm p-1 rounded-3xl shadow-sm border border-white/60 flex flex-col flex-1 min-h-[300px] lg:min-h-0 relative ring-1 ring-black/5">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-red-400 rounded-t-3xl opacity-80"></div>
                     <div class="p-4 flex flex-col h-full">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center">
@@ -298,7 +310,7 @@
                 </div>
 
                 <!-- s-t Graph -->
-                <div class="bg-white/80 backdrop-blur-sm p-1 rounded-3xl shadow-sm border border-white/60 flex flex-col flex-1 min-h-0 relative ring-1 ring-black/5">
+                <div class="bg-white/80 backdrop-blur-sm p-1 rounded-3xl shadow-sm border border-white/60 flex flex-col flex-1 min-h-[300px] lg:min-h-0 relative ring-1 ring-black/5">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-blue-400 rounded-t-3xl opacity-80"></div>
                     <div class="p-4 flex flex-col h-full">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center">
@@ -432,7 +444,8 @@
             const gVal = 9.81;
             const isDrag = document.getElementById('air-toggle').checked;
             
-            const warning = isDrag ? '<div class="text-slate-400 mt-2 italic text-[10px] text-center font-sans tracking-wide">(公式僅適用於真空或初始狀態 / Formula valid for vacuum or initial state)</div>' : '';
+            // Removed remainder text
+            const warning = '';
 
             // v = u + at
             // Using "math-font" class for serif/latex look
