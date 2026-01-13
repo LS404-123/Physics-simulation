@@ -144,7 +144,7 @@
                             <svg id="icon-play" class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                             <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                         </button>
-                        <button onclick="resetSim()" class="flex-1 text-slate-600 hover:text-red-600 hover:bg-red-50 font-bold text-xs px-3 py-2 rounded-lg transition border border-slate-100 hover:border-red-100 flex items-center justify-center gap-2">
+                        <button onclick="resetSim()" id="resetBtn" class="flex-1 text-slate-600 hover:text-red-600 hover:bg-red-50 font-bold text-xs px-3 py-2 rounded-lg transition border border-slate-100 hover:border-red-100 flex items-center justify-center gap-2">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             重置 (Reset)
                         </button>
@@ -303,6 +303,7 @@
             speedMultiplier: 0.3, // Slow motion by default
             scenario: 1,
             running: false,
+            ended: false,
             history: [], 
             groundY: 0,
             simWidth: 0,
@@ -376,9 +377,9 @@
                 
                 if (simState.s >= maxS) {
                     simState.s = maxS;
-                    simState.v = 0; 
-                    simState.a = 0;
+                    // Keep final velocity and accel visible
                     simState.running = false;
+                    simState.ended = true;
                     updatePlayBtnState();
                 }
 
@@ -391,8 +392,9 @@
                 // Stop if hits ground
                 if (simState.s < 0) {
                     simState.s = 0;
-                    simState.v = 0;
+                    // Keep impact velocity
                     simState.running = false;
+                    simState.ended = true;
                     updatePlayBtnState();
                 }
 
@@ -409,8 +411,9 @@
                         simState.v = -simState.v * 0.85; // 85% energy retention
                         // Threshold to stop micro-bouncing
                         if (Math.abs(simState.v) < 1.0) {
-                            simState.v = 0;
+                            // Don't zero out velocity, just stop
                             simState.running = false;
+                            simState.ended = true;
                             updatePlayBtnState();
                         }
                     }
@@ -418,12 +421,14 @@
             }
 
             // Record History
-            simState.history.push({
-                t: simState.t,
-                s: simState.s,
-                v: simState.v,
-                a: simState.a
-            });
+            if (!simState.ended) {
+                simState.history.push({
+                    t: simState.t,
+                    s: simState.s,
+                    v: simState.v,
+                    a: simState.a
+                });
+            }
 
             // Cap history
             if (simState.history.length > 3000) { 
@@ -441,8 +446,41 @@
         }
 
         function updatePlayBtnState() {
-            document.getElementById('icon-play').classList.toggle('hidden', simState.running);
-            document.getElementById('icon-pause').classList.toggle('hidden', !simState.running);
+            const playBtn = document.getElementById('playBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const playIcon = document.getElementById('icon-play');
+            const pauseIcon = document.getElementById('icon-pause');
+
+            if (simState.ended) {
+                // Disable play button
+                playBtn.disabled = true;
+                playBtn.classList.add('bg-slate-300', 'cursor-not-allowed', 'text-slate-500');
+                playBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'hover:shadow-blue-200', 'hover:scale-105', 'active:scale-95');
+                
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+
+                // Highlight reset button
+                resetBtn.classList.add('bg-red-100', 'text-red-700', 'border-red-300', 'ring-2', 'ring-red-200', 'animate-pulse');
+                resetBtn.classList.remove('text-slate-600', 'border-slate-100');
+            } else {
+                // Normal state
+                playBtn.disabled = false;
+                playBtn.classList.remove('bg-slate-300', 'cursor-not-allowed', 'text-slate-500');
+                playBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'hover:shadow-blue-200', 'hover:scale-105', 'active:scale-95');
+
+                if (simState.running) {
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                } else {
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                }
+
+                // Reset Reset Button styles
+                resetBtn.classList.remove('bg-red-100', 'text-red-700', 'border-red-300', 'ring-2', 'ring-red-200', 'animate-pulse');
+                resetBtn.classList.add('text-slate-600', 'border-slate-100');
+            }
         }
 
         // --- Rendering ---
@@ -729,15 +767,16 @@
         // --- Interaction ---
 
         function togglePlay() {
+            if (simState.ended) return; // Disable play if simulation ended
             simState.running = !simState.running;
             updatePlayBtnState();
         }
 
         function resetSim() {
             simState.running = false;
+            simState.ended = false;
             simState.t = 0;
             simState.history = [];
-            updatePlayBtnState();
             
             if (simState.scenario === 1) {
                 simState.s = 0;
@@ -752,6 +791,8 @@
                 simState.v = 0;
                 simState.a = -9.8;
             }
+            
+            updatePlayBtnState(); // Reset button states
             updateUIValues();
             draw(); 
         }
