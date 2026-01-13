@@ -67,7 +67,7 @@
         </div>
         <button onclick="toggleInfo()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm transition flex items-center gap-2 border border-white/10 backdrop-blur-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-            <span>概念筆記 (Notes)</span>
+            <span>概念筆記</span>
         </button>
     </nav>
 
@@ -83,7 +83,7 @@
                 
                 <!-- Dynamic Data Overlay -->
                 <div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-100 text-xs font-mono space-y-1.5 min-w-[130px] transition-opacity opacity-90 group-hover:opacity-100">
-                    <div class="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1 border-b border-slate-100 pb-1">Real-time Data</div>
+                    <div class="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1 border-b border-slate-100 pb-1">實時數據</div>
                     <div class="text-slate-600 font-bold flex justify-between items-center">
                         <span>t</span> 
                         <span class="bg-slate-100 px-1.5 rounded text-slate-800"><span id="val-t">0.00</span> s</span>
@@ -108,14 +108,13 @@
                 
                 <!-- Scenario Buttons -->
                 <div>
-                    <h3 class="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest pl-1">選擇情境 (Select Scenario)</h3>
+                    <h3 class="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest pl-1">選擇情境</h3>
                     <div class="grid grid-cols-1 gap-2">
                         <button onclick="setScenario(1)" class="scenario-btn group relative p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition text-left flex items-center gap-3 overflow-hidden" id="btn-sc1">
                             <div class="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition duration-300"></div>
                             <div class="relative bg-blue-100 p-2 rounded-lg text-lg shadow-sm">🚗</div>
                             <div class="relative z-10">
                                 <div class="font-bold text-slate-700 text-sm group-hover:text-blue-700">恆定加速度 (加速)</div>
-                                <div class="text-[10px] text-slate-500">Constant Acceleration</div>
                             </div>
                         </button>
                         <button onclick="setScenario(2)" class="scenario-btn group relative p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition text-left flex items-center gap-3 overflow-hidden" id="btn-sc2">
@@ -123,15 +122,13 @@
                             <div class="relative bg-indigo-100 p-2 rounded-lg text-lg shadow-sm">🎾</div>
                             <div class="relative z-10">
                                 <div class="font-bold text-slate-700 text-sm group-hover:text-blue-700">垂直上拋 (重力)</div>
-                                <div class="text-[10px] text-slate-500">Vertical Toss (Gravity)</div>
                             </div>
                         </button>
                         <button onclick="setScenario(3)" class="scenario-btn group relative p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition text-left flex items-center gap-3 overflow-hidden" id="btn-sc3">
                             <div class="absolute inset-0 bg-orange-50 opacity-0 group-hover:opacity-100 transition duration-300"></div>
                             <div class="relative bg-orange-100 p-2 rounded-lg text-lg shadow-sm">🏀</div>
                             <div class="relative z-10">
-                                <div class="font-bold text-slate-700 text-sm group-hover:text-blue-700">彈跳球 (碰撞)</div>
-                                <div class="text-[10px] text-slate-500">Bouncing Ball</div>
+                                <div class="font-bold text-slate-700 text-sm group-hover:text-blue-700"> 籃球 (碰撞)</div>
                             </div>
                         </button>
                     </div>
@@ -165,7 +162,7 @@
 
         <!-- Right: Graphs Panel -->
         <div class="w-full lg:w-7/12 bg-slate-50 p-2 lg:p-4 overflow-y-auto flex flex-col h-1/2 lg:h-full relative border-t lg:border-t-0 border-slate-200">
-            <h3 class="text-[10px] font-bold text-slate-400 mb-2 uppercase text-center tracking-widest sticky top-0 bg-slate-50 z-10 py-1">實時運動圖像 (Real-time Graphs)</h3>
+            <h3 class="text-[10px] font-bold text-slate-400 mb-2 uppercase text-center tracking-widest sticky top-0 bg-slate-50 z-10 py-1">實時運動圖像</h3>
 
             <!-- S-T Graph -->
             <div class="graph-container flex-1 shadow-sm">
@@ -182,7 +179,7 @@
                 <!-- Legend for Area -->
                 <div class="absolute top-2 right-2 text-[9px] flex items-center gap-1.5 bg-white/90 border border-slate-200 p-1 rounded shadow-sm">
                     <div class="w-2.5 h-2.5 bg-emerald-200 border border-emerald-500 rounded-sm"></div>
-                    <span class="text-slate-600 font-medium tracking-tight">面積 = 位移 (Area = s)</span>
+                    <span class="text-slate-600 font-medium tracking-tight">面積 = 位移</span>
                 </div>
             </div>
 
@@ -846,3 +843,4 @@
     </script>
 </body>
 </html>
+
