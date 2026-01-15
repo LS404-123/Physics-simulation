@@ -21,6 +21,16 @@
             font-weight: 700;
         }
 
+        /* 公式區塊樣式 */
+        .formula-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            font-family: 'Noto Serif', 'Times New Roman', serif;
+            font-size: 1.1rem;
+        }
+
         /* 自定義 Slider */
         input[type=range] {
             -webkit-appearance: none;
@@ -77,7 +87,7 @@
         <!-- 左側：控制面板 -->
         <aside class="w-full lg:w-1/3 bg-white p-6 shadow-lg z-10 flex flex-col overflow-y-auto border-r border-slate-200">
             
-            <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div class="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <h2 class="font-bold text-lg text-blue-800 mb-2">老師的筆記 (Teacher's Note)</h2>
                 <p class="text-sm text-slate-600 leading-relaxed">
                     請調整斜面角度 <span class="math-font">θ</span> 與外力 <span class="math-font">F</span>。
@@ -85,6 +95,12 @@
                     點擊「開始模擬」觀察運動。注意當 <span class="math-font">v ≠ 0</span> 時，摩擦力 <span class="math-font">f</span> 恆與速度方向相反。
                 </p>
             </div>
+
+            <!-- 新增：力學分析按鈕 -->
+            <button onclick="showAnalysis()" class="w-full mb-6 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 py-3 px-4 rounded-lg shadow-sm text-sm font-bold flex items-center justify-center space-x-2 transition group">
+                <span class="text-xl">📝</span>
+                <span class="group-hover:translate-x-1 transition-transform">查看詳細力學分析公式</span>
+            </button>
 
             <div class="space-y-6">
                 <!-- 控制區 -->
@@ -172,7 +188,7 @@
         </section>
     </main>
 
-    <!-- 彈出視窗 (Modal) -->
+    <!-- 彈出視窗 1: 歡迎/指引 (Modal) -->
     <div id="intro-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 p-8 transform transition-transform duration-300 scale-100 relative">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
@@ -201,6 +217,62 @@
             <div class="mt-8 flex justify-end">
                 <button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-lg transform hover:-translate-y-0.5 transition">
                     開始實驗 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 彈出視窗 2: 力學分析詳解 (Analysis Modal) -->
+    <div id="analysis-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full mx-4 p-8 transform transition-transform duration-300 scale-100 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAnalysis()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            
+            <div class="flex items-center space-x-3 mb-6 border-b pb-4">
+                <span class="text-3xl">📝</span>
+                <h2 class="text-2xl font-bold text-slate-800">力學分析詳解 (Mechanical Analysis)</h2>
+            </div>
+            
+            <div class="space-y-6 text-slate-700">
+                
+                <!-- 垂直方向 -->
+                <section>
+                    <h3 class="font-bold text-lg text-blue-700 mb-2 border-l-4 border-blue-500 pl-2">1. 垂直於斜面方向 ⊥</h3>
+                    <p class="mb-2">物體在此方向沒有位移，因此處於力平衡狀態。受力包括正向力 <span class="math-font">R</span> 與重力的垂直分量。</p>
+                    <div class="formula-box">
+                        <span class="math-font">R</span> - <span class="math-font">mg</span> cos<span class="math-font">θ</span> = 0
+                        <br>
+                        <span class="text-blue-600 font-bold">∴ <span class="math-font">R</span> = <span class="math-font">mg</span> cos<span class="math-font">θ</span></span>
+                    </div>
+                </section>
+
+                <!-- 平行方向 -->
+                <section>
+                    <h3 class="font-bold text-lg text-green-700 mb-2 border-l-4 border-green-500 pl-2">2. 沿斜面方向 ∥</h3>
+                    <p class="mb-2">這是物體運動的方向。根據牛頓第二定律，合力決定加速度。</p>
+                    <p class="text-sm text-slate-500 mb-2">*(如果物體受到的力 F 沿斜面向上,并且假設向上為正 +)*</p>
+                    <div class="formula-box">
+                        <span class="math-font">F</span> - <span class="math-font">mg</span> sin<span class="math-font">θ</span> - <span class="math-font">f</span> = <span class="math-font">ma</span>
+                    </div>
+                    <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
+                        <li><span class="math-font font-bold text-purple-600">F</span> : 施加的外力 (推力或拉力)</li>
+                        <li><span class="math-font font-bold text-red-600">mg sinθ</span> : 重力的下滑分量 (永遠向下)</li>
+                        <li><span class="math-font font-bold text-orange-600">f</span> : 摩擦力 (動摩擦 或 靜摩擦)</li>
+                    </ul>
+                </section>
+
+                <!-- 摩擦力討論 -->
+                <section>
+                    <h3 class="font-bold text-lg text-orange-700 mb-2 border-l-4 border-orange-500 pl-2">3. 關於摩擦力 (Friction)</h3>
+                    <div class="bg-orange-50 p-4 rounded-lg text-sm border border-orange-200">
+                        <p class="mb-2"><b>摩擦力方向：</b> 永遠與物體的相對運動方向（或運動趨勢）相反。</p>
+                    </div>
+                </section>
+
+            </div>
+
+            <div class="mt-8 flex justify-center">
+                <button onclick="closeAnalysis()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-8 py-2 rounded-full font-bold transition">
+                    關閉
                 </button>
             </div>
         </div>
@@ -248,6 +320,7 @@
             angleVal: document.getElementById('angle-val'),
             forceVal: document.getElementById('force-val'),
             modal: document.getElementById('intro-modal'),
+            analysisModal: document.getElementById('analysis-modal'), // 新增引用
             // 數值顯示
             uiNormal: document.getElementById('calc-normal'),
             uiMgSin: document.getElementById('calc-mgsin'),
@@ -503,6 +576,15 @@
             els.modal.classList.add('opacity-0');
             setTimeout(() => els.modal.classList.add('hidden'), 300);
         };
+        // Analysis Modal Controls
+        window.showAnalysis = () => {
+            els.analysisModal.classList.remove('hidden');
+            setTimeout(() => els.analysisModal.classList.remove('opacity-0'), 10);
+        };
+        window.closeAnalysis = () => {
+            els.analysisModal.classList.add('opacity-0');
+            setTimeout(() => els.analysisModal.classList.add('hidden'), 300);
+        };
 
         /**
          * 繪圖函數
@@ -656,6 +738,67 @@
             // 如果顯示分量，將原始重力變淡 (透明度 0.3)
             const mgColor = state.showComponents ? 'rgba(220, 38, 38, 0.3)' : '#dc2626';
             drawArrow(ctx, 0, 0, 0, weight * scale, mgColor, 'mg', lw, 'left');
+
+            ctx.restore();
+
+            // [新增] 如果開啟分解模式，在左下角顯示公式
+            if (state.showComponents) {
+                drawComponentFormulas(ctx, state.height);
+            }
+        }
+
+        /**
+         * [新增] 繪製重力分量公式面板
+         */
+        function drawComponentFormulas(ctx, canvasHeight) {
+            ctx.save();
+            
+            const padding = 15;
+            const boxWidth = 220;
+            const boxHeight = 85;
+            const x = 20;
+            const y = canvasHeight - boxHeight - 20; // 定位在左下角
+
+            // 背景框 (圓角矩形)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+            ctx.shadowColor = "rgba(0,0,0,0.1)";
+            ctx.shadowBlur = 10;
+            
+            ctx.beginPath();
+            // 兼容性處理：如果瀏覽器支援 roundRect 就用，否則用 rect
+            if (ctx.roundRect) {
+                ctx.roundRect(x, y, boxWidth, boxHeight, 12);
+            } else {
+                ctx.rect(x, y, boxWidth, boxHeight);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 標題
+            ctx.font = 'bold 14px "Noto Sans TC", sans-serif';
+            ctx.fillStyle = '#475569';
+            ctx.textAlign = 'left';
+            ctx.fillText("重力分量 (Components)：", x + padding, y + 25);
+
+            // 公式顯示
+            ctx.font = 'italic bold 18px "Times New Roman", serif'; // LaTeX 風格
+            ctx.fillStyle = '#ef4444'; // 與分量箭頭顏色一致 (紅色)
+            
+            // 沿斜面 (Parallel)
+            // 使用 F_parallel 符號或直接寫 mg sin
+            ctx.fillText("F∥ = mg sinθ", x + padding, y + 50);
+            
+            // 垂直斜面 (Perpendicular)
+            ctx.fillText("F⊥ = mg cosθ", x + padding, y + 75);
+
+            // 中文註解 (淡色)
+            ctx.font = '12px "Noto Sans TC", sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText("(沿斜面)", x + padding + 120, y + 50);
+            ctx.fillText("(垂直斜面)", x + padding + 120, y + 75);
 
             ctx.restore();
         }
