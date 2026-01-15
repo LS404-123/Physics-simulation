@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>伽利略慣性實驗模擬</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f2f5;
+            overflow: hidden;
+        }
+        
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 3px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Glassmorphism for panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Canvas Background */
+        .canvas-bg {
+            background-color: #f8fafc;
+            /* Grid removed as requested */
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.05);
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        
+        /* Modal Animation */
+        dialog[open] {
+            animation: modalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.96) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        dialog::backdrop {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            animation: backdropFadeIn 0.4s ease-out;
+        }
+        @keyframes backdropFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white p-3 px-6 shadow-lg z-20 flex justify-between items-center shrink-0 border-b border-slate-700">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-wide">物理模擬實驗室</h1>
+                <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">伽利略慣性定律思想實驗</p>
+            </div>
+        </div>
+        <button onclick="document.getElementById('intro-modal').showModal()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-full text-sm font-medium transition border border-slate-600">
+            <span>💡 實驗原理</span>
+        </button>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- Sidebar Controls -->
+        <aside class="w-full lg:w-96 bg-white border-r border-slate-200 shadow-xl z-10 flex flex-col overflow-hidden shrink-0">
+            <div class="p-6 overflow-y-auto custom-scroll flex-1 space-y-8">
+                
+                <!-- Section: Control -->
+                <section>
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">實驗參數設定</h2>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-6">
+                        
+                        <!-- Angle Slider -->
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <label class="text-sm font-semibold text-slate-700">右側斜面角度</label>
+                                <span id="angleDisplay" class="text-2xl font-bold text-blue-600 font-mono">30°</span>
+                            </div>
+                            <input type="range" id="angleSlider" min="0" max="60" value="30" step="0.5">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-2 font-mono">
+                                <span>0°</span>
+                                <span>30°</span>
+                                <span>60°</span>
+                            </div>
+                            <div id="infinity-hint" class="hidden mt-3 text-xs bg-amber-50 text-amber-700 p-2 rounded border border-amber-200 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                角度為 0°，理論上小球將永遠運動。
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <button id="btn-start" class="flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md shadow-blue-200 transition transform active:scale-95">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                                釋放小球
+                            </button>
+                            <button id="btn-reset" class="flex justify-center items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 py-3 rounded-lg font-bold shadow-sm transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                重置
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Data -->
+                <section>
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">實時監測數據</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-1">當前高度</p>
+                            <p id="currentHeight" class="text-2xl font-bold text-slate-800 font-mono">5.00 <span class="text-sm font-normal text-slate-400">m</span></p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-1">瞬時速度</p>
+                            <p id="currentSpeed" class="text-2xl font-bold text-emerald-600 font-mono">0.00 <span class="text-sm font-normal text-emerald-400">m/s</span></p>
+                        </div>
+                        <div class="col-span-2 bg-slate-800 p-4 rounded-xl text-white shadow-md">
+                            <div class="flex justify-between items-center">
+                                <p class="text-xs text-slate-400">預測行駛距離</p>
+                                <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">理想狀態</span>
+                            </div>
+                            <p id="targetDist" class="text-3xl font-bold text-amber-400 font-mono mt-1 tracking-tight">--</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Note -->
+                <div class="bg-blue-50/80 p-4 rounded-lg border border-blue-100 text-sm text-blue-800 leading-relaxed">
+                    <strong class="block mb-1 text-blue-900 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" /></svg>
+                        老師小筆記
+                    </strong>
+                    試著將右側斜坡變得更平緩。為了讓小球回到相同的高度，它必須在右側走得更遠。
+                </div>
+            </div>
+        </aside>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 relative canvas-bg flex items-center justify-center overflow-hidden" id="canvas-wrapper">
+            <canvas id="simCanvas" class="block"></canvas>
+            
+            <!-- Floating Zoom Indicator -->
+            <div id="zoom-indicator" class="absolute bottom-6 right-6 bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-mono shadow-lg border border-slate-200 hidden flex items-center gap-2 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                縮放: <span id="zoom-level" class="font-bold text-slate-800">100%</span>
+            </div>
+            
+        </div>
+
+    </main>
+
+    <!-- Intro Modal -->
+    <dialog id="intro-modal" class="p-0 rounded-2xl shadow-2xl max-w-2xl w-full bg-transparent">
+        <div class="bg-white rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="bg-slate-900 text-white p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full mix-blend-overlay filter blur-xl opacity-20 -mr-10 -mt-10"></div>
+                <h2 class="text-2xl font-bold relative z-10">伽利略慣性實驗</h2>
+                <p class="text-slate-400 text-sm mt-1 relative z-10">Galileo's Inclined Plane Thought Experiment</p>
+                <button onclick="document.getElementById('intro-modal').close()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-8 space-y-6 overflow-y-auto text-slate-600 leading-relaxed">
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <span class="w-1 h-6 bg-blue-500 rounded-full"></span>
+                        歷史背景
+                    </h3>
+                    <p>在伽利略之前，人們相信亞里士多德的觀點：「力是維持物體運動的原因」。伽利略透過這個著名的斜面思想實驗，證明了<strong>物體在不受力時，會保持原本的運動狀態</strong>。</p>
+                </div>
+                
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wide">實驗原理</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-start gap-3">
+                            <span class="bg-blue-100 text-blue-700 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-xs">1</span>
+                            <span>小球從左側滑下，重力勢能 ($PE$) 轉化為動能 ($KE$)。</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="bg-blue-100 text-blue-700 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-xs">2</span>
+                            <span>在無摩擦力的情況下，機械能守恆。</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="bg-blue-100 text-blue-700 font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-xs">3</span>
+                            <span>無論右側斜坡角度如何，小球都會試圖回到<strong>相同的初始高度</strong>。</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="flex items-center gap-4 p-4 bg-amber-50 rounded-lg text-amber-800 text-sm border border-amber-100">
+                    <span class="text-2xl">🤔</span>
+                    <div>
+                        <strong>思考挑戰：</strong>
+                        如果把右邊的斜坡完全放平（0 度），小球永遠無法達到初始高度，它會發生什麼事？
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="document.getElementById('intro-modal').close()" class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-lg font-bold shadow-lg transform transition hover:-translate-y-0.5">
+                    開始模擬實驗
+                </button>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        (function() {
+            // --- Configuration & Constants ---
+            const canvas = document.getElementById('simCanvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvas-wrapper');
+
+            // Physics Constants
+            const G = 9.81;
+            // Adjusted Scale for more natural view (was 60)
+            const SCALE_PIXELS_PER_METER = 45; 
+            const BALL_RADIUS = 12; // Slightly larger for visuals
+            const START_HEIGHT_M = 5.0; 
+            const TIME_SCALE = 0.4; // 40% speed for better observation
+            
+            // Geometry Constants for Smoothness
+            const LEFT_RAMP_RADIUS_M = 10;
+            const TRANSITION_LEN = 3.0; // Distance of the smooth blend region on right side
+            
+            let state = {
+                running: false,
+                angleDeg: 30,
+                angleRad: 30 * (Math.PI / 180),
+                ball: {
+                    x: 0,
+                    y: 0,
+                    v: 0,
+                    rotation: 0 // Visual rotation
+                },
+                camera: {
+                    scale: 1,
+                    offsetX: 0,
+                    offsetY: 0
+                }
+            };
+
+            // DOM Elements
+            const angleSlider = document.getElementById('angleSlider');
+            const angleDisplay = document.getElementById('angleDisplay');
+            const btnStart = document.getElementById('btn-start');
+            const btnReset = document.getElementById('btn-reset');
+            const elHeight = document.getElementById('currentHeight');
+            const elSpeed = document.getElementById('currentSpeed');
+            const elTargetDist = document.getElementById('targetDist');
+            const elInfinityHint = document.getElementById('infinity-hint');
+            const elZoom = document.getElementById('zoom-level');
+            const elZoomContainer = document.getElementById('zoom-indicator');
+
+            // --- Geometry Logic ---
+            
+            // Left Side: Circular Arc from (-sqrt(R^2 - (R-y)^2), y) down to (0,0)
+            function getLeftRampX(y) {
+                if (y > START_HEIGHT_M + 1) return -9999;
+                const R = LEFT_RAMP_RADIUS_M;
+                const safeY = Math.min(y, 2 * R);
+                const val = R * R - (safeY - R) * (safeY - R);
+                if (val < 0) return 0;
+                return -Math.sqrt(val);
+            }
+
+            // Get Y position based on X
+            function getTrackY(x) {
+                if (x < 0) {
+                    // Left: Circle
+                    const R = LEFT_RAMP_RADIUS_M;
+                    if (x < -R) return R;
+                    const val = R * R - x * x;
+                    if (val < 0) return 0;
+                    return R - Math.sqrt(val);
+                } else if (x <= TRANSITION_LEN) {
+                    // Right: Transition Zone (Parabolic Blend)
+                    // We want a parabola y = k * x^2 such that at x = TRANSITION_LEN, slope = tan(theta)
+                    // y' = 2kx. At x=L, 2kL = tan(theta) => k = tan(theta) / (2L)
+                    const tanTheta = Math.tan(state.angleRad);
+                    const k = tanTheta / (2 * TRANSITION_LEN);
+                    return k * x * x;
+                } else {
+                    // Right: Straight Line
+                    // Must match position and slope of parabola at x = TRANSITION_LEN
+                    // y_parabola(L) = (tan / 2L) * L^2 = L * tan / 2
+                    // Line eq: y - y1 = m(x - x1)
+                    // y = L*tan/2 + tan * (x - L)
+                    // y = tan * (L/2 + x - L) = tan * (x - L/2)
+                    const tanTheta = Math.tan(state.angleRad);
+                    return tanTheta * (x - TRANSITION_LEN / 2);
+                }
+            }
+
+            // Helper for physics to get current slope (dy/dx)
+            function getSlope(x, y) {
+                if (x < 0) {
+                    // Circle slope: -x / (y-R)
+                    // y is on circle center (0,R), so y-R is negative. x is negative.
+                    // dy/dx = -x / (y-R). 
+                    // Example x approx 0, y approx 0 => slope 0.
+                    const R = LEFT_RAMP_RADIUS_M;
+                    // Protect against div by zero at y=R
+                    if (Math.abs(y - R) < 0.001) return 999; 
+                    return -x / (y - R);
+                } else if (x <= TRANSITION_LEN) {
+                    // Parabola slope y' = 2kx
+                    const tanTheta = Math.tan(state.angleRad);
+                    const k = tanTheta / (2 * TRANSITION_LEN);
+                    return 2 * k * x;
+                } else {
+                    // Line slope
+                    return Math.tan(state.angleRad);
+                }
+            }
+
+            // --- Core Logic ---
+
+            function resize() {
+                if (!canvas || !container) return;
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = container.clientWidth * dpr;
+                canvas.height = container.clientHeight * dpr;
+                canvas.style.width = container.clientWidth + 'px';
+                canvas.style.height = container.clientHeight + 'px';
+                ctx.scale(dpr, dpr);
+                draw();
+            }
+            window.addEventListener('resize', resize);
+
+            function init() {
+                resetBall();
+                setTimeout(() => {
+                    const modal = document.getElementById('intro-modal');
+                    if (modal) modal.showModal();
+                }, 500);
+                resize();
+                updateUI();
+            }
+
+            function resetBall() {
+                state.running = false;
+                state.ball.v = 0;
+                state.ball.x = getLeftRampX(START_HEIGHT_M);
+                state.ball.y = START_HEIGHT_M;
+                state.ball.rotation = 0;
+                state.camera.scale = 1;
+                draw();
+                updateUI();
+            }
+
+            function updatePhysics(rawDt) {
+                if (!state.running) return;
+
+                const dt = rawDt * TIME_SCALE;
+
+                // 1. Get Geometry Info
+                let slope = getSlope(state.ball.x, state.ball.y);
+
+                // 2. Energy Conservation for Speed
+                let potentialDiff = START_HEIGHT_M - state.ball.y;
+                if (potentialDiff < 0) potentialDiff = 0;
+                
+                let speed = Math.sqrt(2 * G * potentialDiff);
+                
+                // Flat surface special case
+                if (state.angleRad === 0 && state.ball.x >= 0) {
+                    speed = Math.sqrt(2 * G * START_HEIGHT_M);
+                }
+
+                // 3. Stop Condition
+                // Stop only when very close to initial height (meaning v is essentially 0)
+                if (state.ball.x > 0 && Math.abs(state.ball.y - START_HEIGHT_M) < 0.01 && state.angleRad > 0) {
+                    state.ball.v = 0;
+                    state.ball.y = START_HEIGHT_M;
+                    state.running = false;
+                    draw();
+                    updateUI(); // Ensure UI updates to show 0 speed immediately
+                    return;
+                }
+
+                const angleOfMotion = Math.atan(slope);
+                const dx = speed * Math.cos(angleOfMotion) * dt;
+                
+                // Rotation
+                const ds = speed * dt;
+                state.ball.rotation += ds / (BALL_RADIUS / SCALE_PIXELS_PER_METER);
+
+                state.ball.x += dx;
+                state.ball.y = getTrackY(state.ball.x);
+                state.ball.v = speed;
+
+                // 4. Camera Auto-Zoom Logic
+                const S = SCALE_PIXELS_PER_METER * state.camera.scale;
+                const startNodeX = getLeftRampX(START_HEIGHT_M);
+                const ox = 50 - startNodeX * S; 
+                
+                const ballScreenX = ox + state.ball.x * S;
+                const canvasW = canvas.width / (window.devicePixelRatio || 1);
+                
+                if (ballScreenX > canvasW * 0.85) {
+                    state.camera.scale *= 0.99;
+                }
+
+                draw();
+                updateUI();
+
+                if (state.running) {
+                    requestAnimationFrame(() => {});
+                }
+            }
+            
+            let lastTime = 0;
+            function gameLoop(timestamp) {
+                if (!state.running) return;
+                if (!lastTime) lastTime = timestamp;
+                const deltaTime = (timestamp - lastTime) / 1000;
+                lastTime = timestamp;
+
+                updatePhysics(Math.min(deltaTime, 0.1));
+                requestAnimationFrame(gameLoop);
+            }
+
+            function startSimulation() {
+                if (state.running) return;
+                
+                if (Math.abs(state.ball.x - getLeftRampX(START_HEIGHT_M)) < 0.1) {
+                    state.ball.x += 0.05; 
+                }
+
+                state.running = true;
+                lastTime = 0;
+                requestAnimationFrame(gameLoop);
+            }
+
+            // --- Rendering ---
+            function draw() {
+                if (!ctx) return;
+                
+                const dpr = window.devicePixelRatio || 1;
+                const W = canvas.width / dpr;
+                const H = canvas.height / dpr;
+                const S = SCALE_PIXELS_PER_METER * state.camera.scale;
+
+                ctx.setTransform(1,0,0,1,0,0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.scale(dpr, dpr);
+
+                const startNodeX = getLeftRampX(START_HEIGHT_M);
+                const ox = 80 - startNodeX * S; 
+                const oy = H - 80; 
+
+                function toScreen(x, y) {
+                    return { x: ox + x * S, y: oy - y * S };
+                }
+
+                // 1. Grid (Removed as requested)
+
+                // 2. Reference Height Line
+                const hPos = toScreen(0, START_HEIGHT_M);
+                ctx.beginPath();
+                ctx.strokeStyle = '#f59e0b'; 
+                ctx.setLineDash([6, 6]);
+                ctx.lineWidth = 2;
+                ctx.moveTo(0, hPos.y);
+                ctx.lineTo(W, hPos.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#d97706';
+                ctx.font = 'bold 12px "Noto Sans TC"';
+                ctx.fillText("初始高度", W - 100, hPos.y - 10);
+
+                // 3. Track Drawing
+                let trackPath = new Path2D();
+                
+                // Flat Platform on Left (NEW)
+                // Start from way left (-20m relative to start)
+                const platformStartX = startNodeX - 5; 
+                trackPath.moveTo(toScreen(platformStartX, START_HEIGHT_M).x, toScreen(platformStartX, START_HEIGHT_M).y);
+                trackPath.lineTo(toScreen(startNodeX, START_HEIGHT_M).x, toScreen(startNodeX, START_HEIGHT_M).y);
+                
+                // Left Curve
+                for(let x = startNodeX; x <= 0; x += 0.1) {
+                    const p = toScreen(x, getTrackY(x));
+                    trackPath.lineTo(p.x, p.y);
+                }
+                
+                // Right Side (Transition + Line)
+                let maxRightX = (W - ox) / S;
+                if (state.angleRad > 0.001) {
+                     maxRightX = Math.max(maxRightX, (START_HEIGHT_M / Math.tan(state.angleRad)) + TRANSITION_LEN + 5);
+                } else {
+                     maxRightX = Math.max(maxRightX, state.ball.x + 20);
+                }
+
+                // Use finer steps for the transition zone to ensure smoothness
+                for(let x = 0; x <= Math.min(maxRightX, TRANSITION_LEN + 1); x += 0.1) {
+                     const p = toScreen(x, getTrackY(x));
+                     trackPath.lineTo(p.x, p.y);
+                }
+                // Then draw straight line to end
+                if (maxRightX > TRANSITION_LEN + 1) {
+                    const pEnd = toScreen(maxRightX, getTrackY(maxRightX));
+                    trackPath.lineTo(pEnd.x, pEnd.y);
+                }
+
+                // Draw Track Fill
+                ctx.beginPath();
+                // Reconstruct path for fill
+                ctx.moveTo(toScreen(platformStartX, START_HEIGHT_M).x, toScreen(platformStartX, START_HEIGHT_M).y);
+                ctx.lineTo(toScreen(startNodeX, START_HEIGHT_M).x, toScreen(startNodeX, START_HEIGHT_M).y);
+                for(let x = startNodeX; x <= 0; x += 0.1) { let p=toScreen(x,getTrackY(x)); ctx.lineTo(p.x, p.y); }
+                for(let x = 0; x <= Math.min(maxRightX, TRANSITION_LEN + 1); x += 0.1) { let p=toScreen(x,getTrackY(x)); ctx.lineTo(p.x, p.y); }
+                if (maxRightX > TRANSITION_LEN + 1) { const p=toScreen(maxRightX,getTrackY(maxRightX)); ctx.lineTo(p.x, p.y); }
+                
+                // Close shape
+                const pEnd = toScreen(maxRightX, getTrackY(maxRightX));
+                ctx.lineTo(pEnd.x, H);
+                ctx.lineTo(toScreen(platformStartX, START_HEIGHT_M).x, H); // Bottom left
+                ctx.closePath();
+                
+                const gradFill = ctx.createLinearGradient(0, 0, 0, H);
+                gradFill.addColorStop(0, '#cbd5e1'); 
+                gradFill.addColorStop(1, '#f1f5f9'); 
+                ctx.fillStyle = gradFill;
+                ctx.fill();
+
+                // Stroke
+                ctx.strokeStyle = '#334155'; 
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke(trackPath);
+                
+                ctx.strokeStyle = '#64748b'; 
+                ctx.lineWidth = 2;
+                ctx.stroke(trackPath);
+
+                // 4. Draw Ball
+                const ballPos = toScreen(state.ball.x, state.ball.y);
+                ctx.save();
+                ctx.translate(ballPos.x, ballPos.y - BALL_RADIUS - 3); 
+                ctx.rotate(state.ball.rotation);
+                ctx.beginPath();
+                ctx.arc(0, 0, BALL_RADIUS, 0, Math.PI * 2);
+                const ballGrad = ctx.createRadialGradient(-5, -5, 2, 0, 0, BALL_RADIUS);
+                ballGrad.addColorStop(0, '#60a5fa'); 
+                ballGrad.addColorStop(0.3, '#2563eb'); 
+                ballGrad.addColorStop(1, '#1e3a8a'); 
+                ctx.fillStyle = ballGrad;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-BALL_RADIUS/2, 0);
+                ctx.lineTo(BALL_RADIUS/2, 0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, -BALL_RADIUS/2);
+                ctx.lineTo(0, BALL_RADIUS/2);
+                ctx.stroke();
+                ctx.restore();
+
+                // 5. Angle Annotation
+                if (state.angleRad > 0) {
+                    const arcRadius = 60;
+                    // Removed English angle annotation if tricky, or just keep it simple?
+                    // Angle is just a number, so "30°" is fine.
+                } else {
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = 'italic 20px serif';
+                    ctx.fillText("∞", toScreen(TRANSITION_LEN + 5, 1).x, oy - 20);
+                }
+            }
+
+            // --- UI Updates ---
+            function updateUI() {
+                const angleVal = parseFloat(angleSlider.value);
+                angleDisplay.textContent = angleVal + "°";
+                
+                if (angleVal === 0) {
+                    elInfinityHint.classList.remove('hidden');
+                    elTargetDist.textContent = "∞";
+                } else {
+                    elInfinityHint.classList.add('hidden');
+                    const dist = START_HEIGHT_M / Math.sin(angleVal * Math.PI / 180);
+                    elTargetDist.textContent = dist.toFixed(2) + " m";
+                }
+
+                elHeight.textContent = state.ball.y.toFixed(2);
+                
+                // FAKE DATA FIX: Force display 0 if speed is very small to look clean
+                let displaySpeed = state.ball.v;
+                if (displaySpeed < 0.01) displaySpeed = 0;
+                elSpeed.textContent = displaySpeed.toFixed(2);
+
+                if (state.camera.scale < 0.9) {
+                    elZoomContainer.classList.remove('hidden');
+                    elZoomContainer.classList.add('flex');
+                    elZoom.textContent = Math.round(state.camera.scale * 100) + "%";
+                } else {
+                    elZoomContainer.classList.add('hidden');
+                    elZoomContainer.classList.remove('flex');
+                }
+            }
+
+            angleSlider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state.angleDeg = val;
+                state.angleRad = val * Math.PI / 180;
+                if (!state.running) {
+                    draw();
+                }
+                updateUI();
+            });
+
+            btnStart.addEventListener('click', () => {
+                if (state.running) return;
+                startSimulation();
+            });
+
+            btnReset.addEventListener('click', () => {
+                state.running = false;
+                resetBall();
+            });
+
+            init();
+        })();
+    </script>
+</body>
+</html>
