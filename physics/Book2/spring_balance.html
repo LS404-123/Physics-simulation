@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彈簧秤原理互動模擬 - HK DSE Physics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            touch-action: none;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        
+        /* Canvas Styling */
+        canvas {
+            background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        /* Custom Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            margin-top: -8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        /* Math Font for Equations */
+        .math-font {
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+        }
+        .num-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            max-width: 600px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-20 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+            </div>
+            <h1 class="text-xl font-bold text-slate-800 tracking-tight">物理模擬：彈簧秤受力分析</h1>
+        </div>
+        <button onclick="toggleModal(true)" class="group flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-full transition-all duration-200 font-medium text-sm">
+            <span class="bg-white group-hover:bg-blue-200 p-1 rounded-full shadow-sm">📖</span>
+            <span class="hidden sm:inline">原理講解</span>
+        </button>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex-1 flex flex-col md:flex-row p-4 gap-6 overflow-hidden max-w-7xl mx-auto w-full">
+        
+        <!-- Canvas Area -->
+        <div class="flex-1 relative flex flex-col h-full bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <canvas id="simCanvas" class="w-full h-full"></canvas>
+            
+            <!-- Floating Hint -->
+            <div id="dragHint" class="absolute top-8 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border border-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold shadow-lg pointer-events-none transition-opacity duration-500 flex items-center gap-2 animate-bounce">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path></svg>
+                試著拖曳砝碼向下拉！
+            </div>
+
+            <!-- Legend Overlay -->
+            <div class="absolute top-4 right-4 bg-white/80 backdrop-blur p-3 rounded-xl border border-slate-100 shadow-sm text-xs space-y-2">
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-500"></div> 重力 (<span class="math-font">W</span>)</div>
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-purple-600"></div> 手拉力 (<span class="math-font">F </span>)</div>
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-600"></div> 彈簧張力 (<span class="math-font">T</span>)</div>
+            </div>
+        </div>
+
+        <!-- Controls Sidebar -->
+        <div class="w-full md:w-[360px] flex flex-col gap-4 overflow-y-auto pr-1">
+            
+            <!-- Controls Card -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">實驗設置</h2>
+                
+                <!-- Mass Slider -->
+                <div>
+                    <div class="flex justify-between items-end mb-3">
+                        <label class="text-slate-700 font-medium">物體質量 <span class="math-font">m</span></label>
+                        <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-mono font-bold text-sm" id="massValue">1.0 kg</span>
+                    </div>
+                    <input type="range" id="massSlider" min="0.1" max="5.0" step="0.1" value="1.0">
+                    <div class="flex justify-between text-xs text-slate-400 mt-2 font-mono">
+                        <span>0.1 kg</span>
+                        <span>5.0 kg</span>
+                    </div>
+                </div>
+
+                <!-- Gravity Info -->
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-slate-600 text-sm">重力加速度 <span class="math-font">g</span></span>
+                    <span class="font-mono text-slate-500 text-sm">9.81 m/s²</span>
+                </div>
+            </div>
+
+            <!-- Data Card -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4 flex-1">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">受力分析數據</h2>
+                
+                <!-- Equation Visualizer -->
+                <div class="bg-slate-900 text-white p-4 rounded-xl shadow-inner text-center space-y-2">
+                    <div class="text-slate-400 text-xs uppercase tracking-widest font-semibold mb-1">力學方程</div>
+                    <div class="text-lg md:text-xl font-bold">
+                        <span class="math-font text-blue-400">T</span> = 
+                        <span class="math-font text-red-400">W</span> + 
+                        <span class="math-font text-purple-400">F </span>
+                    </div>
+                    <div class="font-mono text-sm opacity-90 flex justify-center items-center gap-1 flex-wrap" id="equationValues">
+                        <!-- Values injected by JS -->
+                    </div>
+                </div>
+
+                <div class="space-y-3 pt-2">
+                    <div class="flex justify-between items-center p-3 rounded-lg border-l-4 border-red-500 bg-red-50/50">
+                        <span class="text-red-700 text-sm font-medium"><span class="math-font">W</span> (重力)</span>
+                        <span id="weightDisplay" class="font-bold text-red-700 num-font">9.81 N</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-3 rounded-lg border-l-4 border-purple-500 bg-purple-50/50">
+                        <span class="text-purple-700 text-sm font-medium"><span class="math-font">F</span> (手拉力)</span>
+                        <span id="handForceDisplay" class="font-bold text-purple-700 num-font">0.00 N</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-200 transform transition-all">
+                        <div class="flex flex-col">
+                            <span class="font-bold">彈簧秤讀數</span>
+                            <span class="text-xs text-blue-100 opacity-80">總張力 <span class="math-font">T</span></span>
+                        </div>
+                        <span id="tensionDisplay" class="text-2xl font-bold num-font">9.81 N</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Instructional Modal -->
+    <div id="introModal" class="modal-overlay active" onclick="if(event.target === this) toggleModal(false)">
+        <div class="modal-content p-8">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">彈簧秤讀數解析 🧪</h2>
+                    <p class="text-slate-500 mt-1">互動式物理實驗</p>
+                </div>
+                <button onclick="toggleModal(false)" class="p-2 hover:bg-slate-100 rounded-full transition">
+                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="space-y-6 text-slate-600 leading-relaxed">
+                <p>很多同學誤以為彈簧秤測量的是「質量 (Mass)」，但實際上它測量的是彈簧受到的<strong>張力 (Tension)</strong>。</p>
+                
+                <div class="bg-blue-50 border border-blue-100 p-5 rounded-xl">
+                    <h3 class="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                        <span class="bg-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded">關鍵概念</span>
+                        力的平衡
+                    </h3>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex gap-2">
+                            <span class="text-blue-500 font-bold">•</span>
+                            <span>當物體靜止時，向上的力等於向下的力。</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-blue-500 font-bold">•</span>
+                            <span>讀數 <span class="math-font">T</span> = 重力 <span class="math-font">W</span> + 額外拉力 <span class="math-font">F </span></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <p class="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    💡 <strong>操作指南：</strong> 點擊並拖曳畫面中的藍色方塊向下拉，觀察彈簧秤讀數如何隨手拉力增加而改變。
+                </p>
+            </div>
+
+            <div class="mt-8">
+                <button onclick="toggleModal(false)" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                    開始實驗
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- Physics Engine & State --- */
+        const PHYSICS = {
+            g: 9.81,
+            k: 100, // Spring constant
+            mass: 1.0, // kg
+            handForce: 0, // N
+            get weight() { return this.mass * this.g; },
+            get tension() { return this.weight + this.handForce; }
+        };
+
+        const STATE = {
+            isDragging: false,
+            startY: 0,
+            dragOffset: 0,
+            boxY: 0,
+            simTime: 0
+        };
+
+        /* --- DOM Elements --- */
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const ui = {
+            massSlider: document.getElementById('massSlider'),
+            massVal: document.getElementById('massValue'),
+            weight: document.getElementById('weightDisplay'),
+            hand: document.getElementById('handForceDisplay'),
+            tension: document.getElementById('tensionDisplay'),
+            eqValues: document.getElementById('equationValues'),
+            hint: document.getElementById('dragHint')
+        };
+
+        /* --- Canvas Management --- */
+        let metrics = { w: 0, h: 0, cx: 0, scale: 1 };
+
+        function resize() {
+            const container = canvas.parentElement;
+            if (!container) return; // Safety check
+            
+            canvas.width = container.clientWidth * window.devicePixelRatio;
+            canvas.height = container.clientHeight * window.devicePixelRatio;
+            
+            // Normalize CSS size
+            canvas.style.width = container.clientWidth + 'px';
+            canvas.style.height = container.clientHeight + 'px';
+            
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            metrics.w = container.clientWidth;
+            metrics.h = container.clientHeight;
+            metrics.cx = metrics.w / 2;
+            
+            // Dynamic scaling: Adjust pixels per Newton based on height
+            // We want max possible force (~100N) to fit in about 20% of screen height
+            // Reduced scale significantly to prevent arrows going off screen
+            metrics.scale = (metrics.h * 0.20) / 100; 
+            
+            // DO NOT call draw() here directly.
+        }
+        window.addEventListener('resize', resize);
+
+        /* --- Drawing Helpers --- */
+        function drawSpring(x, startY, endY, width) {
+            const coils = 12;
+            ctx.beginPath();
+            ctx.strokeStyle = "#64748b"; // slate-500
+            ctx.lineWidth = 4;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+
+            // Draw ceiling mount
+            ctx.fillStyle = "#e2e8f0";
+            ctx.fillRect(x - 30, startY - 10, 60, 10);
+            ctx.strokeStyle = "#94a3b8";
+            ctx.strokeRect(x - 30, startY - 10, 60, 10);
+
+            // Spring path
+            ctx.moveTo(x, startY);
+            let currentY = startY;
+            const coilHeight = (endY - startY) / coils;
+
+            for (let i = 0; i <= coils; i++) {
+                let y1 = currentY + coilHeight / 4;
+                let y2 = currentY + coilHeight * 3/4;
+                let y3 = currentY + coilHeight;
+                
+                if (i === 0) {
+                    ctx.lineTo(x, y1); // Start straight
+                } else if (i === coils) {
+                    ctx.lineTo(x, endY); // End straight
+                } else {
+                    // Zigzag
+                    ctx.lineTo(x + width/2, y1);
+                    ctx.lineTo(x - width/2, y2);
+                    ctx.lineTo(x, y3);
+                }
+                currentY += coilHeight;
+            }
+            ctx.stroke();
+        }
+
+        function drawGroundShadow(x, groundY, boxSize, blockBottomY) {
+            // Draw shadow on the ground based on block position
+            // As block gets closer, shadow gets darker and slightly sharper
+            const distance = Math.max(0, groundY - blockBottomY);
+            const maxDist = metrics.h * 0.5; // Fade out distance
+            
+            // Opacity: 0.3 when touching, fades to 0
+            let opacity = 0.3 * (1 - Math.min(distance, maxDist) / maxDist);
+            if (opacity < 0) opacity = 0;
+            
+            // Size: Shadow spreads out slightly as it goes up (fake light source perspective)
+            const spread = distance * 0.05;
+            const rx = (boxSize/1.2) + spread;
+            const ry = (boxSize/4) + spread * 0.5;
+
+            ctx.beginPath();
+            ctx.ellipse(x, groundY, rx, ry, 0, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+            ctx.fill();
+        }
+
+        function drawBlock(x, y, size) {
+            // Enhanced Safety check: strictly check for finite numbers to prevent crashes
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(size) || size <= 0) return;
+
+            const half = size / 2;
+            
+            // Note: Shadow has been moved to drawGroundShadow function
+
+            // Block Body
+            try {
+                // Ensure coordinates are finite before creating gradient
+                if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(half)) {
+                    const grad = ctx.createLinearGradient(x - half, y - half, x + half, y + half);
+                    grad.addColorStop(0, "#60a5fa"); // blue-400
+                    grad.addColorStop(1, "#2563eb"); // blue-600
+                    ctx.fillStyle = grad;
+                } else {
+                    ctx.fillStyle = "#3b82f6";
+                }
+            } catch (e) {
+                // Fallback if gradient fails
+                ctx.fillStyle = "#3b82f6";
+            }
+            
+            ctx.strokeStyle = "#1e40af"; // blue-800
+            ctx.lineWidth = 2;
+            
+            // Rounded Rect
+            const r = 8;
+            ctx.beginPath();
+            ctx.moveTo(x - half + r, y - half);
+            ctx.lineTo(x + half - r, y - half);
+            ctx.quadraticCurveTo(x + half, y - half, x + half, y - half + r);
+            ctx.lineTo(x + half, y + half - r);
+            ctx.quadraticCurveTo(x + half, y + half, x + half - r, y + half);
+            ctx.lineTo(x - half + r, y + half);
+            ctx.quadraticCurveTo(x - half, y + half, x - half, y + half - r);
+            ctx.lineTo(x - half, y - half + r);
+            ctx.quadraticCurveTo(x - half, y - half, x - half + r, y - half);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Text
+            ctx.fillStyle = "white";
+            ctx.font = "bold 16px 'Noto Sans TC'";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(PHYSICS.mass.toFixed(1) + " kg", x, y);
+            
+            // Center of Gravity Dot
+            ctx.fillStyle = "#ef4444"; // Red for COM
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        function drawForceArrow(x, y, force, color, label, direction) {
+            // direction: 1 = down, -1 = up
+            if (force < 0.1 || !Number.isFinite(x) || !Number.isFinite(y)) return;
+
+            // Cap max length to 30% of screen height to prevent off-screen arrows
+            const length = Math.min(force * metrics.scale, metrics.h * 0.3); 
+            const shaftWidth = 4;
+            const headLength = 14;
+            const headWidth = 12;
+
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // Rotate canvas to draw arrow always pointing "down" logically, then rotate
+            const angle = direction === 1 ? 0 : Math.PI;
+            ctx.rotate(angle);
+
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+
+            // Draw Shaft
+            // To ensure arrow looks good, shaft length should adjust but not overlap head too much
+            const shaftLen = Math.max(0, length - headLength + 2); // +2 for overlap
+            
+            if (length > headLength) {
+                ctx.beginPath();
+                ctx.rect(-shaftWidth/2, 0, shaftWidth, shaftLen);
+                ctx.fill();
+            }
+
+            // Draw Head
+            ctx.beginPath();
+            ctx.moveTo(0, length);
+            ctx.lineTo(-headWidth/2, length - headLength);
+            ctx.lineTo(headWidth/2, length - headLength);
+            ctx.closePath();
+            ctx.fill();
+
+            // Label
+            ctx.restore(); // Undo rotation for text
+            ctx.fillStyle = color;
+            ctx.font = "bold 14px 'Noto Sans TC'";
+            ctx.textBaseline = "middle";
+            
+            // Smart Label Positioning
+            const textPadding = 15;
+            let textX = x + textPadding;
+            let textY = y + (length/2 * direction);
+            
+            // If arrow is very short, put text next to head
+            if (length < 30) {
+                textY = y + (length + 10) * direction;
+                ctx.textAlign = "center";
+                textX = x;
+            } else {
+                ctx.textAlign = "left";
+            }
+            
+            // Adjust for tension (UP arrow)
+            if (direction === -1) {
+                // For Tension, label is to the right
+                 textX = x + 10;
+            } else if (label.includes("W")) {
+                // For Weight, label is to the left
+                textX = x - 10;
+                ctx.textAlign = "right";
+            }
+            
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = color;
+            ctx.fillText(label, textX, textY);
+        }
+
+        /* --- Main Loop --- */
+        function update() {
+            // Calculate Box Position based on hooke's law visual
+            // Adjusted positioning: Spring starts much lower (30% from top instead of 8%)
+            const baseLen = metrics.h * 0.12; 
+            const extension = (PHYSICS.tension / PHYSICS.k) * 50; // Reduce extension factor
+            const springTopY = metrics.h * 0.30; // 30% from top (Moved lower as requested)
+            
+            const springBottomY = springTopY + baseLen + extension;
+            const boxSize = 60 + PHYSICS.mass * 5; // Box grows slightly
+            
+            STATE.boxY = springBottomY + boxSize/2;
+            
+            // Update DOM
+            ui.weight.innerText = PHYSICS.weight.toFixed(2) + " N";
+            ui.hand.innerText = PHYSICS.handForce.toFixed(2) + " N";
+            ui.tension.innerText = PHYSICS.tension.toFixed(2) + " N";
+            
+            // Update Equation
+            ui.eqValues.innerHTML = `
+                <span class="text-blue-400 font-bold">${PHYSICS.tension.toFixed(1)}</span>
+                <span class="text-slate-500">=</span>
+                <span class="text-red-400 font-bold">${PHYSICS.weight.toFixed(1)}</span>
+                <span class="text-slate-500">+</span>
+                <span class="text-purple-400 font-bold">${PHYSICS.handForce.toFixed(1)}</span>
+            `;
+
+            draw(springTopY, springBottomY, boxSize);
+            requestAnimationFrame(update);
+        }
+
+        function draw(springTopY, springBottomY, boxSize) {
+            // Guard against undefined/bad arguments (e.g. if called from resize incorrectly or initialization issues)
+            if (!Number.isFinite(springTopY) || !Number.isFinite(springBottomY) || !Number.isFinite(boxSize)) return;
+
+            ctx.clearRect(0, 0, metrics.w, metrics.h);
+            
+            // Draw Ground Shadow first (so it's behind everything)
+            const groundY = metrics.h * 0.95; // Ground is at 95% of height
+            const blockBottomY = STATE.boxY + boxSize/2;
+            drawGroundShadow(metrics.cx, groundY, boxSize, blockBottomY);
+
+            // Draw Spring
+            drawSpring(metrics.cx, springTopY, springBottomY, 20);
+
+            // Draw Box
+            drawBlock(metrics.cx, STATE.boxY, boxSize);
+
+            // --- Draw Forces ---
+            const halfSize = boxSize / 2;
+            
+            // 1. Tension (UP) - Starts at Top of box
+            // Label: T
+            drawForceArrow(metrics.cx, STATE.boxY - halfSize, PHYSICS.tension, "#2563eb", "T", -1);
+
+            // 2. Weight (DOWN) - Starts at Center (COM)
+            // Label: W = mg
+            drawForceArrow(metrics.cx, STATE.boxY, PHYSICS.weight, "#ef4444", "W", 1);
+
+            // 3. Hand Force (DOWN) - Starts at Bottom
+            // Label: F_hand
+            if (PHYSICS.handForce > 0) {
+                // Visual Hook point
+                const hookY = STATE.boxY + halfSize;
+                
+                // Draw a small hook
+                ctx.beginPath();
+                ctx.arc(metrics.cx, hookY, 4, 0, Math.PI*2);
+                ctx.fillStyle = "#a855f7";
+                ctx.fill();
+                
+                drawForceArrow(metrics.cx, hookY, PHYSICS.handForce, "#a855f7", "F", 1);
+            }
+            
+            // Drag Overlay Indicator
+            if (STATE.isDragging) {
+                ctx.fillStyle = "rgba(168, 85, 247, 0.1)";
+                ctx.beginPath();
+                ctx.arc(metrics.cx, STATE.boxY + halfSize, 30, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        /* --- Input Handling --- */
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function isHit(x, y) {
+            // Hit area: The box and slightly below it
+            const boxSize = 60 + PHYSICS.mass * 5;
+            const dy = y - STATE.boxY;
+            const dx = Math.abs(x - metrics.cx);
+            return dx < boxSize && dy > -boxSize/2 && dy < boxSize + 50;
+        }
+
+        function startDrag(e) {
+            const pos = getPos(e);
+            if (isHit(pos.x, pos.y)) {
+                STATE.isDragging = true;
+                STATE.startY = pos.y;
+                STATE.dragOffset = PHYSICS.handForce; // Keep track of existing force? No, reset logic simpler
+                ui.hint.style.opacity = '0';
+                e.preventDefault();
+            }
+        }
+
+        function onDrag(e) {
+            if (!STATE.isDragging) {
+                const pos = getPos(e);
+                canvas.style.cursor = isHit(pos.x, pos.y) ? 'grab' : 'default';
+                return;
+            }
+            e.preventDefault();
+            canvas.style.cursor = 'grabbing';
+            
+            const pos = getPos(e);
+            const delta = pos.y - STATE.startY;
+            
+            // Physics logic: 10px drag = 1 Newton (approx)
+            let newForce = Math.max(0, delta * 0.5); 
+            // Cap at reasonable max
+            PHYSICS.handForce = Math.min(newForce, 80); 
+        }
+
+        function endDrag() {
+            STATE.isDragging = false;
+            // Decay animation
+            const decay = setInterval(() => {
+                if (STATE.isDragging) { clearInterval(decay); return; }
+                PHYSICS.handForce *= 0.85;
+                if (PHYSICS.handForce < 0.1) {
+                    PHYSICS.handForce = 0;
+                    clearInterval(decay);
+                }
+            }, 16);
+        }
+
+        // Event Binding
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('touchstart', startDrag, {passive: false});
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('touchmove', onDrag, {passive: false});
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        ui.massSlider.addEventListener('input', (e) => {
+            PHYSICS.mass = parseFloat(e.target.value);
+            ui.massVal.innerText = PHYSICS.mass.toFixed(1) + " kg";
+        });
+
+        function toggleModal(show) {
+            const modal = document.getElementById('introModal');
+            if (show) modal.classList.add('active');
+            else modal.classList.remove('active');
+        }
+
+        // Init
+        resize();
+        update();
+
+    </script>
+</body>
+</html>
