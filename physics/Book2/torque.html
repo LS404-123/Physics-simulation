@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>物理互動模擬：力矩與平衡 (Moment & Equilibrium)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Removed MathJax to prevent text disappearing/skipping issues. Using stable HTML entities instead. -->
+
+    <style>
+        body {
+            font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+            touch-action: none;
+            background-color: #f0f4f8;
+        }
+        canvas {
+            background-color: #ffffff;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+        .pop-up-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        /* Custom Tooltip */
+        #tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 50;
+            display: none;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-700">
+
+    <!-- Header -->
+    <header class="bg-slate-800 text-white p-3 flex justify-between items-center shadow-md shrink-0">
+        <div class="flex items-center gap-2">
+            <i data-lucide="scale" class="w-6 h-6 text-yellow-400"></i>
+            <h1 class="text-lg font-bold">力矩平衡實驗室</h1>
+        </div>
+        <button onclick="toggleTutorial()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm flex items-center gap-1 transition shadow">
+            <i data-lucide="help-circle" class="w-4 h-4"></i> 教學
+        </button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 relative flex flex-col md:flex-row p-2 gap-2 overflow-hidden">
+        
+        <!-- Controls Panel -->
+        <aside class="bg-white p-4 rounded-lg shadow-sm w-full md:w-80 flex flex-col gap-4 overflow-y-auto shrink-0 z-10 border border-slate-200">
+            
+            <div class="space-y-2">
+                <h3 class="font-bold text-slate-800 border-b pb-1 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-4 h-4"></i> 1. 場景設定
+                </h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-scenario-center" onclick="setScenario('center')" class="p-2 text-sm border rounded transition-colors duration-200">
+                        中間支點
+                    </button>
+                    <button id="btn-scenario-end" onclick="setScenario('end')" class="p-2 text-sm border rounded transition-colors duration-200">
+                        端點支點
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="font-bold text-slate-800 border-b pb-1 flex items-center gap-2">
+                    <i data-lucide="arrow-down-up" class="w-4 h-4"></i> 2. 外力控制
+                </h3>
+                <p class="text-xs text-slate-500">拖曳箭頭起點(移動)或尖端(改變力)。<br>位置會自動吸附 0.5m 格點。</p>
+                <div class="flex gap-2">
+                    <button onclick="addForce()" id="btn-add-force" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded flex justify-center items-center gap-1 transition shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> 增加力
+                    </button>
+                    <button onclick="clearForces()" class="flex-1 bg-red-500 hover:bg-red-400 text-white py-2 rounded flex justify-center items-center gap-1 transition shadow-sm">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> 清除
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="font-bold text-slate-800 border-b pb-1 flex items-center gap-2">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4"></i> 3. 分析工具
+                </h3>
+                <label class="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded transition">
+                    <input type="checkbox" id="check-show-values" checked class="w-4 h-4 accent-blue-600">
+                    <span class="text-sm">顯示數值</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded transition">
+                    <input type="checkbox" id="check-show-components" class="w-4 h-4 accent-blue-600">
+                    <span class="text-sm font-sans">顯示垂直分量 (F sin&theta;)</span>
+                </label>
+                
+                <button id="btn-analyze" onclick="toggleAnalysis()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg font-bold shadow-lg mt-2 transition transform active:scale-95 flex justify-center items-center gap-2">
+                    <i data-lucide="activity" class="w-5 h-5"></i> <span id="analyze-text">開始力矩分析</span>
+                </button>
+            </div>
+
+            <div class="mt-auto bg-amber-50 p-3 rounded border border-amber-200 text-xs text-amber-900 shadow-sm">
+                <strong class="flex items-center gap-1 mb-1"><i data-lucide="notebook-pen" class="w-3 h-3"></i> 陳Sir 筆記：</strong>
+                <ul class="list-disc list-inside space-y-1 ml-1 font-sans">
+                    <li>平衡條件：&Sigma;&tau; = 0</li>
+                    <li>分析後，<span class="text-red-600 font-bold">紅色</span>箭頭為順時針，<span class="text-blue-600 font-bold">藍色</span>為逆時針。</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 relative bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center border border-slate-300 shadow-inner" id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+            
+            <!-- Tooltip -->
+            <div id="tooltip"></div>
+
+            <!-- Result Overlay -->
+            <div id="result-panel" class="absolute top-4 right-4 bg-white/95 p-4 rounded-lg shadow-xl backdrop-blur border border-slate-200 hidden min-w-[200px] animate-in fade-in slide-in-from-top-4">
+                <h4 class="font-bold text-lg mb-3 border-b pb-2 flex justify-between items-center">
+                    分析結果
+                    <span class="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded">Net Torque</span>
+                </h4>
+                <div id="result-content" class="text-sm space-y-2"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pop-up Tutorial Modal -->
+    <div id="tutorial-modal" class="fixed inset-0 pop-up-overlay z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 animate-fade-in border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="bg-yellow-400 text-white rounded-full p-1"><i data-lucide="lightbulb" class="w-5 h-5"></i></span>
+                    歡迎來到力矩實驗室
+                </h2>
+                <button onclick="toggleTutorial()" class="text-slate-400 hover:text-slate-600 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-slate-600">
+                <p>各位同學你好！這個模擬器能幫助你理解力矩平衡原理。</p>
+                
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0"><i data-lucide="mouse-pointer-2" class="w-5 h-5"></i></div>
+                        <div>
+                            <p class="font-bold text-slate-800">智能吸附操作</p>
+                            <p class="text-sm">拖曳力箭頭時，會自動吸附到 <span class="font-bold text-slate-700">0.5m</span> 刻度，方便對齊。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="bg-indigo-100 p-2 rounded-full text-indigo-600 shrink-0"><i data-lucide="rotate-cw" class="w-5 h-5"></i></div>
+                        <div>
+                            <p class="font-bold text-slate-800">視覺化分析</p>
+                            <p class="text-sm">弧線顏色對應力的顏色，<span class="text-red-500 font-bold">紅色箭頭</span>代表順時針，<span class="text-blue-500 font-bold">藍色箭頭</span>代表逆時針。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-50 p-3 rounded text-sm border-l-4 border-yellow-400 mt-2">
+                    <p><strong>💡 思考題：</strong> 當支點移到木棍末端時，為什麼即使沒有外力，木棍也會轉動？(提示：重心)</p>
+                </div>
+                
+                <div class="bg-slate-100 p-3 rounded text-sm border-l-4 border-slate-500 mt-2 font-sans">
+                    <p><strong>公式重溫：</strong> &tau; = F &times; d &times; sin(&theta;)</p>
+                    <p class="text-xs text-slate-500 mt-1">* 其中 <i>d</i> 是力點到支點的距離，<i>&theta;</i> 是力與木棍的夾角。</p>
+                </div>
+            </div>
+
+            <button onclick="toggleTutorial()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg mt-6 shadow-lg transition transform active:scale-[0.98]">
+                明白了，開始實驗！
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Init Icons ---
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                window.onload = function() {
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            }
+
+            // ADDED: Immediate redraw on checkbox change to fix "click twice" issue
+            document.getElementById('check-show-values').addEventListener('change', draw);
+            document.getElementById('check-show-components').addEventListener('change', draw);
+        });
+
+        // --- Configuration ---
+        const CONSTANTS = {
+            ROD_LENGTH_M: 10,
+            ROD_MASS_KG: 5,
+            G: 9.81,
+            PIXELS_PER_METER: 60,
+            MAX_FORCE_N: 100,
+            FORCE_SCALE: 2.5, // Pixels per Newton
+            SNAP_GRID_M: 0.5, // Snap position to every 0.5m
+            SNAP_FORCE_N: 5   // Snap force to every 5N (approx)
+        };
+
+        const COLORS = {
+            rodFill: '#e2e8f0', // Slate 200
+            rodStroke: '#64748b', // Slate 500
+            pivotFill: '#f59e0b', // Amber 500
+            pivotStroke: '#b45309', // Amber 700
+            cw: '#ef4444', // Red
+            ccw: '#3b82f6', // Blue
+            grid: '#e5e7eb' // Gray 200
+        };
+
+        // --- State ---
+        let state = {
+            scenario: 'center',
+            forces: [],
+            isDragging: null, // { type: 'base'|'head', id: 1, offsetX: 0, offsetY: 0 }
+            hoveredItem: null, // { type: 'base'|'head', id: 1 } for cursor changes
+            showAnalysis: false,
+            width: 0,
+            height: 0,
+            rodY: 0,
+            pivotX: 0
+        };
+
+        // --- Force Class ---
+        class Force {
+            constructor(id, x_m, fx, fy) {
+                this.id = id;
+                this.pos_m = x_m;
+                this.fx = fx;
+                this.fy = fy;
+                // Predefined nice colors
+                const palette = ['#059669', '#7c3aed', '#db2777', '#d97706', '#0891b2']; 
+                this.color = palette[state.forces.length % palette.length];
+            }
+        }
+
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const tooltip = document.getElementById('tooltip');
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            state.width = canvas.width;
+            state.height = canvas.height;
+            state.rodY = state.height / 2;
+            updatePivotPosition();
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        // --- Helper Functions ---
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function snapValue(val, step) {
+            return Math.round(val / step) * step;
+        }
+
+        // --- UI Logic ---
+        function setScenario(type) {
+            state.scenario = type;
+            state.showAnalysis = false;
+            updateUI();
+            updatePivotPosition();
+            draw();
+        }
+
+        function updatePivotPosition() {
+            const rodPixelLength = CONSTANTS.ROD_LENGTH_M * CONSTANTS.PIXELS_PER_METER;
+            const startX = (state.width - rodPixelLength) / 2;
+            
+            if (state.scenario === 'center') {
+                state.pivotX = startX + rodPixelLength / 2;
+            } else {
+                state.pivotX = startX;
+            }
+        }
+
+        function addForce() {
+            if (state.forces.length >= 3) return;
+            const id = Date.now();
+            // Intelligent placement: find empty spot or random
+            const randomPos = snapValue(2 + Math.random() * 6, CONSTANTS.SNAP_GRID_M);
+            const newForce = new Force(id, randomPos, 0, -40);
+            state.forces.push(newForce);
+            state.showAnalysis = false;
+            updateUI();
+            draw();
+        }
+
+        function clearForces() {
+            state.forces = [];
+            state.showAnalysis = false;
+            updateUI();
+            draw();
+        }
+
+        function toggleAnalysis() {
+            state.showAnalysis = !state.showAnalysis;
+            updateUI();
+            draw();
+        }
+
+        function toggleTutorial() {
+            const modal = document.getElementById('tutorial-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function updateUI() {
+            // Scenario Buttons
+            const btnCenter = document.getElementById('btn-scenario-center');
+            const btnEnd = document.getElementById('btn-scenario-end');
+            
+            const activeClass = "bg-blue-100 border-blue-500 text-blue-700 font-bold shadow-inner ring-1 ring-blue-500";
+            const inactiveClass = "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-300";
+
+            btnCenter.className = `p-2 text-sm border rounded transition-all ${state.scenario === 'center' ? activeClass : inactiveClass}`;
+            btnEnd.className = `p-2 text-sm border rounded transition-all ${state.scenario === 'end' ? activeClass : inactiveClass}`;
+
+            // Add Button State
+            const addBtn = document.getElementById('btn-add-force');
+            if (state.forces.length >= 3) {
+                addBtn.disabled = true;
+                addBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+            } else {
+                addBtn.disabled = false;
+                addBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+            }
+
+            // Analyze Button State
+            const analyzeBtn = document.getElementById('btn-analyze');
+            const analyzeText = document.getElementById('analyze-text');
+            const resultPanel = document.getElementById('result-panel');
+
+            if (state.showAnalysis) {
+                analyzeBtn.classList.replace('bg-indigo-600', 'bg-slate-600');
+                analyzeBtn.classList.replace('hover:bg-indigo-500', 'hover:bg-slate-500');
+                analyzeText.innerText = "停止分析 / 調整";
+                resultPanel.classList.remove('hidden');
+            } else {
+                analyzeBtn.classList.replace('bg-slate-600', 'bg-indigo-600');
+                analyzeBtn.classList.replace('hover:bg-slate-500', 'hover:bg-indigo-500');
+                analyzeText.innerText = "開始力矩分析";
+                resultPanel.classList.add('hidden');
+            }
+        }
+
+        // --- Interaction Handling ---
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('touchstart', handleStart, {passive: false});
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove, {passive: false});
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchend', handleEnd);
+
+        function checkHit(pos) {
+            const rodPixelLength = CONSTANTS.ROD_LENGTH_M * CONSTANTS.PIXELS_PER_METER;
+            const startX = (state.width - rodPixelLength) / 2;
+            const hitR = 15; // Hit radius
+
+            for (let i = state.forces.length - 1; i >= 0; i--) {
+                const f = state.forces[i];
+                const baseX = startX + f.pos_m * CONSTANTS.PIXELS_PER_METER;
+                const baseY = state.rodY;
+                const headX = baseX + f.fx * CONSTANTS.FORCE_SCALE;
+                const headY = baseY + f.fy * CONSTANTS.FORCE_SCALE;
+
+                // Check Head
+                if (Math.hypot(pos.x - headX, pos.y - headY) < hitR + 5) { // Slightly larger for head
+                    return { type: 'head', id: f.id, forceIndex: i, force: f };
+                }
+                // Check Base
+                if (Math.hypot(pos.x - baseX, pos.y - baseY) < hitR) {
+                    return { type: 'base', id: f.id, forceIndex: i, force: f };
+                }
+            }
+            return null;
+        }
+
+        function handleStart(e) {
+            e.preventDefault();
+            const pos = getMousePos(e);
+            const hit = checkHit(pos);
+
+            if (hit) {
+                state.isDragging = hit;
+                state.showAnalysis = false;
+                updateUI();
+                draw(); // Redraw immediately to show selection state
+            }
+        }
+
+        function handleMove(e) {
+            const pos = getMousePos(e);
+
+            // 1. Handle Hover State (Cursor & Tooltip)
+            if (!state.isDragging) {
+                const hit = checkHit(pos);
+                state.hoveredItem = hit;
+                
+                if (hit) {
+                    canvas.style.cursor = hit.type === 'base' ? 'ew-resize' : 'crosshair';
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = pos.x + 'px';
+                    tooltip.style.top = (pos.y - 10) + 'px';
+                    tooltip.innerText = hit.type === 'base' ? '拖曳移動施力點' : '拖曳改變力的大小/角度';
+                } else {
+                    canvas.style.cursor = 'default';
+                    tooltip.style.display = 'none';
+                }
+            } else {
+                // Dragging cursor
+                canvas.style.cursor = 'grabbing';
+                tooltip.style.display = 'none';
+                e.preventDefault();
+
+                const f = state.forces[state.isDragging.forceIndex];
+                const rodPixelLength = CONSTANTS.ROD_LENGTH_M * CONSTANTS.PIXELS_PER_METER;
+                const startX = (state.width - rodPixelLength) / 2;
+
+                if (state.isDragging.type === 'base') {
+                    // Dragging Base (Position)
+                    let rawX = pos.x;
+                    // Clamp to rod
+                    if (rawX < startX) rawX = startX;
+                    if (rawX > startX + rodPixelLength) rawX = startX + rodPixelLength;
+                    
+                    // Snap Logic
+                    let meters = (rawX - startX) / CONSTANTS.PIXELS_PER_METER;
+                    meters = snapValue(meters, CONSTANTS.SNAP_GRID_M);
+                    f.pos_m = meters;
+
+                } else if (state.isDragging.type === 'head') {
+                    // Dragging Head (Force Vector)
+                    const baseX = startX + f.pos_m * CONSTANTS.PIXELS_PER_METER;
+                    const baseY = state.rodY;
+                    
+                    // Raw diff
+                    let rawFx = (pos.x - baseX) / CONSTANTS.FORCE_SCALE;
+                    let rawFy = (pos.y - baseY) / CONSTANTS.FORCE_SCALE;
+
+                    // Snap Logic (Optional: Snap to 5N or integer)
+                    f.fx = Math.round(rawFx);
+                    f.fy = Math.round(rawFy);
+                }
+                draw();
+            }
+        }
+
+        function handleEnd() {
+            state.isDragging = null;
+            draw();
+        }
+
+        // --- Drawing System ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const rodPixelLength = CONSTANTS.ROD_LENGTH_M * CONSTANTS.PIXELS_PER_METER;
+            const startX = (state.width - rodPixelLength) / 2;
+
+            // 0. Draw Invisible Grid (Visual Aid when dragging)
+            if (state.isDragging && state.isDragging.type === 'base') {
+                ctx.save();
+                ctx.fillStyle = COLORS.grid;
+                for(let m=0; m<=CONSTANTS.ROD_LENGTH_M; m+=CONSTANTS.SNAP_GRID_M) {
+                    const gx = startX + m * CONSTANTS.PIXELS_PER_METER;
+                    ctx.beginPath();
+                    ctx.arc(gx, state.rodY, 3, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // 1. Draw Rod (Fancy Wood Style)
+            drawRod(startX, rodPixelLength);
+
+            // 2. Draw Pivot
+            drawPivot();
+
+            // 3. Draw Forces
+            // Ghost Weight Force
+            const weightX = startX + (CONSTANTS.ROD_LENGTH_M / 2) * CONSTANTS.PIXELS_PER_METER;
+            const weightForce = CONSTANTS.ROD_MASS_KG * CONSTANTS.G;
+            drawFancyArrow(weightX, state.rodY, 0, weightForce, '#94a3b8', true, 'Rod Weight');
+
+            // User Forces
+            state.forces.forEach((f, idx) => {
+                const baseX = startX + f.pos_m * CONSTANTS.PIXELS_PER_METER;
+                const isActive = state.hoveredItem && state.hoveredItem.id === f.id;
+                drawFancyArrow(baseX, state.rodY, f.fx, f.fy, f.color, false, `F${idx+1}`, isActive);
+            });
+
+            // 4. Analysis
+            if (state.showAnalysis) {
+                runAnalysis(startX);
+            }
+        }
+
+        function drawRod(x, length) {
+            const h = 24;
+            const y = state.rodY - h/2;
+
+            ctx.save();
+            // Gradient fill
+            const grad = ctx.createLinearGradient(x, y, x, y + h);
+            grad.addColorStop(0, '#f1f5f9');
+            grad.addColorStop(0.5, '#cbd5e1');
+            grad.addColorStop(1, '#94a3b8');
+            
+            ctx.fillStyle = grad;
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            
+            // Rounded Rectangle
+            ctx.beginPath();
+            ctx.roundRect(x, y, length, h, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            // Ruler Markings
+            ctx.fillStyle = '#475569';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            for (let i = 0; i <= CONSTANTS.ROD_LENGTH_M; i++) {
+                const markX = x + i * CONSTANTS.PIXELS_PER_METER;
+                // Tick
+                ctx.beginPath();
+                ctx.moveTo(markX, y + h);
+                ctx.lineTo(markX, y + h - (i % 5 === 0 ? 8 : 4));
+                ctx.stroke();
+                
+                // Number
+                if (i % 1 === 0) { // Every 1 meter
+                    ctx.fillText(i, markX, y + h + 12);
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawPivot() {
+            const size = 20;
+            ctx.save();
+            ctx.translate(state.pivotX, state.rodY + 12); // Slightly below rod center
+            
+            // Triangle
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-size, size + 10);
+            ctx.lineTo(size, size + 10);
+            ctx.closePath();
+            
+            ctx.fillStyle = COLORS.pivotFill;
+            ctx.strokeStyle = COLORS.pivotStroke;
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+            
+            // Hinge Circle
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI*2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawFancyArrow(x, y, fx, fy, color, isGhost, label, isHovered) {
+            const scale = CONSTANTS.FORCE_SCALE;
+            const endX = x + fx * scale;
+            const endY = y + fy * scale;
+            
+            // Don't draw if force is tiny
+            if (Math.hypot(fx, fy) < 1 && !isGhost) return;
+
+            // Draw Components FIRST (behind the main arrow)
+            if (!isGhost && document.getElementById('check-show-components').checked) {
+                drawVerticalComponent(x, y, fy * scale, color);
+            }
+
+            ctx.save();
+            const angle = Math.atan2(endY - y, endX - x);
+            const len = Math.hypot(endX - x, endY - y);
+            
+            // Styling
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            if (isGhost) {
+                ctx.strokeStyle = color;
+                ctx.setLineDash([4, 4]);
+                ctx.lineWidth = 2;
+                // Simple line for ghost
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                // Simple head
+                drawArrowHead(ctx, endX, endY, angle, 10, color);
+            } else {
+                // FANCY ARROW
+                const bodyWidth = isHovered ? 6 : 4;
+                const headLen = 18;
+                const headWidth = 14;
+
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+
+                ctx.fillStyle = color;
+                ctx.strokeStyle = 'white'; // Outline for contrast
+                ctx.lineWidth = 1;
+
+                // Path for arrow body + head
+                const bodyLen = Math.max(0, len - headLen + 2); // Overlap slightly
+                
+                ctx.beginPath();
+                ctx.moveTo(0, -bodyWidth/2);
+                ctx.lineTo(bodyLen, -bodyWidth/2);
+                ctx.lineTo(bodyLen, -headWidth/2); // Flare out
+                ctx.lineTo(len, 0); // Tip
+                ctx.lineTo(bodyLen, headWidth/2); // Flare out
+                ctx.lineTo(bodyLen, bodyWidth/2);
+                ctx.lineTo(0, bodyWidth/2);
+                ctx.closePath();
+
+                // Shadow
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetY = 2;
+
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+                ctx.stroke();
+
+                // Draw Base Dot
+                ctx.beginPath();
+                ctx.arc(0, 0, isHovered ? 6 : 4, 0, Math.PI*2);
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+
+                // Draw Value Label
+                if (document.getElementById('check-show-values').checked) {
+                    const mag = Math.sqrt(fx**2 + fy**2).toFixed(0);
+                    const labelText = `${label}: ${mag}N`;
+                    
+                    ctx.font = "bold 12px 'Noto Sans TC'";
+                    const metrics = ctx.measureText(labelText);
+                    const pad = 4;
+                    
+                    const labelX = endX + (endX > x ? 10 : -10 - metrics.width);
+                    const labelY = endY + (endY > y ? 10 : -10);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                    ctx.fillRect(labelX - pad, labelY - 10 - pad, metrics.width + pad*2, 12 + pad*2);
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillText(labelText, labelX, labelY);
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawArrowHead(ctx, x, y, angle, size, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-size, -size/2);
+            ctx.lineTo(-size, size/2);
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // --- Vertical Component Display ---
+        function drawVerticalComponent(x, y, vectorY, color) {
+            if (Math.abs(vectorY) < 5) return; // Hide if too small
+
+            const endY = y + vectorY;
+            const headSize = 10;
+            
+            // Shorten shaft so it doesn't overlap the head/tip
+            // vectorY > 0 means Down. Shaft should end at endY - headSize.
+            // vectorY < 0 means Up. Shaft should end at endY + headSize.
+            const shaftEndY = vectorY > 0 ? endY - headSize : endY + headSize;
+
+            if (Math.abs(vectorY) > headSize) {
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 4; // Thicker as requested
+                
+                // Draw Dashed/Solid line representing Fy acting AT THE POINT
+                ctx.setLineDash([5, 3]); // Dashed to distinguish from main force
+                ctx.lineCap = 'butt'; // Butt cap so it doesn't protrude into head
+
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x, shaftEndY); // Stop BEFORE the head
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Draw Head for component
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.translate(x, endY);
+            const angle = vectorY > 0 ? Math.PI/2 : -Math.PI/2;
+            ctx.rotate(angle);
+            
+            // Draw a simple triangle head at the end
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-headSize, -headSize/2);
+            ctx.lineTo(-headSize, headSize/2);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // --- Analysis Logic ---
+        function runAnalysis(startX) {
+            const px = state.pivotX;
+            const pivotPosM = (px - startX) / CONSTANTS.PIXELS_PER_METER;
+            let totalTorque = 0;
+            let resultHTML = "";
+
+            // 1. Weight Torque
+            const weightForce = CONSTANTS.ROD_MASS_KG * CONSTANTS.G;
+            const weightPosM = CONSTANTS.ROD_LENGTH_M / 2;
+            const distW = weightPosM - pivotPosM; 
+            const torqueW = distW * weightForce; 
+            
+            if (Math.abs(torqueW) > 1) {
+                drawTorqueArc(px, state.rodY, torqueW, 0, '#94a3b8');
+                totalTorque += torqueW;
+                resultHTML += formatResultRow("重力矩 (Weight)", torqueW, '#64748b');
+            }
+
+            // 2. User Forces Torque
+            state.forces.forEach((f, idx) => {
+                const dist = f.pos_m - pivotPosM;
+                const torque = dist * f.fy; // Simplified Cross Product
+                totalTorque += torque;
+                
+                // Draw Arc
+                drawTorqueArc(px, state.rodY, torque, idx + 1, f.color);
+                
+                resultHTML += formatResultRow(`F${idx+1} 力矩`, torque, f.color);
+            });
+
+            // Summary
+            const isBalanced = Math.abs(totalTorque) < 1;
+            const dirText = totalTorque > 0 ? '順時針 (CW)' : '逆時針 (CCW)';
+            const dirColor = totalTorque > 0 ? 'text-red-600' : 'text-blue-600';
+            
+            resultHTML += `
+                <div class="mt-3 pt-2 border-t border-slate-200">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-slate-700">淨力矩 (Net)</span>
+                        <span class="font-mono font-bold text-lg ${isBalanced ? 'text-green-600' : dirColor}">
+                            ${Math.abs(totalTorque).toFixed(1)} Nm
+                        </span>
+                    </div>
+                    <div class="text-xs text-right font-medium ${isBalanced ? 'text-green-600' : dirColor}">
+                        ${isBalanced ? '達成平衡 (Equilibrium) 🎉' : dirText}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('result-content').innerHTML = resultHTML;
+        }
+
+        function formatResultRow(label, torque, color) {
+            const val = Math.abs(torque);
+            const isCW = torque > 0;
+            const dirIcon = isCW ? '↻' : '↺';
+            const dirClass = isCW ? 'text-red-500' : 'text-blue-500';
+            
+            if (val < 0.1) return '';
+
+            return `
+                <div class="flex justify-between items-center text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
+                        <span class="text-slate-600">${label}</span>
+                    </div>
+                    <div class="flex items-center gap-1 font-mono">
+                        <span>${val.toFixed(1)}</span>
+                        <span class="${dirClass} font-bold text-sm">${dirIcon}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function drawTorqueArc(cx, cy, torque, layerIndex, bodyColor) {
+            if (Math.abs(torque) < 1) return;
+
+            ctx.save();
+            
+            const baseRadius = 40;
+            const radius = baseRadius + (layerIndex * 18);
+            
+            const isCW = torque > 0;
+            const dirColor = isCW ? COLORS.cw : COLORS.ccw;
+
+            const startAngle = -Math.PI / 2;
+            const maxArc = Math.PI * 0.8;
+            const arcLength = Math.min(Math.abs(torque) / 80, maxArc); 
+            
+            const endAngle = isCW ? startAngle + arcLength : startAngle - arcLength;
+
+            // Calculate overlap deduction
+            // The arrow head is about 10px long. We want the arc to stop at the base of the head.
+            const headLengthPixels = 8; 
+            const headAngle = headLengthPixels / radius;
+            
+            // If the total arc is shorter than the head, don't subtract (or draw simplified)
+            let bodyEndAngle = endAngle;
+            if (arcLength > headAngle) {
+                 bodyEndAngle = isCW ? endAngle - headAngle : endAngle + headAngle;
+            } else {
+                 // If torque is tiny, we might just draw a very short line or nothing
+                 // Let's just not subtract to avoid drawing backwards
+                 bodyEndAngle = endAngle;
+            }
+
+            // 1. Draw Arc Body (Force Color)
+            if (arcLength > 0.1) { // Only draw if visible
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, startAngle, bodyEndAngle, !isCW);
+                ctx.strokeStyle = bodyColor;
+                ctx.lineWidth = 5;
+                ctx.stroke();
+            }
+
+            // 2. Draw Arrow Head
+            const headX = cx + radius * Math.cos(endAngle);
+            const headY = cy + radius * Math.sin(endAngle);
+            
+            ctx.translate(headX, headY);
+            
+            // Calculate exact tangent angle
+            const arrowAngle = endAngle + (isCW ? Math.PI/2 : -Math.PI/2);
+            ctx.rotate(arrowAngle);
+            
+            // Draw arrow head aligned with the rotated axis (pointing +X)
+            // This ensures it seamlessly connects to the arc
+            ctx.beginPath();
+            ctx.moveTo(0, 0);       // Tip (touches arc end)
+            ctx.lineTo(-10, -7);    // Top Back
+            ctx.lineTo(-10, 7);     // Bottom Back
+            ctx.closePath();
+            
+            ctx.fillStyle = dirColor;
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // --- Init ---
+        clearForces();
+        resizeCanvas();
+    </script>
+</body>
+</html>
