@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>牛頓第二定律互動模擬 (F=ma)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax for LaTeX -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Google Fonts: Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc; /* Lighter background */
+            overflow-x: hidden;
+        }
+        /* Removed grid lines, kept only a clean track area */
+        .track-container {
+            background-color: white;
+            border-bottom: 2px solid #94a3b8; /* Simulates the ground */
+        }
+        
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -7px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        
+        /* Arrow Head for Force Vector */
+        .arrow-head-right {
+            width: 0; 
+            height: 0; 
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-left: 10px solid currentColor;
+        }
+
+        /* Hide number input spinners */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        
+        /* Modal Animation */
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Important for smooth JS animation: No CSS transitions on transform */
+        .physics-obj {
+            will-change: transform;
+            /* No transition property here! */
+        }
+    </style>
+</head>
+<body class="text-slate-700 h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 p-4 shadow-sm flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-800">物理實驗室：牛頓第二定律</h1>
+                <p class="text-xs text-slate-500">互動教學模擬器 v1.1</p>
+            </div>
+        </div>
+        <button onclick="toggleModal()" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-100 transition flex items-center gap-2 border border-blue-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            原理講解
+        </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-auto p-4 md:p-8 max-w-6xl mx-auto w-full flex flex-col gap-8">
+
+        <!-- Object A Section -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <!-- Header & Stats -->
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <span class="bg-blue-500 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold shadow-sm">A</span>
+                    <h2 class="font-bold text-slate-700">實驗組 A</h2>
+                </div>
+                <div class="text-lg font-mono text-blue-600 font-bold bg-blue-50 px-4 py-1 rounded-full border border-blue-100">
+                    \( a = \) <span id="text-acc-a">0.00</span> \( \text{m/s}^2 \)
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 border-b border-slate-100">
+                <!-- Force Control -->
+                <div>
+                    <label class="flex justify-between text-sm font-semibold text-slate-600 mb-2">
+                        拉力 (\(F\))
+                        <span class="text-blue-600"><input type="number" id="input-f1" value="50" class="w-16 text-right bg-slate-100 rounded px-1 focus:outline-none font-bold" onchange="updateInputs('A')"> N</span>
+                    </label>
+                    <input type="range" id="slider-f1" min="0" max="100" value="50" step="1" class="w-full accent-blue-500" oninput="updateInputs('A')">
+                </div>
+                <!-- Mass Control -->
+                <div>
+                    <label class="flex justify-between text-sm font-semibold text-slate-600 mb-2">
+                        質量(\(m\))
+                        <span class="text-emerald-600"><input type="number" id="input-m1" value="10" min="1" class="w-16 text-right bg-slate-100 rounded px-1 focus:outline-none font-bold" onchange="updateInputs('A')"> kg</span>
+                    </label>
+                    <input type="range" id="slider-m1" min="1" max="50" value="10" step="1" class="w-full accent-emerald-500" oninput="updateInputs('A')">
+                </div>
+            </div>
+
+            <!-- Track A -->
+            <div class="relative h-48 w-full track-container overflow-hidden" id="track-container-a">
+                <!-- Ruler -->
+                <div class="absolute bottom-0 w-full h-8 flex select-none pointer-events-none ruler-marks">
+                    <!-- JS generated ticks -->
+                </div>
+
+                <!-- Object A Group -->
+                <div id="obj-a" class="physics-obj absolute bottom-8 left-0 flex flex-col items-center">
+                    
+                    <!-- Info Display (Acceleration) Above Object -->
+                    <div class="mb-2 text-center transition-opacity duration-200">
+                        <span class="text-xs font-bold text-slate-400 block mb-1">加速度方向</span>
+                        <div class="text-xs font-mono bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm">
+                            <span id="label-acc-a-top">5.00</span> m/s²
+                        </div>
+                    </div>
+
+                    <!-- The Box & Force Arrow Container -->
+                    <div class="relative flex items-center">
+                        <!-- The Box -->
+                        <div id="box-a" class="w-20 h-20 bg-blue-500 rounded-lg shadow-md flex items-center justify-center text-white font-bold text-xl relative z-20">
+                            <span id="label-mass-a">10kg</span>
+                            <!-- No wheels as requested -->
+                        </div>
+
+                        <!-- Force Arrow (To the right) -->
+                        <div id="force-arrow-a" class="absolute left-full top-1/2 -translate-y-1/2 ml-0 flex items-center z-10 transition-opacity duration-200">
+                            <!-- Rope/Line -->
+                            <div class="h-1 bg-blue-400 origin-left shadow-sm" style="width: 50px;"></div>
+                            <!-- Arrow Head -->
+                            <div class="arrow-head-right text-blue-400"></div>
+                            <!-- Force Label -->
+                            <span class="ml-2 text-xs font-bold text-blue-400 whitespace-nowrap">F = <span id="label-force-a">50</span>N</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Object B Section -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <!-- Header & Stats -->
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <span class="bg-red-500 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold shadow-sm">B</span>
+                    <h2 class="font-bold text-slate-700">實驗組 B</h2>
+                </div>
+                <div class="text-lg font-mono text-red-600 font-bold bg-red-50 px-4 py-1 rounded-full border border-red-100">
+                    \( a = \) <span id="text-acc-b">0.00</span> \( \text{m/s}^2 \)
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 border-b border-slate-100">
+                <!-- Force Control -->
+                <div>
+                    <label class="flex justify-between text-sm font-semibold text-slate-600 mb-2">
+                        拉力(\(F\))
+                        <span class="text-red-600"><input type="number" id="input-f2" value="100" class="w-16 text-right bg-slate-100 rounded px-1 focus:outline-none font-bold" onchange="updateInputs('B')"> N</span>
+                    </label>
+                    <input type="range" id="slider-f2" min="0" max="100" value="100" step="1" class="w-full accent-red-500" oninput="updateInputs('B')">
+                </div>
+                <!-- Mass Control -->
+                <div>
+                    <label class="flex justify-between text-sm font-semibold text-slate-600 mb-2">
+                        質量(\(m\))
+                        <span class="text-emerald-600"><input type="number" id="input-m2" value="10" min="1" class="w-16 text-right bg-slate-100 rounded px-1 focus:outline-none font-bold" onchange="updateInputs('B')"> kg</span>
+                    </label>
+                    <input type="range" id="slider-m2" min="1" max="50" value="10" step="1" class="w-full accent-emerald-500" oninput="updateInputs('B')">
+                </div>
+            </div>
+
+            <!-- Track B -->
+            <div class="relative h-48 w-full track-container overflow-hidden" id="track-container-b">
+                <!-- Ruler -->
+                <div class="absolute bottom-0 w-full h-8 flex select-none pointer-events-none ruler-marks">
+                    <!-- JS generated ticks -->
+                </div>
+
+                <!-- Object B Group -->
+                <div id="obj-b" class="physics-obj absolute bottom-8 left-0 flex flex-col items-center">
+                    
+                    <!-- Info Display (Acceleration) Above Object -->
+                    <div class="mb-2 text-center transition-opacity duration-200">
+                        <span class="text-xs font-bold text-slate-400 block mb-1">加速度方向</span>
+                        <div class="text-xs font-mono bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm">
+                            <span id="label-acc-b-top">10.00</span> m/s²
+                        </div>
+                    </div>
+
+                    <!-- The Box & Force Arrow Container -->
+                    <div class="relative flex items-center">
+                        <!-- The Box -->
+                        <div id="box-b" class="w-20 h-20 bg-red-500 rounded-lg shadow-md flex items-center justify-center text-white font-bold text-xl relative z-20">
+                            <span id="label-mass-b">10kg</span>
+                            <!-- No wheels -->
+                        </div>
+
+                        <!-- Force Arrow (To the right) -->
+                        <div id="force-arrow-b" class="absolute left-full top-1/2 -translate-y-1/2 ml-0 flex items-center z-10 transition-opacity duration-200">
+                            <!-- Rope/Line -->
+                            <div class="h-1 bg-red-400 origin-left shadow-sm" style="width: 80px;"></div>
+                            <!-- Arrow Head -->
+                            <div class="arrow-head-right text-red-400"></div>
+                            <!-- Force Label -->
+                            <span class="ml-2 text-xs font-bold text-red-400 whitespace-nowrap">F = <span id="label-force-b">100</span>N</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Global Controls -->
+    <div class="bg-white p-4 border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="text-sm text-slate-500 hidden md:block italic">
+                <p>提示：嘗試設定相同的力，但不同的質量，觀察加速度的變化。</p>
+            </div>
+            
+            <div class="flex gap-3 w-full md:w-auto">
+                <button onclick="resetSimulation()" class="flex-1 md:flex-none px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    </svg>
+                    重置
+                </button>
+                <button id="btn-start" onclick="toggleSimulation()" class="flex-1 md:flex-none px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-blue-200 transition transform active:scale-[0.98] flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="btn-text">開始模擬</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Educational Modal (Pop-up) -->
+    <div id="edu-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm active">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden transform transition-all scale-100 border border-slate-100">
+            <div class="bg-slate-50 p-6 flex justify-between items-start border-b border-slate-100">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-1">各位同學好！👋</h2>
+                    <p class="text-slate-500">讓我們一起探索 牛頓第二定律。</p>
+                </div>
+                <button onclick="toggleModal()" class="text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-100 rounded-full p-2 transition shadow-sm border border-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 md:p-8 space-y-6 text-lg">
+                <div class="p-5 bg-blue-50 border border-blue-100 rounded-xl text-slate-700 flex flex-col items-center">
+                    <h3 class="font-bold text-blue-800 mb-2">核心公式</h3>
+                    <p class="text-3xl font-bold text-blue-600 mb-4">$$ F = ma $$</p>
+                    <div class="grid grid-cols-3 gap-4 w-full text-center text-sm">
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <strong class="block text-slate-800">淨力 (N)</strong>
+                        </div>
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <strong class="block text-slate-800">質量</strong>
+                        </div>
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <strong class="block text-slate-800">加速度 (m/s²)</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2 text-slate-600">
+                    <p class="font-bold text-slate-800">在這個模擬器中：</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>拉繩越長，代表<strong>施力越大</strong>。</li>
+                        <li>我們將觀察物體如何被力「拉動」加速。</li>
+                        <li>試著改變質量，看看同樣的力能拉多快？</li>
+                    </ul>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button onclick="toggleModal()" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200">明白了，開始實驗！</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulation State
+        const state = {
+            running: false,
+            time: 0,
+            dt: 1/60, // Time step (approx 60fps)
+            pixelScale: 50, // 50 pixels = 1 meter
+            initialOffset: 50, // Start 50px (1m) from the left, not touching edge
+            
+            // Object A
+            objA: {
+                mass: 10,
+                force: 50,
+                acc: 0,
+                vel: 0,
+                pos: 1 // Start at 1 meter
+            },
+            
+            // Object B
+            objB: {
+                mass: 10,
+                force: 100,
+                acc: 0,
+                vel: 0,
+                pos: 1 // Start at 1 meter
+            }
+        };
+
+        // DOM Elements Cache
+        const dom = {
+            inputs: {
+                f1: { num: document.getElementById('input-f1'), slide: document.getElementById('slider-f1') },
+                m1: { num: document.getElementById('input-m1'), slide: document.getElementById('slider-m1') },
+                f2: { num: document.getElementById('input-f2'), slide: document.getElementById('slider-f2') },
+                m2: { num: document.getElementById('input-m2'), slide: document.getElementById('slider-m2') },
+            },
+            visuals: {
+                objA: document.getElementById('obj-a'),
+                objB: document.getElementById('obj-b'),
+                
+                labelMassA: document.getElementById('label-mass-a'),
+                labelMassB: document.getElementById('label-mass-b'),
+                
+                labelForceA: document.getElementById('label-force-a'),
+                labelForceB: document.getElementById('label-force-b'),
+                
+                arrowA: document.getElementById('force-arrow-a'),
+                arrowB: document.getElementById('force-arrow-b'),
+
+                textAccA: document.getElementById('text-acc-a'),
+                textAccB: document.getElementById('text-acc-b'),
+                
+                labelAccATop: document.getElementById('label-acc-a-top'),
+                labelAccBTop: document.getElementById('label-acc-b-top'),
+            },
+            btnStart: document.getElementById('btn-start'),
+            btnText: document.getElementById('btn-text'),
+            trackContainers: [
+                document.getElementById('track-container-a'),
+                document.getElementById('track-container-b')
+            ]
+        };
+
+        // --- Initialization ---
+
+        function init() {
+            calculatePhysics();
+            updateUI(true);
+            
+            // Add clean ruler markers (No 'm' unit, just numbers)
+            const rulers = document.querySelectorAll('.ruler-marks');
+            rulers.forEach(el => {
+                let html = '';
+                // Assume 40 meters max width
+                for(let i=0; i<40; i++) {
+                    // Start from 0, every 50px.
+                    // Added little tick mark and number
+                    html += `
+                        <div style="position:absolute; left:${i*50}px; bottom:0; display:flex; flex-col; align-items:flex-end;">
+                            <div style="height:8px; width:1px; background-color:#cbd5e1;"></div>
+                            <span style="position:absolute; bottom:10px; transform:translateX(-50%); font-size:10px; color:#94a3b8; font-weight:500;">${i}</span>
+                        </div>`;
+                }
+                el.innerHTML = html;
+            });
+
+            // Initial Position Set
+            updatePositions();
+        }
+
+        // --- Logic Control ---
+
+        function toggleModal() {
+            const modal = document.getElementById('edu-modal');
+            modal.classList.toggle('active');
+        }
+
+        // Input Handling with Anti-Stupid Check (防呆)
+        function updateInputs(obj) {
+            if (obj === 'A') {
+                let f = parseFloat(dom.inputs.f1.num.value);
+                let m = parseFloat(dom.inputs.m1.num.value);
+                
+                if (m <= 0 || isNaN(m)) {
+                    m = 1;
+                    dom.inputs.m1.num.value = 1;
+                    alert("同學請注意：質量 (Mass) 必須大於 0 kg！");
+                }
+                if (f < 0) { f = 0; dom.inputs.f1.num.value = 0; } // Force cannot be negative in this version
+
+                if (document.activeElement === dom.inputs.f1.slide) dom.inputs.f1.num.value = dom.inputs.f1.slide.value;
+                else dom.inputs.f1.slide.value = f;
+
+                if (document.activeElement === dom.inputs.m1.slide) dom.inputs.m1.num.value = dom.inputs.m1.slide.value;
+                else dom.inputs.m1.slide.value = m;
+
+                state.objA.force = parseFloat(dom.inputs.f1.num.value);
+                state.objA.mass = parseFloat(dom.inputs.m1.num.value);
+
+            } else {
+                let f = parseFloat(dom.inputs.f2.num.value);
+                let m = parseFloat(dom.inputs.m2.num.value);
+                
+                if (m <= 0 || isNaN(m)) {
+                    m = 1;
+                    dom.inputs.m2.num.value = 1;
+                    alert("同學請注意：質量 (Mass) 必須大於 0 kg！");
+                }
+                if (f < 0) { f = 0; dom.inputs.f2.num.value = 0; }
+
+                if (document.activeElement === dom.inputs.f2.slide) dom.inputs.f2.num.value = dom.inputs.f2.slide.value;
+                else dom.inputs.f2.slide.value = f;
+
+                if (document.activeElement === dom.inputs.m2.slide) dom.inputs.m2.num.value = dom.inputs.m2.slide.value;
+                else dom.inputs.m2.slide.value = m;
+
+                state.objB.force = parseFloat(dom.inputs.f2.num.value);
+                state.objB.mass = parseFloat(dom.inputs.m2.num.value);
+            }
+
+            calculatePhysics();
+            updateUI(true); // static update
+        }
+
+        function calculatePhysics() {
+            // F = ma => a = F/m
+            state.objA.acc = state.objA.force / state.objA.mass;
+            state.objB.acc = state.objB.force / state.objB.mass;
+        }
+
+        function toggleSimulation() {
+            if (state.running) {
+                // Pause
+                state.running = false;
+                dom.btnText.innerText = "繼續模擬";
+                dom.btnStart.classList.remove('bg-red-600', 'hover:bg-red-700', 'shadow-red-200');
+                dom.btnStart.classList.add('bg-blue-600', 'hover:bg-blue-700', 'shadow-blue-200');
+            } else {
+                // Start
+                state.running = true;
+                dom.btnText.innerText = "暫停";
+                dom.btnStart.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'shadow-blue-200');
+                dom.btnStart.classList.add('bg-red-600', 'hover:bg-red-700', 'shadow-red-200');
+                
+                disableInputs(true);
+                requestAnimationFrame(loop);
+            }
+        }
+
+        function resetSimulation() {
+            state.running = false;
+            
+            // Reset kinematic variables
+            state.objA.vel = 0;
+            state.objA.pos = 1; // Reset to offset position
+            state.objB.vel = 0;
+            state.objB.pos = 1;
+            state.time = 0;
+
+            dom.btnText.innerText = "開始模擬";
+            dom.btnStart.classList.remove('bg-red-600', 'hover:bg-red-700', 'shadow-red-200');
+            dom.btnStart.classList.add('bg-blue-600', 'hover:bg-blue-700', 'shadow-blue-200');
+            
+            disableInputs(false);
+            
+            updatePositions();
+        }
+
+        function disableInputs(disabled) {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.disabled = disabled;
+                if(disabled) input.parentElement.parentElement.classList.add('opacity-40', 'pointer-events-none');
+                else input.parentElement.parentElement.classList.remove('opacity-40', 'pointer-events-none');
+            });
+        }
+
+        // --- Visual Update Logic ---
+
+        function updateArrowVisuals(arrowEl, force) {
+            const line = arrowEl.querySelector('div:first-child');
+            // Scale length: 0N = 0px, 100N = 100px (approx)
+            // Min length 10px if force > 0 so it's visible
+            let length = force > 0 ? Math.max(force * 1.5, 20) : 0; 
+            if(force === 0) arrowEl.style.opacity = 0;
+            else arrowEl.style.opacity = 1;
+            
+            line.style.width = `${length}px`;
+        }
+
+        function updateUI(staticOnly = false) {
+            // Labels
+            dom.visuals.labelMassA.innerText = state.objA.mass + "kg";
+            dom.visuals.labelMassB.innerText = state.objB.mass + "kg";
+            
+            dom.visuals.labelForceA.innerText = state.objA.force;
+            dom.visuals.labelForceB.innerText = state.objB.force;
+
+            dom.visuals.textAccA.innerText = state.objA.acc.toFixed(2);
+            dom.visuals.textAccB.innerText = state.objB.acc.toFixed(2);
+            
+            dom.visuals.labelAccATop.innerText = state.objA.acc.toFixed(2);
+            dom.visuals.labelAccBTop.innerText = state.objB.acc.toFixed(2);
+
+            // Arrows (Length based on Force)
+            if (staticOnly) {
+                updateArrowVisuals(dom.visuals.arrowA, state.objA.force);
+                updateArrowVisuals(dom.visuals.arrowB, state.objB.force);
+            }
+        }
+
+        function updatePositions() {
+             // Convert meters to pixels
+             // Note: state.objA.pos is in meters. state.pixelScale is px/m.
+             const xA = state.objA.pos * state.pixelScale;
+             const xB = state.objB.pos * state.pixelScale;
+             
+             dom.visuals.objA.style.transform = `translateX(${xA}px)`;
+             dom.visuals.objB.style.transform = `translateX(${xB}px)`;
+        }
+
+        // --- Physics Loop ---
+
+        function loop() {
+            if (!state.running) return;
+
+            // Physics Update (Euler)
+            state.objA.vel += state.objA.acc * state.dt;
+            state.objB.vel += state.objB.acc * state.dt;
+
+            state.objA.pos += state.objA.vel * state.dt;
+            state.objB.pos += state.objB.vel * state.dt;
+
+            // Wall Check
+            // Calculate max width in meters
+            // 80px is approx width of object (w-20)
+            const trackWidth = dom.trackContainers[0].clientWidth;
+            const maxPosMeters = (trackWidth - 80) / state.pixelScale; 
+
+            if (state.objA.pos > maxPosMeters) {
+                state.objA.pos = maxPosMeters;
+                state.objA.vel = 0;
+            }
+            if (state.objB.pos > maxPosMeters) {
+                state.objB.pos = maxPosMeters;
+                state.objB.vel = 0;
+            }
+
+            updatePositions();
+            
+            // Re-sync arrow visuals if we were doing dynamic forces (not needed here as force is constant during run)
+            
+            requestAnimationFrame(loop);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            init();
+            setTimeout(() => {
+                if(!state.running) toggleModal();
+            }, 600);
+        });
+
+    </script>
+</body>
+</html>
