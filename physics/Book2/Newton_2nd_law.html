@@ -42,21 +42,30 @@
             /* Ensure minimum height for visibility on mobile */
             min-height: 400px;
         }
-        /* Custom Range Slider Styling */
+        /* Custom Range Slider Styling - Enhanced for Touch Devices */
         input[type=range] {
             -webkit-appearance: none; 
             background: transparent; 
+            height: 40px; /* Increase overall height for easier touch */
+            cursor: pointer;
+            vertical-align: middle;
         }
+        
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
+            /* Physical Touch Target Size (40x40px) */
+            height: 40px;
+            width: 40px;
             border-radius: 50%;
-            background: #3b82f6;
+            background: transparent; /* Visual circle handled by gradient below */
             cursor: pointer;
-            margin-top: -6px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            margin-top: -18px; /* (Track 4px - Thumb 40px) / 2 = -18px */
+            
+            /* Visual Styling: Shadow on the "inner" circle only */
+            box-shadow: none; 
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
         }
+
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 4px;
@@ -64,9 +73,18 @@
             background: #cbd5e1;
             border-radius: 2px;
         }
-        /* Color specific thumbs */
-        #input-mass-A::-webkit-slider-thumb, #input-force-A::-webkit-slider-thumb { background: #3b82f6; }
-        #input-mass-B::-webkit-slider-thumb, #input-force-B::-webkit-slider-thumb { background: #f97316; }
+        
+        /* Color specific thumbs using Radial Gradient to simulate 16px visual size within 40px touch zone */
+        /* Circle radius 8px = Diameter 16px */
+        #input-mass-A::-webkit-slider-thumb, 
+        #input-force-A::-webkit-slider-thumb { 
+            background: radial-gradient(circle, #3b82f6 8px, transparent 9px); 
+        }
+        
+        #input-mass-B::-webkit-slider-thumb, 
+        #input-force-B::-webkit-slider-thumb { 
+            background: radial-gradient(circle, #f97316 8px, transparent 9px); 
+        }
     </style>
 </head>
 <body class="p-4 md:p-6 lg:p-8">
@@ -79,7 +97,7 @@
 
     <!-- Main Control Panel (Global Buttons) -->
     <div class="max-w-6xl mx-auto bg-white p-4 rounded-xl shadow-lg mb-4 sticky top-0 z-20 border-b-4 border-blue-500">
-        <div class="flex justify-center gap-2 md:gap-4">
+        <div class="flex justify-center gap-2 md:gap-4 flex-wrap">
             <button onclick="startSimulation()" id="startBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg transition shadow-md flex items-center text-sm md:text-base">
                 <span class="mr-2">▶</span> 開始
             </button>
@@ -89,9 +107,14 @@
             <button onclick="resetSimulation()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg transition shadow-md flex items-center text-sm md:text-base">
                 <span class="mr-2">↺</span> 重置
             </button>
+            
+            <!-- Toggle Acceleration Button -->
+            <button onclick="toggleAcceleration()" id="accBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg transition shadow-md flex items-center text-sm md:text-base ml-2 md:ml-4 border-l-2 border-purple-300">
+             顯示加速度
+            </button>
         </div>
         <div class="text-center mt-2 text-xs md:text-sm text-slate-500">
-            * 提示：請先設定數值，然後按開始。
+            * 提示：請先設定數值，讓學生預測結果，再按「顯示加速度」。
         </div>
     </div>
 
@@ -104,7 +127,7 @@
                 <h2 class="text-lg font-bold text-blue-700">實驗組 A (藍色)</h2>
                 <div class="text-right">
                     <span class="text-xs text-slate-500 block">加速度</span>
-                    <span id="display-acc-A" class="text-xl font-mono font-bold text-blue-600">0.00</span> <span class="text-xs text-slate-500">m/s²</span>
+                    <span id="display-acc-A" class="text-xl font-mono font-bold text-blue-600">?.??</span> <span class="text-xs text-slate-500">m/s²</span>
                 </div>
             </div>
             <div class="space-y-3 bg-blue-50 p-3 rounded-lg">
@@ -131,7 +154,7 @@
                 <h2 class="text-lg font-bold text-orange-700">實驗組 B (橙色)</h2>
                 <div class="text-right">
                     <span class="text-xs text-slate-500 block">加速度</span>
-                    <span id="display-acc-B" class="text-xl font-mono font-bold text-orange-600">0.00</span> <span class="text-xs text-slate-500">m/s²</span>
+                    <span id="display-acc-B" class="text-xl font-mono font-bold text-orange-600">?.??</span> <span class="text-xs text-slate-500">m/s²</span>
                 </div>
             </div>
             <div class="space-y-3 bg-orange-50 p-3 rounded-lg">
@@ -186,7 +209,7 @@
 
                 <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-sm mt-4">
                     <strong>⚠️ 老師提提你：</strong>
-                    <br>觀察上下兩個物體。當<strong>拉力 ($F$) 不變</strong>時，質量較大的物體跑得快還是慢？
+                    <br>目前加速度數值已隱藏。請先計算，再按上方紫色的「顯示加速度」按鈕核對答案。
                 </div>
             </div>
 
@@ -199,6 +222,7 @@
     <script>
         // --- 1. Global Variables & State ---
         let isRunning = false;
+        let showAcceleration = false; // Default to hidden for prediction
         let animationId = null;
         let lastTime = 0;
         
@@ -227,6 +251,7 @@
         const ctx = canvas.getContext('2d');
         const btnStart = document.getElementById('startBtn');
         const btnPause = document.getElementById('pauseBtn');
+        const btnAcc = document.getElementById('accBtn');
 
         // --- 2. Initialization & Resize Handling ---
         function resizeCanvas() {
@@ -250,6 +275,27 @@
 
         function closeModal() {
             document.getElementById('introModal').style.display = 'none';
+        }
+
+        function toggleAcceleration() {
+            showAcceleration = !showAcceleration;
+            
+            // Update button text and style
+            if(showAcceleration) {
+                btnAcc.innerHTML = '<span class="mr-2">👁️</span> 隱藏加速度';
+                btnAcc.classList.remove('bg-purple-500', 'hover:bg-purple-600');
+                btnAcc.classList.add('bg-slate-500', 'hover:bg-slate-600');
+            } else {
+                btnAcc.innerHTML = '<span class="mr-2">👁️</span> 顯示加速度';
+                btnAcc.classList.remove('bg-slate-500', 'hover:bg-slate-600');
+                btnAcc.classList.add('bg-purple-500', 'hover:bg-purple-600');
+            }
+
+            // Update text displays immediately
+            updatePhysics('A');
+            updatePhysics('B');
+            // Redraw canvas to show/hide arrow
+            drawScene();
         }
 
         function updatePhysics(id) {
@@ -280,7 +326,14 @@
             // Update UI Labels
             document.getElementById(`val-mass-${id}`).innerText = m.toFixed(1);
             document.getElementById(`val-force-${id}`).innerText = f.toFixed(1);
-            document.getElementById(`display-acc-${id}`).innerText = objects[id].a.toFixed(2);
+            
+            // Conditionally show acceleration text
+            const accDisplay = document.getElementById(`display-acc-${id}`);
+            if (showAcceleration) {
+                accDisplay.innerText = objects[id].a.toFixed(2);
+            } else {
+                accDisplay.innerText = "?.??";
+            }
 
             if (!isRunning) drawScene();
         }
@@ -440,7 +493,8 @@
             const accLen = obj.a * 20;
             const accY = topY - 30; // 30px above box
             
-            if (Math.abs(obj.a) > 0.01) {
+            // Only draw if acceleration is visible and non-zero
+            if (showAcceleration && Math.abs(obj.a) > 0.01) {
                 drawArrow(ctx, centerX, accY, accLen, '#22c55e', 3);
                 
                 // Label for Acceleration
