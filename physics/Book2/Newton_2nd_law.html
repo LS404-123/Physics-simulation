@@ -34,11 +34,13 @@
         }
         .canvas-container {
             position: relative;
-            background: linear-gradient(to bottom, #ffffff 85%, #e2e8f0 85%);
+            background: linear-gradient(to bottom, #ffffff 95%, #e2e8f0 95%);
             border: 2px solid #cbd5e1;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            /* Ensure minimum height for visibility on mobile */
+            min-height: 400px;
         }
         /* Custom Range Slider Styling */
         input[type=range] {
@@ -62,131 +64,129 @@
             background: #cbd5e1;
             border-radius: 2px;
         }
+        /* Color specific thumbs */
+        #input-mass-A::-webkit-slider-thumb, #input-force-A::-webkit-slider-thumb { background: #3b82f6; }
+        #input-mass-B::-webkit-slider-thumb, #input-force-B::-webkit-slider-thumb { background: #f97316; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-6 lg:p-8">
 
     <!-- Header -->
     <header class="text-center mb-6">
-        <h1 class="text-3xl font-bold text-slate-800">牛頓第二定律互動模擬</h1>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-800">牛頓第二定律互動模擬</h1>
         <p class="text-slate-600 mt-2">香港中學物理科模擬教材</p>
     </header>
 
-    <!-- Main Control Panel -->
-    <div class="max-w-6xl mx-auto bg-white p-4 rounded-xl shadow-lg mb-6 sticky top-0 z-10 border-b-4 border-blue-500">
-        <div class="flex justify-center gap-4">
-            <button onclick="startSimulation()" id="startBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition shadow-md flex items-center">
-                <span class="mr-2">▶</span> 開始運動
+    <!-- Main Control Panel (Global Buttons) -->
+    <div class="max-w-6xl mx-auto bg-white p-4 rounded-xl shadow-lg mb-4 sticky top-0 z-20 border-b-4 border-blue-500">
+        <div class="flex justify-center gap-2 md:gap-4">
+            <button onclick="startSimulation()" id="startBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg transition shadow-md flex items-center text-sm md:text-base">
+                <span class="mr-2">▶</span> 開始
             </button>
-            <button onclick="pauseSimulation()" id="pauseBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition shadow-md flex items-center disabled:opacity-50" disabled>
+            <button onclick="pauseSimulation()" id="pauseBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg transition shadow-md flex items-center disabled:opacity-50 text-sm md:text-base" disabled>
                 <span class="mr-2">⏸</span> 暫停
             </button>
-            <button onclick="resetSimulation()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition shadow-md flex items-center">
-                <span class="mr-2">↺</span> 重置/復原
+            <button onclick="resetSimulation()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg transition shadow-md flex items-center text-sm md:text-base">
+                <span class="mr-2">↺</span> 重置
             </button>
         </div>
-        <div class="text-center mt-2 text-sm text-slate-500">
+        <div class="text-center mt-2 text-xs md:text-sm text-slate-500">
             * 提示：請先設定數值，然後按開始。
         </div>
     </div>
 
-    <!-- Simulation Container -->
-    <div class="max-w-6xl mx-auto space-y-8">
-
-        <!-- Object A Section -->
-        <div class="bg-white p-6 rounded-xl shadow-md border-l-8 border-blue-500">
-            <div class="flex flex-wrap justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-blue-700">實驗組 A (藍色滑塊)</h2>
+    <!-- Parameter Controls (Split View) -->
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        
+        <!-- Controls for A -->
+        <div class="bg-white p-4 rounded-xl shadow-md border-l-8 border-blue-500">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold text-blue-700">實驗組 A (藍色)</h2>
                 <div class="text-right">
-                    <span class="text-sm text-slate-500">實時加速度：</span>
-                    <span id="display-acc-A" class="text-2xl font-mono font-bold text-blue-600">0.00</span> m/s²
+                    <span class="text-xs text-slate-500 block">加速度</span>
+                    <span id="display-acc-A" class="text-xl font-mono font-bold text-blue-600">0.00</span> <span class="text-xs text-slate-500">m/s²</span>
                 </div>
             </div>
-
-            <!-- Controls for A -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 bg-blue-50 p-4 rounded-lg">
+            <div class="space-y-3 bg-blue-50 p-3 rounded-lg">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
-                        質量 ($m_A$)：<span id="val-mass-A" class="font-bold text-blue-600">2.0</span> kg
-                    </label>
+                    <div class="flex justify-between text-sm mb-1">
+                        <label>質量 ($m_A$)</label>
+                        <span id="val-mass-A" class="font-bold text-blue-600">2.0 kg</span>
+                    </div>
                     <input type="range" id="input-mass-A" min="0.5" max="10.0" step="0.5" value="2.0" class="w-full" oninput="updatePhysics('A')">
-                    <div class="flex justify-between text-xs text-slate-400"><span>0.5kg</span><span>10kg</span></div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
-                        施加力 ($F_A$)：<span id="val-force-A" class="font-bold text-red-500">10.0</span> N
-                    </label>
+                    <div class="flex justify-between text-sm mb-1">
+                        <label>施加力 ($F_A$)</label>
+                        <span id="val-force-A" class="font-bold text-red-500">10.0 N</span>
+                    </div>
                     <input type="range" id="input-force-A" min="0" max="50" step="1" value="10" class="w-full" oninput="updatePhysics('A')">
-                    <div class="flex justify-between text-xs text-slate-400"><span>0N</span><span>50N (向右拉)</span></div>
                 </div>
-            </div>
-
-            <!-- Canvas Area A -->
-            <div id="container-A" class="canvas-container h-64 w-full relative">
-                <canvas id="canvas-A" class="w-full h-full block"></canvas>
             </div>
         </div>
 
-        <!-- Object B Section -->
-        <div class="bg-white p-6 rounded-xl shadow-md border-l-8 border-orange-500">
-            <div class="flex flex-wrap justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-orange-700">實驗組 B (橙色滑塊)</h2>
+        <!-- Controls for B -->
+        <div class="bg-white p-4 rounded-xl shadow-md border-l-8 border-orange-500">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold text-orange-700">實驗組 B (橙色)</h2>
                 <div class="text-right">
-                    <span class="text-sm text-slate-500">實時加速度：</span>
-                    <span id="display-acc-B" class="text-2xl font-mono font-bold text-orange-600">0.00</span> m/s²
+                    <span class="text-xs text-slate-500 block">加速度</span>
+                    <span id="display-acc-B" class="text-xl font-mono font-bold text-orange-600">0.00</span> <span class="text-xs text-slate-500">m/s²</span>
                 </div>
             </div>
-
-            <!-- Controls for B -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 bg-orange-50 p-4 rounded-lg">
+            <div class="space-y-3 bg-orange-50 p-3 rounded-lg">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
-                        質量 ($m_B$)：<span id="val-mass-B" class="font-bold text-orange-600">5.0</span> kg
-                    </label>
+                    <div class="flex justify-between text-sm mb-1">
+                        <label>質量 ($m_B$)</label>
+                        <span id="val-mass-B" class="font-bold text-orange-600">5.0 kg</span>
+                    </div>
                     <input type="range" id="input-mass-B" min="0.5" max="10.0" step="0.5" value="5.0" class="w-full" oninput="updatePhysics('B')">
-                    <div class="flex justify-between text-xs text-slate-400"><span>0.5kg</span><span>10kg</span></div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
-                        施加力 ($F_B$)：<span id="val-force-B" class="font-bold text-red-500">10.0</span> N
-                    </label>
+                    <div class="flex justify-between text-sm mb-1">
+                        <label>施加力 ($F_B$)</label>
+                        <span id="val-force-B" class="font-bold text-red-500">10.0 N</span>
+                    </div>
                     <input type="range" id="input-force-B" min="0" max="50" step="1" value="10" class="w-full" oninput="updatePhysics('B')">
-                    <div class="flex justify-between text-xs text-slate-400"><span>0N</span><span>50N (向右拉)</span></div>
                 </div>
-            </div>
-
-            <!-- Canvas Area B -->
-            <div id="container-B" class="canvas-container h-64 w-full relative">
-                <canvas id="canvas-B" class="w-full h-full block"></canvas>
             </div>
         </div>
+    </div>
 
+    <!-- Unified Canvas Area -->
+    <div class="max-w-6xl mx-auto">
+        <div id="canvas-wrapper" class="canvas-container w-full h-[60vh] md:h-[500px] relative bg-white">
+            <canvas id="simulationCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- Labels Overlay -->
+            <div class="absolute top-2 left-4 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold opacity-80 pointer-events-none">軌道 A</div>
+            <div class="absolute top-[52%] left-4 bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold opacity-80 pointer-events-none">軌道 B</div>
+        </div>
     </div>
 
     <!-- Instruction Modal (Pop-up) -->
     <div id="introModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 md:p-8 relative animate-fade-in overflow-y-auto max-h-[90vh]">
             <div class="absolute top-4 right-4 cursor-pointer text-slate-400 hover:text-slate-600 text-2xl" onclick="closeModal()">×</div>
             
             <h2 class="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">歡迎來到物理實驗室：牛頓第二定律</h2>
             
             <div class="space-y-4 text-slate-700">
                 <p>各位同學，這個實驗是為了驗證這條著名的公式：</p>
-                <div class="text-center text-3xl my-4 py-2 bg-slate-100 rounded-lg">
+                <div class="text-center text-2xl md:text-3xl my-4 py-2 bg-slate-100 rounded-lg">
                     $$ \vec{F}_{net} = m \vec{a} $$
                 </div>
                 
                 <h3 class="font-bold text-lg text-blue-600">🧪 實驗筆記：</h3>
-                <ul class="list-disc pl-5 space-y-2">
-                    <li><strong>力 ($F$)</strong>：推動物體的外部力量，單位是牛頓 (N)。<span class="text-red-500 font-bold">紅色箭頭 (拉力)</span></li>
-                    <li><strong>質量 ($m$)</strong>：物體本身的慣性大小，單位是千克 (kg)。</li>
-                    <li><strong>加速度 ($a$)</strong>：速度改變的快慢，單位是 $m/s^2$。<span class="text-green-500 font-bold">綠色箭頭</span></li>
+                <ul class="list-disc pl-5 space-y-2 text-sm md:text-base">
+                    <li><strong>力 ($F$)</strong>：推動物體的外部力量 (N)。<span class="text-red-500 font-bold">紅色箭頭</span></li>
+                    <li><strong>質量 ($m$)</strong>：物體本身的慣性 (kg)。</li>
+                    <li><strong>加速度 ($a$)</strong>：速度改變的快慢 ($m/s^2$)。<span class="text-green-500 font-bold">綠色箭頭</span></li>
                 </ul>
 
                 <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-sm mt-4">
                     <strong>⚠️ 老師提提你：</strong>
-                    <br>觀察當<strong>拉力 ($F$) 不變</strong>時，增加質量會對加速度有什麼影響？
-                    <br>試試將力設定為 0，看看物體會不會動？
+                    <br>觀察上下兩個物體。當<strong>拉力 ($F$) 不變</strong>時，質量較大的物體跑得快還是慢？
                 </div>
             </div>
 
@@ -223,29 +223,25 @@
         };
 
         // DOM Elements
-        const canvasA = document.getElementById('canvas-A');
-        const ctxA = canvasA.getContext('2d');
-        const canvasB = document.getElementById('canvas-B');
-        const ctxB = canvasB.getContext('2d');
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
         const btnStart = document.getElementById('startBtn');
         const btnPause = document.getElementById('pauseBtn');
 
         // --- 2. Initialization & Resize Handling ---
-        function resizeCanvases() {
+        function resizeCanvas() {
             // Set canvas resolution to match display size for crisp rendering
-            [canvasA, canvasB].forEach(canvas => {
-                const container = canvas.parentElement;
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
-            });
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
             drawScene(); // Redraw immediately
         }
 
-        window.addEventListener('resize', resizeCanvases);
+        window.addEventListener('resize', resizeCanvas);
         
         // Initial setup
         window.onload = function() {
-            resizeCanvases();
+            resizeCanvas();
             updatePhysics('A');
             updatePhysics('B');
         };
@@ -342,7 +338,7 @@
                 obj.x += obj.v * dt * PIXELS_PER_METER;
 
                 // Boundary Checks (Stop at walls)
-                const canvasWidth = id === 'A' ? canvasA.width : canvasB.width;
+                const canvasWidth = canvas.width;
                 const boxWidth = 80; // Fixed size
                 
                 // Right Wall
@@ -364,16 +360,36 @@
         // --- 5. Drawing Logic ---
 
         function drawScene() {
-            drawObject(ctxA, objects['A'], canvasA.width, canvasA.height);
-            drawObject(ctxB, objects['B'], canvasB.width, canvasB.height);
-        }
+            const width = canvas.width;
+            const height = canvas.height;
+            const halfHeight = height / 2;
 
-        function drawObject(ctx, obj, width, height) {
-            // Clear
             ctx.clearRect(0, 0, width, height);
 
+            // --- Draw Track A (Top Half) ---
+            // Y-offset is 0, track height is halfHeight
+            drawTrack(ctx, objects['A'], width, halfHeight, 0);
+
+            // --- Separator Line ---
+            ctx.beginPath();
+            ctx.moveTo(0, halfHeight);
+            ctx.lineTo(width, halfHeight);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([10, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // --- Draw Track B (Bottom Half) ---
+            // Y-offset is halfHeight
+            drawTrack(ctx, objects['B'], width, halfHeight, halfHeight);
+        }
+
+        function drawTrack(ctx, obj, width, trackHeight, yOffset) {
+            // Floor Y position relative to this track's area
+            const floorY = yOffset + trackHeight * 0.85;
+
             // 1. Draw Floor
-            const floorY = height * 0.85;
             ctx.beginPath();
             ctx.moveTo(0, floorY);
             ctx.lineTo(width, floorY);
@@ -454,7 +470,7 @@
             if (Math.abs(obj.f) > 0.1) {
                 drawArrow(ctx, forceStartX, forceY, forceLen, '#ef4444', 4);
                 
-                // Label for Force (Placed below the arrow to avoid collision with Acc)
+                // Label for Force
                 ctx.fillStyle = '#b91c1c'; // Darker red text
                 ctx.font = 'bold 14px "Noto Sans TC"';
                 ctx.textAlign = 'left'; 
@@ -478,8 +494,7 @@
             ctx.lineWidth = width;
             ctx.stroke();
 
-            // Arrow head (always points right since Force is positive 0-50N)
-            // But we keep logic generic just in case
+            // Arrow head
             const dir = length >= 0 ? 1 : -1;
             
             ctx.beginPath();
