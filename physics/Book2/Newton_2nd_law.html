@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>牛頓第二定律互動模擬 (F=ma)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,8 +15,10 @@
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #f8fafc;
-            overflow-x: hidden;
-            /* Prevent bounce scrolling on iPad */
+            /* Use dvh for mobile browsers to handle address bars correctly */
+            height: 100vh;
+            height: 100dvh; 
+            overflow: hidden; /* Prevent body scroll, use main for scrolling */
             overscroll-behavior: none; 
         }
         .track-container {
@@ -24,32 +26,41 @@
             border-bottom: 2px solid #94a3b8;
         }
         
-        /* --- iPad Optimized Sliders --- */
+        /* --- Mobile/iPad Optimized Sliders --- */
         input[type=range] {
             -webkit-appearance: none; 
             background: transparent;
-            padding: 10px 0; /* Add touch padding area */
-            cursor: pointer;
-            touch-action: none; /* Prevent scroll while dragging */
+            padding: 15px 0; /* Larger touch hit area */
+            cursor: grab;
+            touch-action: pan-y; /* Allow vertical scroll but capture horizontal drag */
+            display: block;
+            width: 100%;
         }
         
-        /* Thumb (The circle handle) - Made Larger for Touch */
+        input[type=range]:active {
+            cursor: grabbing;
+        }
+        
+        /* Thumb (The circle handle) - Even Larger for ease of use */
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 28px; /* Increased from 18px */
-            width: 28px;  /* Increased from 18px */
+            height: 34px; /* Big touch target */
+            width: 34px;
             border-radius: 50%;
             background: #3b82f6;
-            cursor: pointer;
-            margin-top: -10px; /* Center on track (height 28 - track 8)/2 */
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            border: 3px solid white;
+            cursor: grab;
+            /* Center on track: (ThumbHeight 34 - TrackHeight 8) / 2 = 13 */
+            margin-top: -13px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 4px solid white;
+            position: relative;
+            z-index: 10;
         }
         
-        /* Track (The bar) - Made Thicker */
+        /* Track (The bar) */
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
-            height: 8px; /* Increased from 4px */
+            height: 8px;
             cursor: pointer;
             background: #cbd5e1;
             border-radius: 4px;
@@ -83,73 +94,79 @@
         .physics-obj {
             will-change: transform;
         }
+        
+        /* Safe area padding for newer iPhones/iPads with home bar */
+        .safe-pb {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
     </style>
 </head>
-<body class="text-slate-700 h-screen flex flex-col">
+<body class="text-slate-700 flex flex-col w-full">
 
     <!-- Header -->
-    <header class="bg-white border-b border-slate-200 p-4 shadow-sm flex justify-between items-center z-10 shrink-0">
+    <header class="bg-white border-b border-slate-200 p-3 md:p-4 shadow-sm flex justify-between items-center z-10 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+            <div class="bg-blue-600 text-white p-1.5 md:p-2 rounded-lg shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
             </div>
             <div>
-                <h1 class="text-xl font-bold tracking-tight text-slate-800">物理實驗室：牛頓第二定律</h1>
-                <p class="text-xs text-slate-500">互動教學模擬器 v1.2</p>
+                <h1 class="text-lg md:text-xl font-bold tracking-tight text-slate-800">物理實驗室：牛頓第二定律</h1>
+                <p class="text-xs text-slate-500 hidden md:block">互動教學模擬器 v1.3 (Mobile Optimized)</p>
             </div>
         </div>
-        <button onclick="toggleModal()" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-100 transition flex items-center gap-2 border border-blue-200">
+        <button onclick="toggleModal()" class="bg-blue-50 text-blue-600 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold hover:bg-blue-100 transition flex items-center gap-2 border border-blue-200 text-sm md:text-base">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
             </svg>
-            原理講解
+            <span class="hidden md:inline">原理講解</span>
+            <span class="md:hidden">講解</span>
         </button>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 max-w-6xl mx-auto w-full flex flex-col gap-6">
+    <main class="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-6 max-w-6xl mx-auto w-full flex flex-col gap-4 md:gap-6">
 
         <!-- Object A Section -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
             <!-- Header & Stats -->
-            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50">
-                <div class="flex items-center gap-3">
-                    <span class="bg-blue-500 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold shadow-sm">A</span>
-                    <h2 class="font-bold text-slate-700">實驗組 A</h2>
+            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <span class="bg-blue-500 text-white w-6 h-6 md:w-8 md:h-8 rounded-lg flex items-center justify-center font-bold shadow-sm text-sm md:text-base">A</span>
+                    <h2 class="font-bold text-slate-700 text-sm md:text-base">實驗組 A</h2>
                 </div>
-                <div class="text-lg font-mono text-blue-600 font-bold bg-blue-50 px-4 py-1 rounded-full border border-blue-100">
+                <div class="text-base md:text-lg font-mono text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                     \( a = \) <span id="text-acc-a">0.00</span> \( \text{m/s}^2 \)
                 </div>
             </div>
 
             <!-- Controls -->
-            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 border-b border-slate-100">
+            <div class="px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 border-b border-slate-100">
                 <!-- Force Control -->
                 <div>
-                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-3">
+                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
                         拉力 (\(F\))
-                        <span class="text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100"><input type="number" id="input-f1" value="50" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('A')"> N</span>
+                        <span class="text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"><input type="number" id="input-f1" value="50" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('A')"> N</span>
                     </label>
-                    <div class="relative h-10 flex items-center">
+                    <div class="relative h-12 flex items-center">
                         <input type="range" id="slider-f1" min="0" max="100" value="50" step="1" class="w-full accent-blue-500" oninput="updateInputs('A')">
                     </div>
                 </div>
                 <!-- Mass Control -->
                 <div>
-                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-3">
+                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
                         質量 (\(m\))
-                        <span class="text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100"><input type="number" id="input-m1" value="10" min="1" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('A')"> kg</span>
+                        <span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100"><input type="number" id="input-m1" value="10" min="1" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('A')"> kg</span>
                     </label>
-                    <div class="relative h-10 flex items-center">
+                    <div class="relative h-12 flex items-center">
                         <input type="range" id="slider-m1" min="1" max="50" value="10" step="1" class="w-full accent-emerald-500" oninput="updateInputs('A')">
                     </div>
                 </div>
             </div>
 
-            <!-- Track A -->
-            <div class="relative h-44 w-full track-container overflow-hidden" id="track-container-a">
+            <!-- Track A (Reduced height for mobile) -->
+            <div class="relative h-40 md:h-44 w-full track-container overflow-hidden" id="track-container-a">
                 <!-- Ruler -->
                 <div class="absolute bottom-0 w-full h-8 flex select-none pointer-events-none ruler-marks">
                     <!-- JS generated ticks -->
@@ -160,8 +177,8 @@
                     
                     <!-- Info Display (Acceleration) Above Object -->
                     <div class="mb-2 text-center transition-opacity duration-200">
-                        <span class="text-xs font-bold text-slate-400 block mb-1">加速度方向</span>
-                        <div class="text-xs font-mono bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm">
+                        <span class="text-[10px] md:text-xs font-bold text-slate-400 block mb-1">加速度方向</span>
+                        <div class="text-[10px] md:text-xs font-mono bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm">
                             <span id="label-acc-a-top">5.00</span> m/s²
                         </div>
                     </div>
@@ -169,7 +186,7 @@
                     <!-- The Box & Force Arrow Container -->
                     <div class="relative flex items-center">
                         <!-- The Box -->
-                        <div id="box-a" class="w-20 h-20 bg-blue-500 rounded-lg shadow-md flex items-center justify-center text-white font-bold text-xl relative z-20 select-none">
+                        <div id="box-a" class="w-16 h-16 md:w-20 md:h-20 bg-blue-500 rounded-lg shadow-md flex items-center justify-center text-white font-bold text-lg md:text-xl relative z-20 select-none">
                             <span id="label-mass-a">10kg</span>
                         </div>
 
@@ -189,44 +206,44 @@
         </section>
 
         <!-- Object B Section -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
             <!-- Header & Stats -->
-            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50">
-                <div class="flex items-center gap-3">
-                    <span class="bg-red-500 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold shadow-sm">B</span>
-                    <h2 class="font-bold text-slate-700">實驗組 B</h2>
+            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <span class="bg-red-500 text-white w-6 h-6 md:w-8 md:h-8 rounded-lg flex items-center justify-center font-bold shadow-sm text-sm md:text-base">B</span>
+                    <h2 class="font-bold text-slate-700 text-sm md:text-base">實驗組 B</h2>
                 </div>
-                <div class="text-lg font-mono text-red-600 font-bold bg-red-50 px-4 py-1 rounded-full border border-red-100">
+                <div class="text-base md:text-lg font-mono text-red-600 font-bold bg-red-50 px-3 py-1 rounded-full border border-red-100">
                     \( a = \) <span id="text-acc-b">0.00</span> \( \text{m/s}^2 \)
                 </div>
             </div>
 
             <!-- Controls -->
-            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 border-b border-slate-100">
+            <div class="px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 border-b border-slate-100">
                 <!-- Force Control -->
                 <div>
-                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-3">
+                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
                         拉力 (\(F\))
-                        <span class="text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100"><input type="number" id="input-f2" value="100" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('B')"> N</span>
+                        <span class="text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100"><input type="number" id="input-f2" value="100" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('B')"> N</span>
                     </label>
-                    <div class="relative h-10 flex items-center">
+                    <div class="relative h-12 flex items-center">
                         <input type="range" id="slider-f2" min="0" max="100" value="100" step="1" class="w-full accent-red-500" oninput="updateInputs('B')">
                     </div>
                 </div>
                 <!-- Mass Control -->
                 <div>
-                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-3">
+                    <label class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
                         質量 (\(m\))
-                        <span class="text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100"><input type="number" id="input-m2" value="10" min="1" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('B')"> kg</span>
+                        <span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100"><input type="number" id="input-m2" value="10" min="1" class="w-16 text-right bg-transparent focus:outline-none font-bold" onchange="updateInputs('B')"> kg</span>
                     </label>
-                    <div class="relative h-10 flex items-center">
+                    <div class="relative h-12 flex items-center">
                         <input type="range" id="slider-m2" min="1" max="50" value="10" step="1" class="w-full accent-emerald-500" oninput="updateInputs('B')">
                     </div>
                 </div>
             </div>
 
             <!-- Track B -->
-            <div class="relative h-44 w-full track-container overflow-hidden" id="track-container-b">
+            <div class="relative h-40 md:h-44 w-full track-container overflow-hidden" id="track-container-b">
                 <!-- Ruler -->
                 <div class="absolute bottom-0 w-full h-8 flex select-none pointer-events-none ruler-marks">
                     <!-- JS generated ticks -->
@@ -237,8 +254,8 @@
                     
                     <!-- Info Display (Acceleration) Above Object -->
                     <div class="mb-2 text-center transition-opacity duration-200">
-                        <span class="text-xs font-bold text-slate-400 block mb-1">加速度方向</span>
-                        <div class="text-xs font-mono bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm">
+                        <span class="text-[10px] md:text-xs font-bold text-slate-400 block mb-1">加速度方向</span>
+                        <div class="text-[10px] md:text-xs font-mono bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm">
                             <span id="label-acc-b-top">10.00</span> m/s²
                         </div>
                     </div>
@@ -246,7 +263,7 @@
                     <!-- The Box & Force Arrow Container -->
                     <div class="relative flex items-center">
                         <!-- The Box -->
-                        <div id="box-b" class="w-20 h-20 bg-red-500 rounded-lg shadow-md flex items-center justify-center text-white font-bold text-xl relative z-20 select-none">
+                        <div id="box-b" class="w-16 h-16 md:w-20 md:h-20 bg-red-500 rounded-lg shadow-md flex items-center justify-center text-white font-bold text-lg md:text-xl relative z-20 select-none">
                             <span id="label-mass-b">10kg</span>
                         </div>
 
@@ -271,20 +288,20 @@
     </main>
 
     <!-- Global Controls -->
-    <div class="bg-white p-4 border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 shrink-0 safe-area-bottom">
-        <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-4 items-center justify-between">
+    <div class="bg-white p-4 border-t border-slate-200 shadow-[0_-4px_10px_rgba(0,0,0,0.1)] z-20 shrink-0 safe-pb">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-3 items-center justify-between">
             <div class="text-sm text-slate-500 hidden md:block italic">
                 <p>提示：嘗試設定相同的力，但不同的質量，觀察加速度的變化。</p>
             </div>
             
             <div class="flex gap-3 w-full md:w-auto">
-                <button onclick="resetSimulation()" class="flex-1 md:flex-none px-6 py-4 md:py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition flex items-center justify-center gap-2 active:bg-slate-300">
+                <button onclick="resetSimulation()" class="flex-1 md:flex-none px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition flex items-center justify-center gap-2 active:bg-slate-300 touch-manipulation">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                     </svg>
                     重置
                 </button>
-                <button id="btn-start" onclick="toggleSimulation()" class="flex-1 md:flex-none px-8 py-4 md:py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-blue-200 transition transform active:scale-[0.98] flex items-center justify-center gap-2">
+                <button id="btn-start" onclick="toggleSimulation()" class="flex-1 md:flex-none px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-blue-200 transition transform active:scale-[0.98] flex items-center justify-center gap-2 touch-manipulation">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
                     </svg>
