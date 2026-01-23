@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>升降機視重模擬實驗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+        /* 隱藏滾動條但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Range Slider Styling */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #2563eb; cursor: pointer; margin-top: -8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: background 0.2s;
+        }
+        input[type=range]:disabled::-webkit-slider-thumb {
+            background: #94a3b8; cursor: not-allowed;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; cursor: pointer; background: #cbd5e1; border-radius: 10px;
+        }
+        input[type=range]:disabled::-webkit-slider-runnable-track {
+            cursor: not-allowed; opacity: 0.6;
+        }
+
+        /* LaTeX 模擬樣式 */
+        .latex { font-family: "Times New Roman", Times, serif; font-style: italic; }
+        .latex-num { font-family: "Times New Roman", Times, serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- 頂部導航 -->
+    <header class="bg-slate-800 text-white p-3 shadow-lg z-20 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 px-2 py-1 rounded text-sm font-bold tracking-widest">DSE 物理</div>
+            <h1 class="text-xl font-bold tracking-wide">升降機與視重</h1>
+        </div>
+        <button id="btnOpenInfo" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-full transition-all text-sm font-medium shadow-md hover:shadow-lg">
+            <i data-lucide="info" class="w-4 h-4"></i> 原理講解
+        </button>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-1 flex flex-col gap-4 p-4 overflow-hidden">
+        
+        <!-- 上半部分：視覺化區域 (FBD + 圖表) -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
+            
+            <!-- 1. 受力分析圖 (FBD) - 左側 -->
+            <section class="bg-white rounded-2xl shadow border border-slate-200 flex flex-col relative overflow-hidden">
+                <!-- 標題區 -->
+                <div class="px-4 py-3 bg-white/90 backdrop-blur border-b border-slate-100 z-10 shrink-0">
+                    <h2 class="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                        <i data-lucide="arrow-up" class="w-4 h-4 text-green-600"></i> 受力分析圖
+                    </h2>
+                </div>
+                
+                <!-- Canvas 容器 (自動填滿剩餘高度) -->
+                <div class="flex-1 relative bg-slate-50 overflow-hidden m-2 rounded-xl border border-slate-100">
+                    <canvas id="simCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <!-- 數據顯示面板 (底部懸浮) -->
+                <div class="px-4 pb-3 pt-1 grid grid-cols-2 gap-3 shrink-0">
+                    <div class="bg-red-50 p-2 rounded-xl border border-red-100 flex flex-col items-center">
+                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">真實重量 (<span class="latex">W</span>)</span>
+                        <span class="text-xl font-bold text-red-600 latex-num" id="val-weight">--</span>
+                    </div>
+                    <div class="bg-green-50 p-2 rounded-xl border border-green-100 flex flex-col items-center shadow-sm ring-2 ring-green-100 ring-opacity-50">
+                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">視重 / 讀數 (<span class="latex">R</span>)</span>
+                        <span class="text-xl font-bold text-green-600 latex-num" id="val-normal">--</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. 運動圖像 - 右側 -->
+            <section class="bg-white rounded-2xl shadow border border-slate-200 flex flex-col overflow-hidden">
+                <!-- 標題區 (獨立區塊，避免重疊) -->
+                <div class="px-4 py-3 bg-white border-b border-slate-100 shrink-0">
+                    <h2 class="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                        <i data-lucide="activity" class="w-4 h-4 text-orange-500"></i> 運動圖像 (<span class="latex">v-t</span> & <span class="latex">a-t</span>)
+                    </h2>
+                </div>
+                <!-- Canvas 容器 -->
+                <div class="flex-1 relative bg-white w-full h-full">
+                    <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- 下半部分：控制與計算 (底部固定高度) -->
+        <div class="shrink-0 grid grid-cols-1 lg:grid-cols-2 gap-4 h-auto">
+            
+            <!-- 3. 實驗控制 -->
+            <section class="bg-white rounded-2xl shadow border border-slate-200 p-4 flex flex-col justify-center">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base font-bold flex items-center gap-2 text-slate-700">
+                        <i data-lucide="sliders" class="w-4 h-4"></i> 實驗控制
+                    </h2>
+                    <p id="lock-msg" class="text-xs text-amber-600 opacity-0 transition-opacity flex items-center gap-1 font-bold">
+                        <i data-lucide="lock" class="w-3 h-3"></i> 鎖定中
+                    </p>
+                </div>
+                
+                <div class="flex gap-4 items-center">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-end mb-1">
+                            <label class="text-sm font-medium text-slate-600">加速度 (<span class="latex">a</span>)</label>
+                            <span class="font-mono text-lg font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded" id="val-acc">0.0 m/s²</span>
+                        </div>
+                        <input type="range" id="accSlider" min="-5" max="5" step="0.5" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer disabled:opacity-50">
+                        <div class="flex justify-between text-[10px] text-slate-400 font-medium mt-1">
+                            <span>向下 (-5)</span>
+                            <span>0</span>
+                            <span>向上 (+5)</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 shrink-0 w-32">
+                        <button id="btnToggle" class="py-2 rounded-xl font-bold text-white shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-sm">
+                            <i data-lucide="play" class="w-4 h-4"></i> 開始模擬
+                        </button>
+                        <button id="btnReset" class="py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. 物理計算 -->
+            <section class="bg-white rounded-2xl shadow border border-slate-200 p-4 flex flex-col justify-center">
+                <h3 class="font-bold text-slate-700 border-b pb-2 mb-2 flex items-center gap-2 text-sm">
+                    <i data-lucide="calculator" class="w-4 h-4"></i> 物理計算過程
+                </h3>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm items-center h-full">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center h-full flex flex-col justify-center">
+                        <p class="text-slate-500 mb-1 text-xs">牛頓第二定律 (<span class="latex">F</span><sub>net</sub> = <span class="latex">ma</span>)</p>
+                        <p class="latex-num text-xl font-medium text-slate-800">
+                            <span class="latex">R</span> - <span class="latex">mg</span> = <span class="latex">ma</span>
+                        </p>
+                    </div>
+
+                    <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-blue-900 leading-relaxed h-full flex flex-col justify-center">
+                        <p class="font-serif text-base">
+                            <span class="latex">R</span> = 50(9.81 + <span id="calc-a" class="font-bold">0</span>)<br>
+                            <span class="latex">R</span> = <span id="calc-result" class="font-bold text-blue-700 text-xl">491</span> N
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- 彈出視窗 (Modal) -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 opacity-100">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 transform transition-all scale-100">
+            <div class="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">關於表觀重量 (Apparent Weight)</h2>
+                    <p class="text-slate-500 mt-1">為什麼在電梯裡我們會覺得變重或變輕？</p>
+                </div>
+                <button id="btnCloseInfo" class="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-6 text-slate-600 leading-relaxed text-base">
+                <p>
+                    同學好！當我們站在電子秤上時，電子秤量度的其實不是我們的「重量」(<span class="latex">W</span>=<span class="latex">mg</span>)，而是電子秤支撐我們的<b>法向反作用力 (<span class="latex">R</span>)</b>。這個力就是我們感覺到的「視重」。
+                </p>
+                
+                <div class="bg-blue-50 p-5 rounded-xl border-l-4 border-blue-500 shadow-sm">
+                    <h3 class="font-bold text-blue-800 mb-3 text-lg">重要概念總結：</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-start gap-2">
+                            <i data-lucide="minus" class="w-5 h-5 mt-0.5 text-blue-400"></i>
+                            <span><b>靜止 / 勻速 (<span class="latex">a</span>=0)</b>：<span class="latex">R</span> = <span class="latex">mg</span>，感覺正常。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i data-lucide="arrow-up" class="w-5 h-5 mt-0.5 text-green-500"></i>
+                            <span><b>向上加速 (<span class="latex">a</span> &gt; 0)</b>：<span class="latex">R</span> &gt; <span class="latex">mg</span>，你會覺得<b>變重</b>了。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i data-lucide="arrow-down" class="w-5 h-5 mt-0.5 text-orange-500"></i>
+                            <span><b>向下加速 (<span class="latex">a</span> &lt; 0)</b>：<span class="latex">R</span> &lt; <span class="latex">mg</span>，你會覺得<b>變輕</b>了。</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="flex gap-4 items-center bg-slate-50 p-4 rounded-lg text-sm text-slate-500">
+                    <i data-lucide="eye" class="w-5 h-5"></i>
+                    觀察重點：設定好加速度後按下開始，留意綠色箭頭 (<span class="latex">R</span>) 的長度變化及圖像斜率。
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button id="btnStartInfo" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5">
+                    明白了，開始實驗！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 腳本邏輯 -->
+    <script>
+    (function() { // 使用 IIFE 包裹代碼，避免全局變量衝突
+        
+        // --- 常數 ---
+        const G = 9.81;
+        const MASS = 50; // kg
+        const TIME_STEP = 0.02; // 50fps
+        const MAX_TIME_WINDOW = 20;
+
+        // --- 狀態 ---
+        let state = {
+            isRunning: false,
+            time: 0,
+            acc: 0,
+            vel: 0,
+            disp: 0,
+            history: [] // {t, v, a}
+        };
+
+        let animationId = null;
+
+        // --- DOM 元素 ---
+        const els = {
+            simCanvas: document.getElementById('simCanvas'),
+            graphCanvas: document.getElementById('graphCanvas'),
+            accSlider: document.getElementById('accSlider'),
+            valAcc: document.getElementById('val-acc'),
+            valWeight: document.getElementById('val-weight'),
+            valNormal: document.getElementById('val-normal'),
+            btnToggle: document.getElementById('btnToggle'),
+            btnReset: document.getElementById('btnReset'),
+            modal: document.getElementById('infoModal'),
+            calcA: document.getElementById('calc-a'),
+            calcResult: document.getElementById('calc-result'),
+            btnOpenInfo: document.getElementById('btnOpenInfo'),
+            btnCloseInfo: document.getElementById('btnCloseInfo'),
+            btnStartInfo: document.getElementById('btnStartInfo'),
+            lockMsg: document.getElementById('lock-msg')
+        };
+
+        // --- 模態框控制函數 ---
+        const toggleModal = (show) => {
+            if (show) {
+                // 顯示：移除隱藏屬性，確保添加顯示屬性
+                els.modal.classList.remove('pointer-events-none', 'opacity-0');
+                els.modal.classList.add('opacity-100');
+            } else {
+                // 隱藏：移除顯示屬性，確保添加隱藏屬性
+                els.modal.classList.remove('opacity-100');
+                els.modal.classList.add('pointer-events-none', 'opacity-0');
+            }
+        };
+
+        // --- 初始化 Canvas ---
+        function resizeCanvases() {
+            if (!els.simCanvas || !els.graphCanvas) return;
+            // 讓 canvas 解析度匹配顯示大小 (Retina 支援)
+            const setupCanvas = (canvas) => {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                // 處理 hidden 元素大小為 0 的問題
+                if (rect.width === 0 || rect.height === 0) return;
+                
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+            };
+            setupCanvas(els.simCanvas);
+            setupCanvas(els.graphCanvas);
+            drawFrame(); // 重繪
+        }
+        window.addEventListener('resize', resizeCanvases);
+        // 確保初始載入大小正確
+        setTimeout(resizeCanvases, 100);
+
+        // --- 核心邏輯 ---
+
+        function updatePhysics() {
+            if (!state.isRunning) return;
+
+            state.time += TIME_STEP;
+            
+            // v = u + at
+            state.vel += state.acc * TIME_STEP;
+            
+            // s = ut + 0.5at^2 (迭代更新)
+            state.disp += state.vel * TIME_STEP;
+
+            // 記錄數據
+            state.history.push({
+                t: state.time,
+                v: state.vel,
+                a: state.acc
+            });
+
+            // 保持數據窗口
+            if (state.history.length > 3000) { 
+                state.history.shift(); 
+            }
+        }
+
+        function drawArrow(ctx, fromX, fromY, toX, toY, color, label, value) {
+            const headLen = 12;
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const len = Math.sqrt(dx*dx + dy*dy);
+
+            if (len < 2) return; // 太短不畫
+
+            const angle = Math.atan2(dy, dx);
+
+            // 畫箭身
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = color;
+            // 預留箭頭長度
+            const endX = toX - headLen * Math.cos(angle);
+            const endY = toY - headLen * Math.sin(angle);
+            
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // 畫箭頭 (三角形)
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI/6), toY - headLen * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI/6), toY - headLen * Math.sin(angle + Math.PI/6));
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            // 標籤
+            if (label) {
+                // 使用 serif italic 字體模擬 LaTeX (Times New Roman)
+                ctx.font = "italic bold 20px 'Times New Roman', serif";
+                ctx.fillStyle = color;
+                // 數值顯示已移除，只顯示標籤
+                ctx.fillText(label, toX + 10, toY + 5);
+            }
+        }
+
+        function drawSim() {
+            const ctx = els.simCanvas.getContext('2d');
+            const w = els.simCanvas.width;
+            const h = els.simCanvas.height;
+            
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. 畫背景線 (模擬移動)
+            const scrollY = (state.disp * 50) % 50;
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 2;
+            for (let y = -50; y < h + 50; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y + scrollY);
+                ctx.lineTo(w, y + scrollY);
+                ctx.stroke();
+            }
+
+            // 2. 升降機箱體
+            const boxW = Math.min(220, w * 0.8);
+            const boxH = Math.min(340, h * 0.9);
+            const boxX = (w - boxW) / 2;
+            const boxY = (h - boxH) / 2;
+
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "rgba(0,0,0,0.1)";
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillRect(boxX, boxY, boxW, boxH);
+            ctx.shadowBlur = 0;
+            
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 6;
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+            // 3. 電子秤
+            const scaleW = 120;
+            const scaleH = 20;
+            const scaleX = boxX + (boxW - scaleW)/2;
+            const scaleY = boxY + boxH - scaleH - 5;
+            
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(scaleX, scaleY, scaleW, scaleH);
+            
+            // 讀數顯示
+            const normalForce = MASS * (G + state.acc);
+            ctx.fillStyle = "#1e293b"; 
+            ctx.font = "bold 16px monospace";
+            ctx.textAlign = "center";
+            const readingText = `讀數: ${Math.round(normalForce)} N`;
+            ctx.fillText(readingText, w/2, scaleY + 40);
+
+            // 4. 物體 (人)
+            const personW = 60;
+            const personH = 120;
+            const personX = (w - personW) / 2;
+            const personY = scaleY - personH;
+
+            ctx.fillStyle = "#3b82f6";
+            ctx.fillRect(personX, personY, personW, personH);
+
+            // 5. 力箭頭
+            const cx = personX + personW / 2;
+            const cy = personY + personH / 2;
+            const weight = MASS * G;
+            
+            const forceScale = 0.12;
+
+            // W (重力)：位置改為正中心 cx (不平移)，從中心 cy 向下
+            drawArrow(ctx, cx, cy, cx, cy + weight * forceScale, "#ef4444", "W", weight);
+
+            // R (法向反作用力)：位置保持稍微向左偏移，從腳底開始
+            const offset = 25;
+            const drawR = Math.max(0, normalForce);
+            drawArrow(ctx, cx - offset, cy + personH/2, cx - offset, cy + personH/2 - drawR * forceScale, "#22c55e", "R", drawR);
+
+            // 6. 加速度指示
+            if (Math.abs(state.acc) > 0.1) {
+                const aLen = Math.abs(state.acc) * 15;
+                const dir = state.acc > 0 ? -1 : 1; 
+                const aX = boxX - 40;
+                const aY = boxY + boxH / 2;
+
+                drawArrow(ctx, aX, aY, aX, aY + aLen * dir, "#8b5cf6", "", 0);
+                
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#8b5cf6";
+                // 統一使用 LaTeX 樣式字體，並顯示在同一行
+                ctx.font = "italic bold 18px 'Times New Roman', serif";
+                const aText = `a = ${Math.abs(state.acc).toFixed(1)} m/s²`;
+                ctx.fillText(aText, aX - 10, aY);
+            }
+            ctx.textAlign = "left";
+        }
+
+        function drawGraphs() {
+            const ctx = els.graphCanvas.getContext('2d');
+            const w = els.graphCanvas.width;
+            const h = els.graphCanvas.height;
+            const hh = h / 2;
+
+            ctx.clearRect(0, 0, w, h);
+
+            let tEnd = Math.max(MAX_TIME_WINDOW, state.time);
+            let tStart = tEnd - MAX_TIME_WINDOW;
+
+            const mapX = (t) => ((t - tStart) / (tEnd - tStart)) * (w - 60) + 50;
+            
+            // --- v-t 圖 (上) ---
+            const vMax = 25; const vMin = -25;
+            const mapY_v = (v) => (hh/2) - (v / (vMax - vMin)) * (hh - 40);
+
+            // 軸
+            ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(50, 10); ctx.lineTo(50, hh - 10); // Y
+            ctx.moveTo(50, mapY_v(0)); ctx.lineTo(w, mapY_v(0)); // X (v=0)
+            ctx.stroke();
+
+            // 標籤
+            ctx.fillStyle = "#64748b"; 
+            ctx.font = "italic bold 18px 'Times New Roman', serif";
+            ctx.fillText("v", 15, 20);
+            ctx.font = "14px 'Times New Roman', serif";
+            ctx.fillText("(m/s)", 25, 20);
+            
+            ctx.font = "italic bold 18px 'Times New Roman', serif";
+            ctx.fillText("t", w - 20, mapY_v(0) + 15);
+            ctx.font = "14px 'Times New Roman', serif";
+            ctx.fillText("(s)", w - 10, mapY_v(0) + 15);
+
+            if (state.history.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = "#f97316"; // Orange
+                ctx.lineWidth = 2;
+                let started = false;
+                for (let i = 0; i < state.history.length; i++) {
+                    const p = state.history[i];
+                    if (p.t < tStart) continue;
+                    const x = mapX(p.t);
+                    const y = mapY_v(p.v);
+                    if (!started) { ctx.moveTo(x, y); started = true; }
+                    else { ctx.lineTo(x, y); }
+                }
+                ctx.stroke();
+            }
+
+            // --- a-t 圖 (下) ---
+            const aOffset = hh;
+            const aMax = 6; const aMin = -6;
+            const mapY_a = (a) => aOffset + (hh/2) - (a / (aMax - aMin)) * (hh - 40);
+
+            ctx.beginPath();
+            ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1;
+            ctx.moveTo(50, aOffset + 10); ctx.lineTo(50, aOffset + hh - 10);
+            ctx.moveTo(50, mapY_a(0)); ctx.lineTo(w, mapY_a(0));
+            ctx.stroke();
+
+            // 標籤
+            ctx.fillStyle = "#64748b";
+            ctx.font = "italic bold 18px 'Times New Roman', serif";
+            ctx.fillText("a", 15, aOffset + 20);
+            ctx.font = "14px 'Times New Roman', serif";
+            ctx.fillText("(m/s²)", 25, aOffset + 20);
+            
+            ctx.font = "italic bold 18px 'Times New Roman', serif";
+            ctx.fillText("t", w - 20, mapY_a(0) + 15);
+            ctx.font = "14px 'Times New Roman', serif";
+            ctx.fillText("(s)", w - 10, mapY_a(0) + 15);
+
+            if (state.history.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = "#8b5cf6"; // Purple
+                ctx.lineWidth = 2;
+                let started = false;
+                for (let i = 0; i < state.history.length; i++) {
+                    const p = state.history[i];
+                    if (p.t < tStart) continue;
+                    const x = mapX(p.t);
+                    const y = mapY_a(p.a);
+                    if (!started) { ctx.moveTo(x, y); started = true; }
+                    else { ctx.lineTo(x, y); }
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawFrame() {
+            drawSim();
+            drawGraphs();
+        }
+
+        function loop() {
+            if (state.isRunning) {
+                updatePhysics();
+            }
+            drawFrame();
+            animationId = requestAnimationFrame(loop);
+        }
+
+        // --- 事件監聽 ---
+
+        function updateUI() {
+            if (!els.valAcc) return;
+
+            els.valAcc.textContent = `${state.acc > 0 ? '+' : ''}${state.acc.toFixed(1)} m/s²`;
+            
+            const normal = MASS * (G + state.acc);
+            const weight = MASS * G;
+            
+            els.valWeight.textContent = `${Math.round(weight)} N`;
+            els.valNormal.textContent = `${Math.round(normal)} N`;
+            
+            els.calcA.textContent = state.acc;
+            els.calcResult.textContent = Math.round(normal);
+        }
+
+        // 當狀態改變時更新鎖定狀態
+        function toggleControls(running) {
+            els.accSlider.disabled = running;
+            if (running) {
+                els.btnToggle.innerHTML = '<i data-lucide="pause" class="w-4 h-4"></i> 暫停';
+                els.btnToggle.classList.replace('bg-green-600', 'bg-amber-500');
+                els.btnToggle.classList.replace('hover:bg-green-700', 'hover:bg-amber-600');
+                els.lockMsg.style.opacity = '1'; // 顯示提示
+            } else {
+                els.btnToggle.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i> 繼續';
+                els.btnToggle.classList.replace('bg-amber-500', 'bg-green-600');
+                els.btnToggle.classList.replace('hover:bg-amber-600', 'hover:bg-green-700');
+                els.lockMsg.style.opacity = '0'; // 隱藏提示
+            }
+            // 簡單檢查 lucide 是否存在，避免報錯
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        els.accSlider.addEventListener('input', (e) => {
+            // 防禦性編程
+            if (state.isRunning) {
+                e.preventDefault();
+                return;
+            }
+            state.acc = parseFloat(e.target.value);
+            updateUI();
+            drawFrame();
+        });
+
+        els.btnToggle.addEventListener('click', () => {
+            state.isRunning = !state.isRunning;
+            toggleControls(state.isRunning);
+        });
+
+        els.btnReset.addEventListener('click', () => {
+            state.isRunning = false;
+            state.time = 0;
+            state.vel = 0;
+            state.disp = 0;
+            state.acc = 0;
+            state.history = [];
+            els.accSlider.value = 0;
+            
+            // UI Reset
+            els.btnToggle.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i> 開始模擬';
+            els.btnToggle.classList.replace('bg-amber-500', 'bg-green-600');
+            els.accSlider.disabled = false;
+            els.lockMsg.style.opacity = '0';
+            
+            updateUI();
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            drawFrame();
+        });
+
+        els.btnOpenInfo.addEventListener('click', () => toggleModal(true));
+        els.btnCloseInfo.addEventListener('click', () => toggleModal(false));
+        els.btnStartInfo.addEventListener('click', () => toggleModal(false));
+
+        // 啟動
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+        updateUI();
+        loop();
+
+    })();
+    </script>
+</body>
+</html>
