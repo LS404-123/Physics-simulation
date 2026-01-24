@@ -228,8 +228,8 @@
         <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col transform scale-95 transition-transform duration-300" id="modalContent">
             <div class="bg-indigo-600 p-6 text-white flex justify-between items-start">
                 <div>
-                    <h2 class="text-2xl font-bold mb-1">物理原理詳解</h2>
-                    <p class="text-indigo-100 text-sm opacity-90">Understanding Friction & Motion</p>
+                    <h2 class="text-2xl font-bold mb-1">👨‍🏫 老師的物理小教室</h2>
+                    <p class="text-indigo-100 text-sm opacity-90">HKDSE Physics - Force and Motion</p>
                 </div>
                 <button onclick="toggleModal(false)" class="bg-white/20 hover:bg-white/30 rounded-full p-1 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -241,13 +241,13 @@
                 <div class="flex gap-5">
                     <div class="flex-shrink-0 w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">1</div>
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-2">靜止與運動的界線</h3>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">破除迷思：摩擦力不一定是 $\mu R$？</h3>
                         <p class="leading-relaxed text-sm">
-                            物體是否移動取決於外力 $F$ 與最大靜摩擦力 $f_{s,max}$ 的關係：
+                            這是考試常犯的錯誤！摩擦力的大小取決於物體的狀態：
                         </p>
-                        <ul class="mt-2 space-y-1 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <li>• 若 $|F| \le f_{s,max}$，物體保持<strong>靜止</strong>，此時 $f = -F$。</li>
-                            <li>• 若 $|F| > f_{s,max}$，物體開始<strong>加速</strong>，此時摩擦力達到上限。</li>
+                        <ul class="mt-2 space-y-2 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100">
+                            <li>🛑 <strong>靜止階段 (Static)：</strong> 當外力小於最大靜摩擦力時，摩擦力是「被動」的。<strong>$f = F_{applied}$</strong> (數值相等，方向相反)，此時 $f \neq \mu R$。</li>
+                            <li>🏃 <strong>運動階段 (Kinetic)：</strong> 只有當 $F > f_{max}$ 時，物體開始滑動，摩擦力才達到恆定值 (在此簡化模型中)。</li>
                         </ul>
                     </div>
                 </div>
@@ -256,21 +256,21 @@
                 <div class="flex gap-5">
                     <div class="flex-shrink-0 w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">2</div>
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-2">牛頓第二定律 ($F=ma$)</h3>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">從圖表看牛頓第二定律 ($F=ma$)</h3>
                         <p class="leading-relaxed text-sm">
-                            當物體滑動時，其加速度 $a$ 由合力決定：
+                            試著改變外力 $F$，觀察右方 $a-F$ 圖表的變化：
                         </p>
-                        <div class="my-3 font-mono text-center bg-slate-100 p-2 rounded text-slate-800 font-bold">
-                            $$ F_{net} = F - f $$
-                            $$ a = \frac{F_{net}}{m} $$
-                        </div>
+                         <ul class="mt-2 space-y-1 text-sm list-disc list-inside text-slate-500">
+                            <li><strong>截距 (Intercept)：</strong> 圖表在 $X$ 軸上的截距正是最大摩擦力 $f_{max}$。</li>
+                            <li><strong>斜率 (Slope)：</strong> 當圖線開始上升，試思考斜率代表什麼？(提示：由 $F - f = ma$ 可知 $a = \frac{1}{m}F - \frac{f}{m}$，斜率與質量 $m$ 有關)。</li>
+                        </ul>
                     </div>
                 </div>
             </div>
 
             <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
                 <button onclick="toggleModal(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-indigo-200 transform transition active:scale-95">
-                    明白，開始實驗
+                    各位同學，開始實驗吧！🚀
                 </button>
             </div>
         </div>
@@ -353,6 +353,9 @@ function init() {
     
     // Initial Graph draw
     setTimeout(drawGraph, 100);
+
+    // Show instruction modal on startup
+    setTimeout(() => toggleModal(true), 500);
 }
 
 function setupHighDPICanvas() {
