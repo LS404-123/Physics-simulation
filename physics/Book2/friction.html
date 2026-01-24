@@ -82,7 +82,6 @@
             </div>
             <div>
                 <h1 class="text-base lg:text-lg font-bold tracking-tight text-slate-900 leading-tight">摩擦力與運動模擬</h1>
-                <p class="text-[10px] lg:text-xs text-slate-500 font-medium hidden sm:block">Friction & Newton's 2nd Law</p>
             </div>
         </div>
         <button onclick="toggleModal(true)" class="group flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full text-sm font-bold transition border border-indigo-200">
@@ -117,7 +116,7 @@
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-200 pb-1">實時數據</div>
                 <div class="space-y-1.5 text-sm">
                     <div class="flex justify-between items-center">
-                        <span class="text-slate-600">合力 $F_{net}$</span>
+                        <span class="text-slate-600">淨力 $F_{淨}$</span>
                         <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 rounded"><span id="val_fnet">0.0</span> N</span>
                     </div>
                     <div class="flex justify-between items-center">
@@ -154,7 +153,6 @@
                     <div class="relative w-full aspect-[1.5/1] bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
                         <canvas id="graphCanvas" class="w-full h-full"></canvas>
                     </div>
-                    <p class="text-center text-[10px] text-slate-400 py-1">X軸: 外力大小 | Y軸: 加速度 (自動縮放)</p>
                 </div>
 
                 <!-- Controls -->
@@ -189,8 +187,8 @@
                         </div>
                         
                         <div class="flex justify-between text-[10px] font-bold text-slate-400 mt-[-5px] uppercase tracking-wider px-1">
-                            <span>⟵ 向左推 (Left)</span>
-                            <span>向右推 (Right) ⟶</span>
+                            <span>⟵ 向左推 (/span>
+                            <span>向右推 ⟶</span>
                         </div>
                     </div>
 
@@ -208,7 +206,7 @@
                         <!-- Max Static Friction -->
                         <div>
                             <div class="flex justify-between mb-2">
-                                <label class="text-sm font-semibold text-slate-600">最大靜摩擦力 ($f_{s,max}$)</label>
+                                <label class="text-sm font-semibold text-slate-600">最大摩擦力 ($f_{max}$)</label>
                                 <span class="text-sm font-mono font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded"><span id="disp_fLimit">20.0</span> N</span>
                             </div>
                             <input type="range" id="input_fLimit" min="0" max="50" step="0.5" value="20.0" class="w-full slider-green">
@@ -216,7 +214,6 @@
                     </div>
                     
                     <div class="pt-4 border-t border-slate-100 text-center">
-                        <p class="text-[10px] text-slate-400">Physics Engine v2.0 &bull; Designed for HK DSE</p>
                     </div>
                 </div>
             </div>
@@ -228,8 +225,8 @@
         <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col transform scale-95 transition-transform duration-300" id="modalContent">
             <div class="bg-indigo-600 p-6 text-white flex justify-between items-start">
                 <div>
-                    <h2 class="text-2xl font-bold mb-1">👨‍🏫 老師的物理小教室</h2>
-                    <p class="text-indigo-100 text-sm opacity-90">HKDSE Physics - Force and Motion</p>
+                    <h2 class="text-2xl font-bold mb-1">同學你好！👋</h2>
+                    <p class="text-indigo-100 text-sm opacity-90">請花一點時間閱讀以下原理，這對考試很有幫助。</p>
                 </div>
                 <button onclick="toggleModal(false)" class="bg-white/20 hover:bg-white/30 rounded-full p-1 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -237,40 +234,43 @@
             </div>
             
             <div class="p-6 lg:p-8 text-slate-600 space-y-8">
-                <!-- Section 1 -->
+                <!-- Concept 1 -->
                 <div class="flex gap-5">
-                    <div class="flex-shrink-0 w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">1</div>
+                    <div class="flex-shrink-0 w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">1</div>
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-2">破除迷思：摩擦力不一定是 $\mu R$？</h3>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">外力的方向</h3>
                         <p class="leading-relaxed text-sm">
-                            這是考試常犯的錯誤！摩擦力的大小取決於物體的狀態：
+                            在這個模擬中，<span class="text-red-500 font-bold">正值 (+F)</span> 代表向右的力，<span class="text-red-500 font-bold">負值 (-F)</span> 代表向左的力。
                         </p>
-                        <ul class="mt-2 space-y-2 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100">
-                            <li>🛑 <strong>靜止階段 (Static)：</strong> 當外力小於最大靜摩擦力時，摩擦力是「被動」的。<strong>$f = F_{applied}$</strong> (數值相等，方向相反)，此時 $f \neq \mu R$。</li>
-                            <li>🏃 <strong>運動階段 (Kinetic)：</strong> 只有當 $F > f_{max}$ 時，物體開始滑動，摩擦力才達到恆定值 (在此簡化模型中)。</li>
-                        </ul>
                     </div>
                 </div>
 
-                <!-- Section 2 -->
+                <!-- Concept 2 -->
                 <div class="flex gap-5">
-                    <div class="flex-shrink-0 w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">2</div>
+                    <div class="flex-shrink-0 w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">2</div>
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-2">從圖表看牛頓第二定律 ($F=ma$)</h3>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">摩擦力的方向</h3>
                         <p class="leading-relaxed text-sm">
-                            試著改變外力 $F$，觀察右方 $a-F$ 圖表的變化：
+                            摩擦力永遠與運動趨勢或運動方向<span class="font-bold">相反</span>。
                         </p>
-                         <ul class="mt-2 space-y-1 text-sm list-disc list-inside text-slate-500">
-                            <li><strong>截距 (Intercept)：</strong> 圖表在 $X$ 軸上的截距正是最大摩擦力 $f_{max}$。</li>
-                            <li><strong>斜率 (Slope)：</strong> 當圖線開始上升，試思考斜率代表什麼？(提示：由 $F - f = ma$ 可知 $a = \frac{1}{m}F - \frac{f}{m}$，斜率與質量 $m$ 有關)。</li>
-                        </ul>
+                    </div>
+                </div>
+
+                <!-- Concept 3 -->
+                <div class="flex gap-5">
+                    <div class="flex-shrink-0 w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">3</div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">圖表分析</h3>
+                        <p class="leading-relaxed text-sm">
+                            我們使用 $F$ 對 $a$ 的圖表（取數值大小）。這能清楚顯示：只要外力大小超過最大摩擦力，物體就會產生加速度。
+                        </p>
                     </div>
                 </div>
             </div>
 
             <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
                 <button onclick="toggleModal(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-indigo-200 transform transition active:scale-95">
-                    各位同學，開始實驗吧！🚀
+                    明白了，開始實驗！
                 </button>
             </div>
         </div>
@@ -288,7 +288,7 @@ const g = 9.81; // m/s^2
 // State variables
 let state = {
     m: 5.0,    // Mass (kg)
-    F: 0.0,    // Applied Force (N), can be negative (Right) or positive (Left)
+    F: 0.0,    // Applied Force (N), can be negative (Left) or positive (Right)
     fLimit: 20.0, // Friction Limit (N) [0, 50]
     
     // Calculated
@@ -430,7 +430,8 @@ function animate() {
     
     if (state.isMoving) {
         state.velocity += state.a * dt * 8; // Speed multiplier for visual effect
-        state.groundOffset += state.velocity * dt;
+        // Ground moves opposite to velocity to simulate camera tracking/block motion
+        state.groundOffset -= state.velocity * dt;
         
         // Loop texture
         const patternW = 40;
@@ -607,9 +608,12 @@ function drawSimulation() {
     drawArrow(ctxSim, centerBodyX, centerBodyY, centerBodyX, centerBodyY + lenN, "#9333ea", "mg", true);
 
     // C. Applied Force F (Signed)
+    // Positive Force is Right, Negative Force is Left
     if (Math.abs(state.F) > 0.1) {
-        const startX = (state.F > 0) ? (blockVisualX - blockW/2) : (blockVisualX + blockW/2);
-        const direction = (state.F > 0) ? -1 : 1; 
+        // If F > 0 (Right), Arrow points Right, Starts from Right Edge
+        // If F < 0 (Left), Arrow points Left, Starts from Left Edge
+        const startX = (state.F > 0) ? (blockVisualX + blockW/2) : (blockVisualX - blockW/2);
+        const direction = (state.F > 0) ? 1 : -1; 
         const lenF = Math.abs(state.F) * scale;
         const drawLenF = Math.min(lenF, width/2 - 60); 
         
@@ -617,10 +621,12 @@ function drawSimulation() {
     }
 
     // D. Friction f (Signed)
+    // If F > 0 (Right), f is Negative (Left). If f < 0, arrow points Left.
+    // If F < 0 (Left), f is Positive (Right). If f > 0, arrow points Right.
     if (Math.abs(state.fActual) > 0.1) {
         const contactY = floorY;
         const startX = blockVisualX;
-        const direction = (state.fActual > 0) ? -1 : 1;
+        const direction = (state.fActual > 0) ? 1 : -1;
         const lenf = Math.abs(state.fActual) * scale;
         const drawLenf = Math.min(lenf, width/2 - 60);
         
@@ -764,12 +770,12 @@ function drawGraph() {
     
     // Axis Titles
     ctxGraph.font = "bold 11px 'Noto Sans TC'";
-    ctxGraph.fillText("外力 F", width / 2 + 10, height - 5);
+    ctxGraph.fillText("外力 F /N", width / 2 + 10, height - 5);
     
     ctxGraph.save();
     ctxGraph.translate(12, height / 2);
     ctxGraph.rotate(-Math.PI / 2);
-    ctxGraph.fillText("加速度 a", 0, 0);
+    ctxGraph.fillText("加速度 a (ms^-2)", 0, 0);
     ctxGraph.restore();
 }
 
