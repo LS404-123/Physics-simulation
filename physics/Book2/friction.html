@@ -131,7 +131,8 @@
             <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 bg-white/90 px-4 py-2 rounded-full shadow-lg border border-white/50 flex gap-4 text-[10px] lg:text-xs font-bold text-slate-600 backdrop-blur-sm whitespace-nowrap">
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></span> 外力 F</span>
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm"></span> 摩擦力 f</span>
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-800 shadow-sm"></span> 正向力/重力</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-800 shadow-sm"></span> 正向力 R</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-600 shadow-sm"></span> 重力 mg</span>
             </div>
         </div>
 
@@ -149,7 +150,8 @@
                             加速度 vs 外力
                         </h3>
                     </div>
-                    <div class="relative w-full aspect-[2.2/1] bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                    <!-- Changed aspect ratio from [2.2/1] to [1.5/1] to make the graph box taller/larger -->
+                    <div class="relative w-full aspect-[1.5/1] bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
                         <canvas id="graphCanvas" class="w-full h-full"></canvas>
                     </div>
                     <p class="text-center text-[10px] text-slate-400 py-1">X軸: 外力大小 | Y軸: 加速度 (自動縮放)</p>
@@ -597,7 +599,9 @@ function drawSimulation() {
     // A. Normal Force R & Gravity mg
     let lenN = Math.min(state.N_force * scale * 0.5, 120); // Scale down vertical slightly visual
     drawArrow(ctxSim, centerBodyX, blockY, centerBodyX, blockY - lenN, "#1e293b", "R", false);
-    drawArrow(ctxSim, centerBodyX, floorY - 5, centerBodyX, floorY - 5 + lenN, "#1e293b", "mg", true);
+    
+    // Weight Force (mg) - Originating from Center of Mass
+    drawArrow(ctxSim, centerBodyX, centerBodyY, centerBodyX, centerBodyY + lenN, "#9333ea", "mg", true);
 
     // C. Applied Force F (Signed)
     if (Math.abs(state.F) > 0.1) {
