@@ -107,7 +107,7 @@
             <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
                 <span id="statusBadge" class="px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold shadow-lg transition-colors duration-300 bg-green-500 text-white flex items-center gap-2">
                     <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                    <span id="statusText">靜止 (Static)</span>
+                    <span id="statusText">靜止</span>
                 </span>
             </div>
 
@@ -122,6 +122,10 @@
                     <div class="flex justify-between items-center">
                         <span class="text-slate-600">加速度 $a$</span>
                         <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 rounded"><span id="val_a">0.00</span> $m/s^2$</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600">速度 $v$</span>
+                        <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 rounded"><span id="val_v">0.00</span> $m/s$</span>
                     </div>
                 </div>
             </div>
@@ -153,11 +157,22 @@
                     <div class="relative w-full aspect-[1.5/1] bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
                         <canvas id="graphCanvas" class="w-full h-full"></canvas>
                     </div>
+                    <p class="text-center text-[10px] text-slate-400 py-1">X軸: 外力大小 | Y軸: 加速度 (固定比例)</p>
                 </div>
 
                 <!-- Controls -->
                 <div class="space-y-6 pb-8">
                     
+                    <!-- Reset Button -->
+                    <div class="flex justify-end">
+                        <button id="btn_reset" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded-lg transition-colors text-sm shadow-sm border border-slate-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            重置 (Reset)
+                        </button>
+                    </div>
+
                     <!-- Force Control -->
                     <div class="bg-slate-50 p-4 lg:p-5 rounded-2xl border border-slate-200 shadow-sm">
                         <div class="flex justify-between items-center mb-4">
@@ -187,7 +202,7 @@
                         </div>
                         
                         <div class="flex justify-between text-[10px] font-bold text-slate-400 mt-[-5px] uppercase tracking-wider px-1">
-                            <span>⟵ 向左推 (/span>
+                            <span>⟵ 向左推</span>
                             <span>向右推 ⟶</span>
                         </div>
                     </div>
@@ -200,7 +215,8 @@
                                 <label class="text-sm font-semibold text-slate-600">物體質量 ($m$)</label>
                                 <span class="text-sm font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"><span id="disp_m">5.0</span> kg</span>
                             </div>
-                            <input type="range" id="input_m" min="0.5" max="20" step="0.5" value="5.0" class="w-full">
+                            <!-- Updated Min Mass to 2.0 to prevent acceleration > 25m/s^2 -->
+                            <input type="range" id="input_m" min="2.0" max="20" step="0.5" value="5.0" class="w-full">
                         </div>
 
                         <!-- Max Static Friction -->
@@ -288,20 +304,20 @@ const g = 9.81; // m/s^2
 // State variables
 let state = {
     m: 5.0,    // Mass (kg)
-    F: 0.0,    // Applied Force (N), can be negative (Left) or positive (Right)
-    fLimit: 20.0, // Friction Limit (N) [0, 50]
+    F: 0.0,    // Applied Force (N)
+    fLimit: 20.0, // Friction Limit (N)
     
     // Calculated
     N_force: 0,
     fActual: 0, // Signed Friction
     a: 0,       // Signed Acceleration
-    isMoving: false,
-    mu: 0,      // Static friction coeff
+    v: 0,       // Velocity (m/s)
     
-    // Animation
+    // UI/Animation
+    isMoving: false,
+    mu: 0,      
     groundOffset: 0,
-    velocity: 0, // Visual velocity
-    blockX: 0    // For subtle spring effect on start
+    blockX: 0
 };
 
 // DOM Elements
@@ -314,10 +330,12 @@ const ui = {
     inputF: document.getElementById('input_F'),
     inputM: document.getElementById('input_m'),
     inputFLimit: document.getElementById('input_fLimit'),
+    btnReset: document.getElementById('btn_reset'),
     dispF: document.getElementById('disp_F'),
     dispM: document.getElementById('disp_m'),
     dispFLimit: document.getElementById('disp_fLimit'),
     valA: document.getElementById('val_a'),
+    valV: document.getElementById('val_v'),
     valFnet: document.getElementById('val_fnet'),
     statusBadge: document.getElementById('statusBadge'),
     statusText: document.getElementById('statusText'),
@@ -329,38 +347,47 @@ function init() {
     setupHighDPICanvas();
     window.addEventListener('resize', () => {
         setupHighDPICanvas();
-        drawGraph(); // Redraw static graph immediately
+        // Redraw immediately on resize
     });
     
-    // Event Listeners
+    // Inputs
     ui.inputF.addEventListener('input', (e) => { 
         state.F = parseFloat(e.target.value); 
-        updatePhysics(); 
+        // We don't call updatePhysics here anymore for 'v'
+        // Just update visual thumb
+        updateForceThumbPosition();
     });
 
     ui.inputM.addEventListener('input', (e) => { 
         state.m = parseFloat(e.target.value); 
-        updatePhysics(); 
     });
 
     ui.inputFLimit.addEventListener('input', (e) => {
         state.fLimit = parseFloat(e.target.value);
-        updatePhysics();
     });
 
-    updatePhysics();
-    animate();
-    
-    // Initial Graph draw
-    setTimeout(drawGraph, 100);
+    ui.btnReset.addEventListener('click', resetSimulation);
 
+    // Initial update
+    updateForceThumbPosition();
+    
+    // Start Animation Loop
+    requestAnimationFrame(animate);
+    
     // Show instruction modal on startup
     setTimeout(() => toggleModal(true), 500);
 }
 
+function resetSimulation() {
+    state.v = 0;
+    state.a = 0;
+    state.F = 0;
+    ui.inputF.value = 0;
+    updateForceThumbPosition();
+}
+
 function setupHighDPICanvas() {
     const scale = window.devicePixelRatio || 1;
-    
     [canvasSim, canvasGraph].forEach(canvas => {
         const rect = canvas.parentElement.getBoundingClientRect();
         canvas.width = rect.width * scale;
@@ -372,41 +399,6 @@ function setupHighDPICanvas() {
     });
 }
 
-function updatePhysics() {
-    state.N_force = state.m * g;
-    state.mu = state.fLimit / (state.m * g);
-
-    const absF = Math.abs(state.F);
-    
-    if (absF <= state.fLimit) {
-        // Static Region
-        state.isMoving = false;
-        state.a = 0;
-        state.fActual = -state.F; 
-    } else {
-        // Kinetic Region
-        state.isMoving = true;
-        const sign = Math.sign(state.F); 
-        state.fActual = -sign * state.fLimit;
-        const netForce = state.F + state.fActual;
-        state.a = netForce / state.m;
-    }
-
-    // Update UI Texts
-    ui.dispF.textContent = state.F.toFixed(1);
-    ui.dispM.textContent = state.m.toFixed(1);
-    ui.dispFLimit.textContent = state.fLimit.toFixed(1);
-    ui.valA.textContent = Math.abs(state.a).toFixed(2);
-    
-    const netForceVal = Math.abs(state.F + state.fActual);
-    ui.valFnet.textContent = netForceVal.toFixed(1);
-
-    // Update Visuals
-    updateForceThumbPosition();
-    updateStatusBadge();
-    drawGraph();
-}
-
 function updateForceThumbPosition() {
     // Map -50..50 to 0..100%
     const percent = ((state.F + 50) / 100) * 100;
@@ -415,23 +407,79 @@ function updateForceThumbPosition() {
 }
 
 function updateStatusBadge() {
-    if (state.isMoving) {
+    if (Math.abs(state.v) > 0.01) {
         ui.statusBadge.className = "px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold shadow-lg transition-colors duration-300 bg-red-500 text-white flex items-center gap-2";
-        ui.statusText.textContent = "加速滑動 (Moving)";
+        ui.statusText.textContent = "加速/滑動";
     } else {
         ui.statusBadge.className = "px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold shadow-lg transition-colors duration-300 bg-green-500 text-white flex items-center gap-2";
-        ui.statusText.textContent = "靜止 (Static)";
+        ui.statusText.textContent = "靜止";
     }
 }
 
-// Animation Loop
+// Main Physics & Animation Loop
 function animate() {
-    const dt = 0.016; 
+    const dt = 0.016; // approx 60fps fixed step
     
-    if (state.isMoving) {
-        state.velocity += state.a * dt * 8; // Speed multiplier for visual effect
-        // Ground moves opposite to velocity to simulate camera tracking/block motion
-        state.groundOffset -= state.velocity * dt;
+    // 1. Calculate Normal Force
+    state.N_force = state.m * g;
+
+    // 2. Determine Friction & Acceleration
+    // Kinetic Friction logic: If moving, friction opposes velocity.
+    // Static Friction logic: If v~0, friction opposes F up to limit.
+    
+    const isMoving = Math.abs(state.v) > 0.001;
+    
+    if (isMoving) {
+        // Kinetic Region
+        // Friction direction opposes velocity
+        const frictionDir = -Math.sign(state.v);
+        state.fActual = frictionDir * state.fLimit;
+        
+        // Net Force
+        const fNet = state.F + state.fActual;
+        state.a = fNet / state.m;
+        
+        // Update Velocity
+        const newV = state.v + state.a * dt;
+        
+        // Zero-crossing check (Stop if friction causes reversal)
+        // If sign changes and applied force isn't strong enough to drive it
+        if (Math.sign(newV) !== Math.sign(state.v)) {
+             // Check if F alone is enough to overcome static friction in the new direction
+             // If not, we stop.
+             // For simplicity, if we cross zero, we assume we stop for this frame, 
+             // and next frame static logic takes over.
+             state.v = 0;
+             state.a = 0; // Momentary stop
+        } else {
+            state.v = newV;
+        }
+
+    } else {
+        // Static Region
+        state.v = 0;
+        
+        // Static friction opposes Applied Force
+        if (Math.abs(state.F) <= state.fLimit) {
+            state.fActual = -state.F;
+            state.a = 0;
+        } else {
+            // Break away
+            // Direction of acceleration matches Force
+            const frictionDir = -Math.sign(state.F);
+            state.fActual = frictionDir * state.fLimit;
+            const fNet = state.F + state.fActual;
+            state.a = fNet / state.m;
+            
+            // Start moving
+            state.v += state.a * dt;
+        }
+    }
+    
+    // 3. Update Visual Position (Ground Scroll)
+    if (Math.abs(state.v) > 0.001) {
+        // Ground moves opposite to velocity
+        state.groundOffset -= state.v * dt * 50; // *50 for visual scaling
         
         // Loop texture
         const patternW = 40;
@@ -441,17 +489,32 @@ function animate() {
         // Reset block jitter
         state.blockX = state.blockX * 0.9;
     } else {
-        state.velocity = 0;
-        // Subtle spring back to center when force is released or static
+        // Subtle spring back to center when static
         state.blockX = state.blockX * 0.9 + (state.F * 0.05) * 0.1;
     }
 
+    // 4. Update UI Texts
+    ui.dispF.textContent = state.F.toFixed(1);
+    ui.dispM.textContent = state.m.toFixed(1);
+    ui.dispFLimit.textContent = state.fLimit.toFixed(1);
+    
+    ui.valA.textContent = Math.abs(state.a).toFixed(2);
+    ui.valV.textContent = Math.abs(state.v).toFixed(2);
+    
+    const netForceVal = Math.abs(state.F + state.fActual);
+    ui.valFnet.textContent = netForceVal.toFixed(1);
+    
+    updateStatusBadge();
+
+    // 5. Draw
     drawSimulation();
+    drawGraph();
+
     requestAnimationFrame(animate);
 }
 
 // Drawing Helpers
-function drawArrow(ctx, fromX, fromY, toX, toY, color, text, labelBelow = false) {
+function drawArrow(ctx, fromX, fromY, toX, toY, color, text, labelPos = 'top') {
     const headLen = 12;
     const angle = Math.atan2(toY - fromY, toX - fromX);
     
@@ -483,17 +546,37 @@ function drawArrow(ctx, fromX, fromY, toX, toY, color, text, labelBelow = false)
         ctx.fillStyle = color;
         const midX = (fromX + toX) / 2;
         const midY = (fromY + toY) / 2;
-        const textOffset = labelBelow ? 25 : -15;
         
-        // Background for text to make it readable over lines
+        let tx = midX;
+        let ty = midY;
+        let align = 'center';
+        
+        if (labelPos === 'left') {
+            tx -= 15;
+            align = 'right';
+        } else if (labelPos === 'right') {
+            tx += 15;
+            align = 'left';
+        } else if (labelPos === 'bottom' || labelPos === true) {
+            ty += 20;
+        } else {
+            // top or false
+            ty -= 20;
+        }
+
+        // Draw background for legibility
         const metrics = ctx.measureText(text);
         ctx.save();
         ctx.fillStyle = "rgba(255,255,255,0.8)";
-        ctx.fillRect(midX - metrics.width/2 - 4, midY + textOffset - 12, metrics.width + 8, 16);
+        let bx = tx;
+        if (align === 'center') bx -= metrics.width/2;
+        if (align === 'right') bx -= metrics.width;
+        ctx.fillRect(bx - 2, ty - 10, metrics.width + 4, 20);
         ctx.restore();
 
-        ctx.textAlign = "center";
-        ctx.fillText(text, midX, midY + textOffset);
+        ctx.textAlign = align;
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, tx, ty);
     }
 }
 
@@ -602,10 +685,11 @@ function drawSimulation() {
 
     // A. Normal Force R & Gravity mg
     let lenN = Math.min(state.N_force * scale * 0.5, 120); // Scale down vertical slightly visual
-    drawArrow(ctxSim, centerBodyX, blockY, centerBodyX, blockY - lenN, "#1e293b", "R", false);
+    // R - From Top of Box, Label to Left
+    drawArrow(ctxSim, centerBodyX, blockY, centerBodyX, blockY - lenN, "#1e293b", "R", 'left');
     
-    // Weight Force (mg) - Originating from Center of Mass
-    drawArrow(ctxSim, centerBodyX, centerBodyY, centerBodyX, centerBodyY + lenN, "#9333ea", "mg", true);
+    // Weight Force (mg) - From Center of Mass, Label to Right
+    drawArrow(ctxSim, centerBodyX, centerBodyY, centerBodyX, centerBodyY + lenN, "#9333ea", "mg", 'right');
 
     // C. Applied Force F (Signed)
     // Positive Force is Right, Negative Force is Left
@@ -621,11 +705,12 @@ function drawSimulation() {
     }
 
     // D. Friction f (Signed)
-    // If F > 0 (Right), f is Negative (Left). If f < 0, arrow points Left.
-    // If F < 0 (Left), f is Positive (Right). If f > 0, arrow points Right.
+    // If Moving: Opposes velocity
+    // If Static: Opposes Force
     if (Math.abs(state.fActual) > 0.1) {
         const contactY = floorY;
         const startX = blockVisualX;
+        // Direction from fActual (fActual is signed, + is Right)
         const direction = (state.fActual > 0) ? 1 : -1;
         const lenf = Math.abs(state.fActual) * scale;
         const drawLenf = Math.min(lenf, width/2 - 60);
@@ -651,7 +736,7 @@ function drawGraph() {
 
     // Ranges
     const maxF = 55;
-    const maxA = 55 / state.m;
+    const maxA = 25; // Fixed scale to visualize slope change
 
     const getX = (val) => padding.left + (val / maxF) * graphW;
     const getY = (val) => padding.top + graphH - (val / maxA) * graphH;
@@ -703,7 +788,7 @@ function drawGraph() {
     ctxGraph.lineTo(width - padding.right - 5, height - padding.bottom + 4);
     ctxGraph.fill();
 
-    // Theoretical Curve (Static then Linear)
+    // Theoretical Curve (Blue - Static Scenario)
     ctxGraph.beginPath();
     ctxGraph.strokeStyle = "#6366f1"; // Indigo 500
     ctxGraph.lineWidth = 3;
@@ -738,7 +823,7 @@ function drawGraph() {
     ctxGraph.lineTo(fLimX, height - padding.bottom + 5);
     ctxGraph.stroke();
 
-    // Current State Dot
+    // Current State Dot (Real-time dynamic)
     const curX = getX(Math.abs(state.F));
     const curY = getY(Math.abs(state.a));
 
@@ -754,7 +839,14 @@ function drawGraph() {
 
     // Dot
     ctxGraph.beginPath();
-    ctxGraph.fillStyle = state.isMoving ? "#ef4444" : "#22c55e";
+    // Color logic: If decelerating (F=0, a!=0), show purple? Or standard Red/Green
+    // Use Red if accelerating, Green if static, Orange if decelerating
+    if (Math.abs(state.v) > 0.001 && Math.abs(state.F) < 0.1) {
+        ctxGraph.fillStyle = "#f59e0b"; // Orange (Decelerating)
+    } else {
+        ctxGraph.fillStyle = (Math.abs(state.v) > 0.001) ? "#ef4444" : "#22c55e";
+    }
+    
     ctxGraph.arc(curX, curY, 6, 0, Math.PI * 2);
     ctxGraph.fill();
     ctxGraph.strokeStyle = "white";
