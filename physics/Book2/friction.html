@@ -2,189 +2,273 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>物理模擬：摩擦力與牛頓第二定律</title>
-    <!-- Tailwind CSS for styling -->
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- MathJax for rendering formulas -->
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        canvas { touch-action: none; }
-        .slider-thumb::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #3b82f6;
-            cursor: pointer;
-            border-radius: 50%;
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
         }
-        /* Custom scrollbar for better look */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        input[type=range]:focus { outline: none; }
+        
+        /* Webkit Slider Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #4f46e5;
+            cursor: pointer;
+            margin-top: -10px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        
+        /* Webkit Track */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 999px;
+        }
+
+        /* Red Theme for Force Slider */
+        .slider-force::-webkit-slider-thumb { border-color: #ef4444; }
+        .slider-green::-webkit-slider-thumb { border-color: #16a34a; }
+
+        /* Glassmorphism utilities */
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        
+        /* Hide scrollbar for clean UI but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
 
-    <!-- Navbar -->
-    <nav class="bg-blue-600 text-white p-3 lg:p-4 shadow-md flex-shrink-0 flex justify-between items-center z-20">
-        <div class="flex items-center gap-2 lg:gap-3">
-            <span class="text-xl lg:text-2xl">⚡</span>
-            <h1 class="text-lg lg:text-xl font-bold tracking-wide truncate">摩擦力與運動 (簡化模型)</h1>
+    <!-- Header -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 lg:px-6 flex-shrink-0 flex justify-between items-center z-30">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-base lg:text-lg font-bold tracking-tight text-slate-900 leading-tight">摩擦力與運動模擬</h1>
+                <p class="text-[10px] lg:text-xs text-slate-500 font-medium hidden sm:block">Friction & Newton's 2nd Law</p>
+            </div>
         </div>
-        <button onclick="document.getElementById('infoModal').classList.remove('hidden')" class="bg-white text-blue-600 px-3 py-1.5 lg:px-4 lg:py-2 text-sm lg:text-base rounded-full font-bold hover:bg-blue-50 transition shadow whitespace-nowrap">
-            原理詳解
+        <button onclick="toggleModal(true)" class="group flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full text-sm font-bold transition border border-indigo-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            <span class="hidden sm:inline">原理詳解</span>
+            <span class="sm:hidden">原理</span>
         </button>
     </nav>
 
-    <!-- Main Content -->
-    <div class="flex flex-1 flex-col lg:flex-row h-full overflow-hidden">
+    <!-- Main Layout -->
+    <div class="flex flex-1 flex-col lg:flex-row h-full overflow-hidden relative">
         
-        <!-- Left Panel: Simulation & FBD -->
-        <!-- Mobile: Fixed height (45vh), Desktop: Flex-1 -->
-        <div class="w-full h-[45vh] lg:h-auto lg:flex-1 flex-shrink-0 relative bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col p-2 lg:p-4 z-0">
-            <h2 class="text-sm lg:text-lg font-bold text-slate-700 mb-2 border-l-4 border-blue-500 pl-2">模擬場景 & 隔離體圖</h2>
-            <div class="relative flex-1 bg-slate-100 rounded-xl overflow-hidden border border-slate-300 shadow-inner">
+        <!-- Left: Visualization (60% width on desktop) -->
+        <div class="relative w-full lg:w-[60%] h-[45vh] lg:h-auto bg-slate-200/50 flex flex-col order-1">
+            <!-- Canvas Layer -->
+            <div class="absolute inset-0 z-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px]">
                 <canvas id="simCanvas" class="w-full h-full block"></canvas>
-                <!-- Overlay Values -->
-                <div class="absolute top-2 right-2 lg:top-4 lg:right-4 bg-white/90 p-2 lg:p-3 rounded-lg shadow text-xs lg:text-sm border border-slate-200 pointer-events-none">
-                    <p class="font-bold text-blue-600">狀態: <span id="statusText">靜止</span></p>
-                    <p>加速度 \(a\): <span id="val_a" class="font-mono">0.00</span> \(m/s^2\)</p>
-                    <p>摩擦力 \(f\): <span id="val_f_actual" class="font-mono">0.00</span> N</p>
+            </div>
+
+            <!-- Floating Status (Top Center) -->
+            <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+                <span id="statusBadge" class="px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold shadow-lg transition-colors duration-300 bg-green-500 text-white flex items-center gap-2">
+                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                    <span id="statusText">靜止 (Static)</span>
+                </span>
+            </div>
+
+            <!-- Floating Data Card (Top Right) -->
+            <div class="absolute top-4 right-4 z-10 glass border border-white/60 p-3 lg:p-4 rounded-2xl shadow-xl min-w-[160px] lg:min-w-[200px] scale-90 origin-top-right lg:scale-100">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-200 pb-1">實時數據</div>
+                <div class="space-y-1.5 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600">合力 $F_{net}$</span>
+                        <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 rounded"><span id="val_fnet">0.0</span> N</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600">加速度 $a$</span>
+                        <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 rounded"><span id="val_a">0.00</span> $m/s^2$</span>
+                    </div>
                 </div>
             </div>
-            <div class="mt-2 text-xs lg:text-sm text-slate-500 text-center flex flex-wrap justify-center gap-2 lg:gap-4">
-                <span><span class="inline-block w-2 h-2 lg:w-3 lg:h-3 bg-red-500 rounded-full mr-1"></span> 外力 F</span>
-                <span><span class="inline-block w-2 h-2 lg:w-3 lg:h-3 bg-green-600 rounded-full mr-1"></span> 摩擦力 f</span>
-                <span><span class="inline-block w-2 h-2 lg:w-3 lg:h-3 bg-black rounded-full mr-1"></span> 正向力 R</span>
+
+            <!-- Legend (Bottom Center) -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 bg-white/90 px-4 py-2 rounded-full shadow-lg border border-white/50 flex gap-4 text-[10px] lg:text-xs font-bold text-slate-600 backdrop-blur-sm whitespace-nowrap">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></span> 外力 F</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm"></span> 摩擦力 f</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-800 shadow-sm"></span> 正向力/重力</span>
             </div>
         </div>
 
-        <!-- Right Panel: Graph & Controls -->
-        <!-- Mobile: Flex-1 (fills remaining), Scrollable. Desktop: Fixed Width -->
-        <div class="flex-1 lg:flex-none w-full lg:w-[450px] bg-slate-50 flex flex-col overflow-y-auto z-10 shadow-inner lg:shadow-none">
+        <!-- Right: Controls & Graphs (40% width on desktop) -->
+        <div class="w-full lg:w-[40%] bg-white lg:border-l border-slate-200 flex flex-col z-20 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] lg:shadow-none order-2 h-[55vh] lg:h-auto">
             
-            <!-- Graph Section -->
-            <div class="p-3 lg:p-4 bg-white m-3 lg:m-4 rounded-xl shadow border border-slate-200 flex-shrink-0">
-                <h2 class="text-base lg:text-lg font-bold text-slate-700 mb-2 border-l-4 border-purple-500 pl-2">加速度 - 外力 關係圖</h2>
-                <div class="relative w-full aspect-[2/1] lg:aspect-[4/3]">
-                    <canvas id="graphCanvas" class="w-full h-full"></canvas>
-                </div>
-                <p class="text-xs text-slate-400 mt-1 text-center">顯示 \(a\) 對 \(F\) 的關係 (取數值大小)。Y軸自動縮放。</p>
-            </div>
-
-            <!-- Controls Section -->
-            <div class="px-4 pb-6 lg:px-6 lg:pb-6 space-y-4 lg:space-y-5">
-                <h2 class="text-base lg:text-lg font-bold text-slate-700 border-l-4 border-orange-500 pl-2">參數控制</h2>
-
-                <!-- Control: Applied Force F -->
-                <div class="bg-white p-3 lg:p-4 rounded-lg shadow-sm border border-slate-200">
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="font-bold text-red-600 text-sm lg:text-base">施加外力 \(F\)</label>
-                        <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-sm font-mono"><span id="disp_F">0</span> N</span>
+            <!-- Scrollable Container -->
+            <div class="flex-1 overflow-y-auto no-scrollbar p-4 lg:p-6 space-y-6">
+                
+                <!-- Graph Card -->
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-1">
+                    <div class="flex items-center justify-between px-3 py-2">
+                        <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2">
+                            <span class="w-1 h-4 bg-indigo-500 rounded-full"></span>
+                            加速度 vs 外力
+                        </h3>
                     </div>
-                    <!-- Range -50 to 50 -->
-                    <input type="range" id="input_F" min="-50" max="50" step="0.5" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-500 slider-thumb">
-                    <div class="flex justify-between text-xs text-slate-400 mt-1">
-                        <span>向右 (-50)</span>
-                        <span>0</span>
-                        <span>向左 (+50)</span>
+                    <div class="relative w-full aspect-[2.2/1] bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                        <canvas id="graphCanvas" class="w-full h-full"></canvas>
                     </div>
+                    <p class="text-center text-[10px] text-slate-400 py-1">X軸: 外力大小 | Y軸: 加速度 (自動縮放)</p>
                 </div>
 
-                <!-- Control Group: Properties -->
-                <div class="bg-white p-3 lg:p-4 rounded-lg shadow-sm border border-slate-200 space-y-4">
+                <!-- Controls -->
+                <div class="space-y-6 pb-8">
                     
-                    <!-- Mass -->
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="font-semibold text-slate-700 text-sm lg:text-base">物體質量 \(m\)</label>
-                            <input type="number" id="num_m" value="5.0" min="0.5" max="20" step="0.5" class="w-20 p-1 border rounded text-right font-mono bg-slate-50 focus:ring-2 focus:ring-blue-400 outline-none">
+                    <!-- Force Control -->
+                    <div class="bg-slate-50 p-4 lg:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="font-bold text-slate-700 flex items-center gap-2">
+                                <span class="bg-red-500 text-white w-6 h-6 rounded-lg flex items-center justify-center text-xs shadow-red-200 shadow-md">F</span>
+                                施加外力
+                            </label>
+                            <span class="font-mono font-bold text-xl text-red-600 w-24 text-right tabular-nums"><span id="disp_F">0.0</span> <span class="text-sm text-red-400">N</span></span>
                         </div>
-                        <input type="range" id="input_m" min="0.5" max="20" step="0.5" value="5.0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        
+                        <!-- Center Zero Slider -->
+                        <div class="relative h-12 flex items-center justify-center group">
+                            <!-- Background Track Gradient -->
+                            <div class="absolute w-full h-2 bg-gradient-to-r from-red-100 via-slate-200 to-red-100 rounded-full"></div>
+                            <!-- Center Marker -->
+                            <div class="absolute left-1/2 w-0.5 h-4 bg-slate-400 -translate-x-1/2 rounded-full"></div>
+                            <!-- Tick Marks -->
+                            <div class="absolute left-[25%] w-px h-2 bg-slate-300"></div>
+                            <div class="absolute left-[75%] w-px h-2 bg-slate-300"></div>
+
+                            <input type="range" id="input_F" min="-50" max="50" step="0.5" value="0" class="absolute w-full z-10 opacity-0 cursor-pointer h-full">
+                            
+                            <!-- Custom Interactive Thumb (Visual Only, moved by JS) -->
+                            <div id="thumb_F_visual" class="absolute left-1/2 w-6 h-6 bg-white border-2 border-red-500 rounded-full shadow-md transform -translate-x-1/2 pointer-events-none transition-transform duration-75 flex items-center justify-center">
+                                <div class="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between text-[10px] font-bold text-slate-400 mt-[-5px] uppercase tracking-wider px-1">
+                            <span>⟵ 向左推 (Left)</span>
+                            <span>向右推 (Right) ⟶</span>
+                        </div>
                     </div>
 
-                    <!-- Simplified Friction Control -->
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="font-semibold text-slate-700 text-sm lg:text-base">最大摩擦力 \(f\)</label>
-                            <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-sm font-mono"><span id="disp_fLimit">20.0</span> N</span>
+                    <!-- Properties Group -->
+                    <div class="grid grid-cols-1 gap-4">
+                        <!-- Mass -->
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-semibold text-slate-600">物體質量 ($m$)</label>
+                                <span class="text-sm font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"><span id="disp_m">5.0</span> kg</span>
+                            </div>
+                            <input type="range" id="input_m" min="0.5" max="20" step="0.5" value="5.0" class="w-full">
                         </div>
-                        <!-- Range 0 to 50 -->
-                        <input type="range" id="input_fLimit" min="0" max="50" step="0.5" value="20.0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-500">
-                        <div class="flex justify-between text-xs text-slate-400 mt-1">
-                            <span>0 N</span>
-                            <span>50 N</span>
+
+                        <!-- Max Static Friction -->
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-semibold text-slate-600">最大靜摩擦力 ($f_{s,max}$)</label>
+                                <span class="text-sm font-mono font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded"><span id="disp_fLimit">20.0</span> N</span>
+                            </div>
+                            <input type="range" id="input_fLimit" min="0" max="50" step="0.5" value="20.0" class="w-full slider-green">
                         </div>
                     </div>
-
-                    <div class="pt-2 border-t border-slate-100 text-xs lg:text-sm text-slate-500">
-                        <p>當 \(F \le f\) 時，物體靜止。</p>
-                        <p>當 \(F > f\) 時，物體加速。</p>
+                    
+                    <div class="pt-4 border-t border-slate-100 text-center">
+                        <p class="text-[10px] text-slate-400">Physics Engine v2.0 &bull; Designed for HK DSE</p>
                     </div>
-                </div>
-
-                <div class="text-xs text-slate-400 text-center pb-8 lg:pb-4">
-                    設計者：香港物理老師 (2025)
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Pop-up Modal (Instruction Screen) -->
-    <div id="infoModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col">
-            <div class="bg-blue-600 p-6 text-white rounded-t-2xl flex justify-between items-start">
+    <!-- Info Modal -->
+    <div id="infoModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col transform scale-95 transition-transform duration-300" id="modalContent">
+            <div class="bg-indigo-600 p-6 text-white flex justify-between items-start">
                 <div>
-                    <h2 class="text-2xl font-bold mb-1">同學你好！👋</h2>
-                    <p class="text-blue-100 text-sm">請花一點時間閱讀以下原理，這對考試很有幫助。</p>
+                    <h2 class="text-2xl font-bold mb-1">物理原理詳解</h2>
+                    <p class="text-indigo-100 text-sm opacity-90">Understanding Friction & Motion</p>
                 </div>
-                <button onclick="document.getElementById('infoModal').classList.add('hidden')" class="text-white hover:text-blue-200 text-2xl font-bold">&times;</button>
+                <button onclick="toggleModal(false)" class="bg-white/20 hover:bg-white/30 rounded-full p-1 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
             
-            <div class="p-8 text-slate-700 space-y-6">
-                <!-- Concept 1 -->
-                <div class="flex gap-4">
-                    <div class="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-lg">1</div>
+            <div class="p-6 lg:p-8 text-slate-600 space-y-8">
+                <!-- Section 1 -->
+                <div class="flex gap-5">
+                    <div class="flex-shrink-0 w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">1</div>
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-1">外力的方向</h3>
-                        <p class="leading-relaxed">
-                            在這個模擬中，<span class="text-red-600 font-bold">正值 (+F)</span> 代表向左的力，<span class="text-red-600 font-bold">負值 (-F)</span> 代表向右的力。
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">靜止與運動的界線</h3>
+                        <p class="leading-relaxed text-sm">
+                            物體是否移動取決於外力 $F$ 與最大靜摩擦力 $f_{s,max}$ 的關係：
                         </p>
+                        <ul class="mt-2 space-y-1 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <li>• 若 $|F| \le f_{s,max}$，物體保持<strong>靜止</strong>，此時 $f = -F$。</li>
+                            <li>• 若 $|F| > f_{s,max}$，物體開始<strong>加速</strong>，此時摩擦力達到上限。</li>
+                        </ul>
                     </div>
                 </div>
 
-                <!-- Concept 2 -->
-                <div class="flex gap-4">
-                    <div class="flex-shrink-0 w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                <!-- Section 2 -->
+                <div class="flex gap-5">
+                    <div class="flex-shrink-0 w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">2</div>
                     <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-1">摩擦力的方向</h3>
-                        <p class="leading-relaxed">
-                            摩擦力永遠與運動趨勢或運動方向<span class="font-bold">相反</span>。
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">牛頓第二定律 ($F=ma$)</h3>
+                        <p class="leading-relaxed text-sm">
+                            當物體滑動時，其加速度 $a$ 由合力決定：
                         </p>
-                    </div>
-                </div>
-
-                <!-- Concept 3 -->
-                <div class="flex gap-4">
-                    <div class="flex-shrink-0 w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-lg">3</div>
-                    <div>
-                        <h3 class="font-bold text-lg text-slate-900 mb-1">圖表分析</h3>
-                        <p class="leading-relaxed">
-                            我們使用 \(F\) 對 \(a\) 的圖表（取數值大小）。這能清楚顯示：只要外力大小超過最大摩擦力，物體就會產生加速度。
-                        </p>
+                        <div class="my-3 font-mono text-center bg-slate-100 p-2 rounded text-slate-800 font-bold">
+                            $$ F_{net} = F - f $$
+                            $$ a = \frac{F_{net}}{m} $$
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="p-6 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
-                <button onclick="document.getElementById('infoModal').classList.add('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transform transition hover:scale-105">
-                    明白了，開始實驗！
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="toggleModal(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-indigo-200 transform transition active:scale-95">
+                    明白，開始實驗
                 </button>
             </div>
         </div>
@@ -206,14 +290,16 @@ let state = {
     fLimit: 20.0, // Friction Limit (N) [0, 50]
     
     // Calculated
-    N_force: 0, // Normal force value
-    fActual: 0, // Signed Friction (Positive = Left, Negative = Right)
+    N_force: 0,
+    fActual: 0, // Signed Friction
     a: 0,       // Signed Acceleration
     isMoving: false,
+    mu: 0,      // Static friction coeff
     
     // Animation
-    groundOffset: 0, // Used to scroll the floor texture
-    velocity: 0 // Visual velocity
+    groundOffset: 0,
+    velocity: 0, // Visual velocity
+    blockX: 0    // For subtle spring effect on start
 };
 
 // DOM Elements
@@ -222,167 +308,163 @@ const ctxSim = canvasSim.getContext('2d');
 const canvasGraph = document.getElementById('graphCanvas');
 const ctxGraph = canvasGraph.getContext('2d');
 
-const inputs = {
-    F: document.getElementById('input_F'),
-    m_slider: document.getElementById('input_m'),
-    m_num: document.getElementById('num_m'),
-    fLimit: document.getElementById('input_fLimit')
-};
-
-const displays = {
-    F: document.getElementById('disp_F'),
-    fLimit: document.getElementById('disp_fLimit'),
-    a: document.getElementById('val_a'),
-    fActual: document.getElementById('val_f_actual'),
-    status: document.getElementById('statusText')
+const ui = {
+    inputF: document.getElementById('input_F'),
+    inputM: document.getElementById('input_m'),
+    inputFLimit: document.getElementById('input_fLimit'),
+    dispF: document.getElementById('disp_F'),
+    dispM: document.getElementById('disp_m'),
+    dispFLimit: document.getElementById('disp_fLimit'),
+    valA: document.getElementById('val_a'),
+    valFnet: document.getElementById('val_fnet'),
+    statusBadge: document.getElementById('statusBadge'),
+    statusText: document.getElementById('statusText'),
+    thumbVisual: document.getElementById('thumb_F_visual')
 };
 
 // Initialization
 function init() {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    setupHighDPICanvas();
+    window.addEventListener('resize', () => {
+        setupHighDPICanvas();
+        drawGraph(); // Redraw static graph immediately
+    });
     
-    // Attach Listeners
-    inputs.F.addEventListener('input', (e) => { state.F = parseFloat(e.target.value); updatePhysics(); });
-    
-    // Sync Mass Inputs
-    inputs.m_slider.addEventListener('input', (e) => { 
-        state.m = parseFloat(e.target.value); 
-        inputs.m_num.value = state.m; 
+    // Event Listeners
+    ui.inputF.addEventListener('input', (e) => { 
+        state.F = parseFloat(e.target.value); 
         updatePhysics(); 
     });
-    inputs.m_num.addEventListener('change', (e) => {
-        let val = parseFloat(e.target.value);
-        if(val <= 0.1) val = 0.1;
-        if(val > 50) val = 50; 
-        state.m = val;
-        inputs.m_slider.value = state.m;
-        inputs.m_num.value = state.m;
-        updatePhysics();
+
+    ui.inputM.addEventListener('input', (e) => { 
+        state.m = parseFloat(e.target.value); 
+        updatePhysics(); 
     });
 
-    inputs.fLimit.addEventListener('input', (e) => {
+    ui.inputFLimit.addEventListener('input', (e) => {
         state.fLimit = parseFloat(e.target.value);
         updatePhysics();
     });
 
     updatePhysics();
     animate();
+    
+    // Initial Graph draw
+    setTimeout(drawGraph, 100);
 }
 
-function resizeCanvas() {
-    const setupCanvas = (canvas) => {
+function setupHighDPICanvas() {
+    const scale = window.devicePixelRatio || 1;
+    
+    [canvasSim, canvasGraph].forEach(canvas => {
         const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width * window.devicePixelRatio;
-        canvas.height = rect.height * window.devicePixelRatio;
+        canvas.width = rect.width * scale;
+        canvas.height = rect.height * scale;
         canvas.style.width = rect.width + 'px';
         canvas.style.height = rect.height + 'px';
         const ctx = canvas.getContext('2d');
-        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        return { w: rect.width, h: rect.height };
-    };
-    setupCanvas(canvasSim);
-    setupCanvas(canvasGraph);
-    drawSimulation();
-    drawGraph();
+        ctx.scale(scale, scale);
+    });
 }
 
-// Core Physics Logic
 function updatePhysics() {
-    // 1. Calculate Limits
     state.N_force = state.m * g;
+    state.mu = state.fLimit / (state.m * g);
 
-    // 2. Determine State
-    // F > 0 implies Pulling Left
-    // F < 0 implies Pushing Right
-    
     const absF = Math.abs(state.F);
     
     if (absF <= state.fLimit) {
         // Static Region
         state.isMoving = false;
         state.a = 0;
-        // Friction opposes Force exactly
         state.fActual = -state.F; 
     } else {
         // Kinetic Region
         state.isMoving = true;
-        // Direction of Motion follows F
         const sign = Math.sign(state.F); 
-        
-        // Friction is max and opposes motion
         state.fActual = -sign * state.fLimit;
-        
-        // Net Force = F + fActual
-        // e.g. F=30, fLim=20 -> fActual=-20 -> Net=10 -> a > 0 (Left)
-        // e.g. F=-30, fLim=20 -> fActual=20 -> Net=-10 -> a < 0 (Right)
         const netForce = state.F + state.fActual;
         state.a = netForce / state.m;
     }
 
-    // 3. Update UI
-    displays.F.textContent = state.F.toFixed(1);
-    displays.fLimit.textContent = state.fLimit.toFixed(1);
-    displays.a.textContent = Math.abs(state.a).toFixed(2);
-    // Display absolute value for simplicity in text, arrow shows direction
-    displays.fActual.textContent = Math.abs(state.fActual).toFixed(2);
+    // Update UI Texts
+    ui.dispF.textContent = state.F.toFixed(1);
+    ui.dispM.textContent = state.m.toFixed(1);
+    ui.dispFLimit.textContent = state.fLimit.toFixed(1);
+    ui.valA.textContent = Math.abs(state.a).toFixed(2);
     
-    if (state.isMoving) {
-        displays.status.textContent = "加速滑動";
-        displays.status.className = "font-bold text-red-600";
-    } else {
-        displays.status.textContent = "靜止";
-        displays.status.className = "font-bold text-green-600";
-    }
+    const netForceVal = Math.abs(state.F + state.fActual);
+    ui.valFnet.textContent = netForceVal.toFixed(1);
 
+    // Update Visuals
+    updateForceThumbPosition();
+    updateStatusBadge();
     drawGraph();
 }
 
-// Animation Loop for Simulation
+function updateForceThumbPosition() {
+    // Map -50..50 to 0..100%
+    const percent = ((state.F + 50) / 100) * 100;
+    ui.thumbVisual.style.left = `${percent}%`;
+    ui.thumbVisual.style.borderColor = Math.abs(state.F) > state.fLimit ? '#ef4444' : '#94a3b8';
+}
+
+function updateStatusBadge() {
+    if (state.isMoving) {
+        ui.statusBadge.className = "px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold shadow-lg transition-colors duration-300 bg-red-500 text-white flex items-center gap-2";
+        ui.statusText.textContent = "加速滑動 (Moving)";
+    } else {
+        ui.statusBadge.className = "px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold shadow-lg transition-colors duration-300 bg-green-500 text-white flex items-center gap-2";
+        ui.statusText.textContent = "靜止 (Static)";
+    }
+}
+
+// Animation Loop
 function animate() {
-    const dt = 0.016; // approx 60fps
+    const dt = 0.016; 
     
     if (state.isMoving) {
-        // Visual velocity accumulation
-        state.velocity += state.a * dt * 10; 
-        
-        // Move ground.
-        // If moving Left (a>0, v>0), ground should look like it's going Right.
-        // So groundOffset increases.
+        state.velocity += state.a * dt * 8; // Speed multiplier for visual effect
         state.groundOffset += state.velocity * dt;
         
-        // Loop the offset for texture scrolling
-        const patternW = 20;
+        // Loop texture
+        const patternW = 40;
         if (state.groundOffset > patternW) state.groundOffset -= patternW;
         if (state.groundOffset < -patternW) state.groundOffset += patternW;
         
+        // Reset block jitter
+        state.blockX = state.blockX * 0.9;
     } else {
         state.velocity = 0;
-        // Ground stops moving
+        // Subtle spring back to center when force is released or static
+        state.blockX = state.blockX * 0.9 + (state.F * 0.05) * 0.1;
     }
 
     drawSimulation();
     requestAnimationFrame(animate);
 }
 
-// Drawing Helper: Arrow
+// Drawing Helpers
 function drawArrow(ctx, fromX, fromY, toX, toY, color, text, labelBelow = false) {
-    const headLen = 10;
+    const headLen = 12;
     const angle = Math.atan2(toY - fromY, toX - fromX);
     
+    // Stop line at base of arrowhead to prevent round cap protrusion
     const headAxialLen = headLen * Math.cos(Math.PI / 6);
     const endLineX = toX - headAxialLen * Math.cos(angle);
     const endLineY = toY - headAxialLen * Math.sin(angle);
 
     ctx.beginPath();
+    ctx.lineCap = "round";
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     
     ctx.moveTo(fromX, fromY);
-    ctx.lineTo(endLineX, endLineY);
+    ctx.lineTo(endLineX, endLineY); // Stops before tip to allow head to fit cleanly
     ctx.stroke();
     
+    // Arrowhead
     ctx.beginPath();
     ctx.moveTo(toX, toY);
     ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
@@ -391,14 +473,36 @@ function drawArrow(ctx, fromX, fromY, toX, toY, color, text, labelBelow = false)
     ctx.fill();
 
     if (text) {
-        ctx.font = "bold 14px 'Noto Sans TC'";
+        ctx.font = "bold 14px 'Inter', sans-serif";
         ctx.fillStyle = color;
         const midX = (fromX + toX) / 2;
         const midY = (fromY + toY) / 2;
-        const textOffset = labelBelow ? 20 : -10;
+        const textOffset = labelBelow ? 25 : -15;
+        
+        // Background for text to make it readable over lines
+        const metrics = ctx.measureText(text);
+        ctx.save();
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillRect(midX - metrics.width/2 - 4, midY + textOffset - 12, metrics.width + 8, 16);
+        ctx.restore();
+
         ctx.textAlign = "center";
         ctx.fillText(text, midX, midY + textOffset);
     }
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
 }
 
 function drawSimulation() {
@@ -408,85 +512,112 @@ function drawSimulation() {
     ctxSim.clearRect(0, 0, width, height);
     
     const floorY = height * 0.7;
-    const blockW = 120;
-    const blockH = 80;
+    const blockW = 140;
+    const blockH = 90;
     const centerX = width / 2;
-    const blockX = centerX; 
+    // Add dynamic jitter based on force state
+    const blockVisualX = centerX + state.blockX; 
     const blockY = floorY - blockH;
 
-    // 1. Draw Floor
+    // 1. Draw Floor with moving texture
+    ctxSim.save();
+    ctxSim.beginPath();
+    ctxSim.rect(0, floorY, width, height - floorY);
+    ctxSim.fillStyle = "#f1f5f9";
+    ctxSim.fill();
+    ctxSim.strokeStyle = "#cbd5e1";
+    ctxSim.lineWidth = 2;
     ctxSim.beginPath();
     ctxSim.moveTo(0, floorY);
     ctxSim.lineTo(width, floorY);
-    ctxSim.strokeStyle = "#64748b";
-    ctxSim.lineWidth = 2;
     ctxSim.stroke();
-    
-    // Moving Ground Texture
-    ctxSim.strokeStyle = "#cbd5e1";
-    ctxSim.lineWidth = 1;
-    
-    const patternW = 20;
-    // Handle scrolling for both directions
+
+    // Texture
+    ctxSim.strokeStyle = "#94a3b8";
+    ctxSim.lineWidth = 2;
+    const patternW = 40;
     const startX = (state.groundOffset % patternW) - patternW;
-    
     for(let i = startX; i < width; i+=patternW) {
         ctxSim.beginPath();
         ctxSim.moveTo(i, floorY);
-        ctxSim.lineTo(i - 10, floorY + 10);
+        ctxSim.lineTo(i - 15, floorY + 15);
         ctxSim.stroke();
     }
+    ctxSim.restore();
 
-    // 2. Draw Block
-    ctxSim.fillStyle = "rgba(59, 130, 246, 0.5)";
-    ctxSim.fillRect(blockX - blockW/2, blockY, blockW, blockH);
-    ctxSim.strokeStyle = "#1d4ed8";
-    ctxSim.lineWidth = 2;
-    ctxSim.strokeRect(blockX - blockW/2, blockY, blockW, blockH);
+    // 2. Draw Block (Stylized)
+    ctxSim.save();
     
-    ctxSim.fillStyle = "#1e3a8a"; 
-    ctxSim.font = "bold 16px sans-serif";
+    // Setup Shadow for the block
+    ctxSim.shadowColor = "rgba(0, 0, 0, 0.25)";
+    ctxSim.shadowBlur = 20;
+    ctxSim.shadowOffsetY = 10;
+    ctxSim.shadowOffsetX = 0;
+
+    // Main Body Gradient
+    const gradient = ctxSim.createLinearGradient(blockVisualX - blockW/2, blockY, blockVisualX - blockW/2, blockY + blockH);
+    gradient.addColorStop(0, "#4f46e5"); // Indigo 600
+    gradient.addColorStop(1, "#4338ca"); // Indigo 700
+    ctxSim.fillStyle = gradient;
+    
+    // Draw Fill (with shadow)
+    ctxSim.beginPath();
+    drawRoundedRect(ctxSim, blockVisualX - blockW/2, blockY, blockW, blockH, 12);
+    ctxSim.fill();
+    
+    // Reset Shadow for subsequent strokes to avoid double shadowing
+    ctxSim.shadowColor = "transparent";
+    ctxSim.shadowBlur = 0;
+    ctxSim.shadowOffsetY = 0;
+
+    // Border
+    ctxSim.strokeStyle = "#312e81"; // Dark Indigo border
+    ctxSim.lineWidth = 3;
+    ctxSim.stroke();
+    
+    // Inner Highlight (optional, but looks nice)
+    ctxSim.strokeStyle = "rgba(255,255,255,0.2)";
+    ctxSim.lineWidth = 1;
+    drawRoundedRect(ctxSim, blockVisualX - blockW/2 + 3, blockY + 3, blockW - 6, blockH - 6, 10);
+    ctxSim.stroke();
+
+    // Text
+    ctxSim.fillStyle = "#ffffff"; 
+    ctxSim.font = "bold 20px 'Inter'";
     ctxSim.textAlign = "center";
     ctxSim.textBaseline = "middle";
-    ctxSim.fillText(state.m + " kg", blockX, blockY + blockH/2);
+    ctxSim.fillText(state.m + " kg", blockVisualX, blockY + blockH/2);
+    ctxSim.restore();
 
     // 3. Draw Forces
-    const centerBodyX = blockX;
+    const centerBodyX = blockVisualX;
     const centerBodyY = blockY + blockH/2;
-    const scale = 3; 
+    const scale = 3.5; 
 
-    // A. Normal Force R
-    let lenN = Math.min(state.N_force * scale, 100);
-    drawArrow(ctxSim, centerBodyX, blockY, centerBodyX, blockY - lenN, "#000000", "R", false);
-
-    // B. Gravity mg
-    let lenG = Math.min(state.m * g * scale, 100);
-    drawArrow(ctxSim, centerBodyX, floorY, centerBodyX, floorY + lenG, "#9333ea", "mg", true);
+    // A. Normal Force R & Gravity mg
+    let lenN = Math.min(state.N_force * scale * 0.5, 120); // Scale down vertical slightly visual
+    drawArrow(ctxSim, centerBodyX, blockY, centerBodyX, blockY - lenN, "#1e293b", "R", false);
+    drawArrow(ctxSim, centerBodyX, floorY - 5, centerBodyX, floorY - 5 + lenN, "#1e293b", "mg", true);
 
     // C. Applied Force F (Signed)
-    // F > 0 (Left), F < 0 (Right)
     if (Math.abs(state.F) > 0.1) {
-        const startX = (state.F > 0) ? (blockX - blockW/2) : (blockX + blockW/2);
-        // If F > 0, draw Left. If F < 0, draw Right.
+        const startX = (state.F > 0) ? (blockVisualX - blockW/2) : (blockVisualX + blockW/2);
         const direction = (state.F > 0) ? -1 : 1; 
         const lenF = Math.abs(state.F) * scale;
-        const drawLenF = Math.min(lenF, width/2 - 40); 
+        const drawLenF = Math.min(lenF, width/2 - 60); 
         
-        drawArrow(ctxSim, startX, centerBodyY, startX + (drawLenF * direction), centerBodyY, "#ef4444", `F=${Math.abs(state.F).toFixed(1)}N`, false);
+        drawArrow(ctxSim, startX, centerBodyY, startX + (drawLenF * direction), centerBodyY, "#ef4444", `F=${Math.abs(state.F).toFixed(1)}`, false);
     }
 
     // D. Friction f (Signed)
     if (Math.abs(state.fActual) > 0.1) {
-        // Draw at bottom
         const contactY = floorY;
-        const startX = blockX;
-        
-        // If fActual > 0 (Left), draw Left.
+        const startX = blockVisualX;
         const direction = (state.fActual > 0) ? -1 : 1;
         const lenf = Math.abs(state.fActual) * scale;
-        const drawLenf = Math.min(lenf, width/2 - 40);
+        const drawLenf = Math.min(lenf, width/2 - 60);
         
-        drawArrow(ctxSim, startX, contactY, startX + (drawLenf * direction), contactY, "#16a34a", `f=${Math.abs(state.fActual).toFixed(1)}N`, true);
+        drawArrow(ctxSim, startX, contactY + 3, startX + (drawLenf * direction), contactY + 3, "#22c55e", `f=${Math.abs(state.fActual).toFixed(1)}`, true);
     }
 }
 
@@ -494,107 +625,167 @@ function drawGraph() {
     const width = canvasGraph.parentElement.offsetWidth;
     const height = canvasGraph.parentElement.offsetHeight;
     
+    // Reset transform for drawing
     ctxGraph.setTransform(1, 0, 0, 1, 0, 0);
+    const scale = window.devicePixelRatio || 1;
+    ctxGraph.scale(scale, scale);
+    
     ctxGraph.clearRect(0, 0, width, height);
 
-    const padding = 40;
-    
-    // Dynamic Scaling Logic
-    // X Axis: Display Magnitude. Range 0 to 55 (to fit 50).
-    const xRange = 55;
-    
-    // Y Axis: Dynamic range based on max possible acceleration for current Mass
-    // Max Force = 50. Max Acc = 50/m.
-    // Add 20% padding for visual comfort.
-    const yRange = (55 / state.m); 
+    const padding = { top: 20, right: 30, bottom: 30, left: 40 };
+    const graphW = width - padding.left - padding.right;
+    const graphH = height - padding.top - padding.bottom;
 
-    // Origin at Bottom Left (with padding)
-    const originX = padding;
-    const originY = height - padding;
-    
-    // Scale Factors (Pixels per Unit)
-    const availableW = width - padding * 2;
-    const availableH = height - padding * 2;
-    
-    const scaleX = availableW / xRange;
-    const scaleY = availableH / yRange;
+    // Ranges
+    const maxF = 55;
+    const maxA = 55 / state.m;
 
-    // Helper: Plot absolute values
-    const toPx = (magF, magA) => ({
-        x: originX + magF * scaleX,
-        y: originY - magA * scaleY
-    });
+    const getX = (val) => padding.left + (val / maxF) * graphW;
+    const getY = (val) => padding.top + graphH - (val / maxA) * graphH;
 
-    // 1. Draw Axes
+    // Grid
     ctxGraph.beginPath();
-    ctxGraph.strokeStyle = "#94a3b8";
+    ctxGraph.strokeStyle = "#f1f5f9";
     ctxGraph.lineWidth = 1;
-    // X Axis
-    ctxGraph.moveTo(originX, originY);
-    ctxGraph.lineTo(width - padding, originY);
-    // Y Axis
-    ctxGraph.moveTo(originX, originY);
-    ctxGraph.lineTo(originX, padding);
+    for (let i = 0; i <= 5; i++) {
+        const y = padding.top + (graphH / 5) * i;
+        ctxGraph.moveTo(padding.left, y);
+        ctxGraph.lineTo(width - padding.right, y);
+    }
+    for (let i = 0; i <= 5; i++) {
+        const x = padding.left + (graphW / 5) * i;
+        ctxGraph.moveTo(x, padding.top);
+        ctxGraph.lineTo(x, height - padding.bottom);
+    }
     ctxGraph.stroke();
 
-    // Labels
-    ctxGraph.font = "12px sans-serif";
-    ctxGraph.fillStyle = "#475569";
-    ctxGraph.textAlign = "center";
-    ctxGraph.fillText("外力 F (N)", width/2, height - 5);
-    ctxGraph.save();
-    ctxGraph.translate(15, height/2);
-    ctxGraph.rotate(-Math.PI/2);
-    ctxGraph.fillText("加速度 a", 0, 0);
-    ctxGraph.restore();
-
-    // 2. Draw Theoretical Lines (Magnitude Graph)
+    // Axes
     ctxGraph.beginPath();
-    ctxGraph.strokeStyle = "#3b82f6";
+    ctxGraph.strokeStyle = "#94a3b8";
+    ctxGraph.lineWidth = 2;
+    ctxGraph.fillStyle = "#94a3b8";
+
+    // Y Axis Line
+    ctxGraph.moveTo(padding.left, height - padding.bottom);
+    ctxGraph.lineTo(padding.left, padding.top);
+    ctxGraph.stroke();
+    
+    // Y Axis Arrow
+    ctxGraph.beginPath();
+    ctxGraph.moveTo(padding.left, padding.top - 5); // Tip
+    ctxGraph.lineTo(padding.left - 4, padding.top + 5);
+    ctxGraph.lineTo(padding.left + 4, padding.top + 5);
+    ctxGraph.fill();
+
+    // X Axis Line
+    ctxGraph.beginPath();
+    ctxGraph.moveTo(padding.left, height - padding.bottom);
+    ctxGraph.lineTo(width - padding.right, height - padding.bottom);
+    ctxGraph.stroke();
+
+    // X Axis Arrow
+    ctxGraph.beginPath();
+    ctxGraph.moveTo(width - padding.right + 5, height - padding.bottom); // Tip
+    ctxGraph.lineTo(width - padding.right - 5, height - padding.bottom - 4);
+    ctxGraph.lineTo(width - padding.right - 5, height - padding.bottom + 4);
+    ctxGraph.fill();
+
+    // Theoretical Curve (Static then Linear)
+    ctxGraph.beginPath();
+    ctxGraph.strokeStyle = "#6366f1"; // Indigo 500
     ctxGraph.lineWidth = 3;
     ctxGraph.lineJoin = "round";
 
-    // Static phase: |F| from 0 to fLimit, |a| = 0
-    let pStart = toPx(0, 0);
-    let pLim = toPx(state.fLimit, 0);
-    
-    // Kinetic phase: |F| > fLimit, |a| = (|F| - fLimit)/m
-    let pEnd = toPx(55, (55 - state.fLimit)/state.m);
-
-    ctxGraph.moveTo(pStart.x, pStart.y);
-    ctxGraph.lineTo(pLim.x, pLim.y);
-    ctxGraph.lineTo(pEnd.x, pEnd.y);
+    // P1: Start
+    ctxGraph.moveTo(getX(0), getY(0));
+    // P2: Limit
+    ctxGraph.lineTo(getX(state.fLimit), getY(0));
+    // P3: End
+    const finalA = (maxF - state.fLimit) / state.m;
+    ctxGraph.lineTo(getX(maxF), getY(finalA));
     ctxGraph.stroke();
 
-    // 3. Draw Current State Dot
-    // Use magnitude for plotting
-    const currentP = toPx(Math.abs(state.F), Math.abs(state.a));
-    
+    // Highlight "Static Zone"
+    ctxGraph.save();
+    ctxGraph.fillStyle = "rgba(34, 197, 94, 0.1)"; // Green tint
+    ctxGraph.fillRect(getX(0), padding.top, getX(state.fLimit) - getX(0), graphH);
+    ctxGraph.restore();
+
+    // f_max label
+    const fLimX = getX(state.fLimit);
+    ctxGraph.fillStyle = "#16a34a";
+    ctxGraph.font = "bold 11px 'Inter'";
+    ctxGraph.textAlign = "center";
+    ctxGraph.fillText("f_max", fLimX, height - padding.bottom + 25);
+    // Tick mark
+    ctxGraph.beginPath();
+    ctxGraph.strokeStyle = "#16a34a";
+    ctxGraph.lineWidth = 1.5;
+    ctxGraph.moveTo(fLimX, height - padding.bottom);
+    ctxGraph.lineTo(fLimX, height - padding.bottom + 5);
+    ctxGraph.stroke();
+
+    // Current State Dot
+    const curX = getX(Math.abs(state.F));
+    const curY = getY(Math.abs(state.a));
+
+    // Guide lines
     ctxGraph.beginPath();
     ctxGraph.strokeStyle = "#cbd5e1";
-    ctxGraph.lineWidth = 1;
     ctxGraph.setLineDash([4, 4]);
-    // Vertical drop line
-    ctxGraph.moveTo(currentP.x, originY);
-    ctxGraph.lineTo(currentP.x, currentP.y);
-    // Horizontal guide line
-    ctxGraph.lineTo(originX, currentP.y);
+    ctxGraph.moveTo(curX, height - padding.bottom);
+    ctxGraph.lineTo(curX, curY);
+    ctxGraph.lineTo(padding.left, curY);
     ctxGraph.stroke();
     ctxGraph.setLineDash([]);
 
+    // Dot
     ctxGraph.beginPath();
-    ctxGraph.fillStyle = "#ef4444";
-    ctxGraph.arc(currentP.x, currentP.y, 6, 0, Math.PI*2);
+    ctxGraph.fillStyle = state.isMoving ? "#ef4444" : "#22c55e";
+    ctxGraph.arc(curX, curY, 6, 0, Math.PI * 2);
     ctxGraph.fill();
     ctxGraph.strokeStyle = "white";
     ctxGraph.lineWidth = 2;
     ctxGraph.stroke();
+    
+    // Labels
+    ctxGraph.fillStyle = "#64748b";
+    ctxGraph.font = "10px 'Inter'";
+    ctxGraph.textAlign = "center";
+    ctxGraph.fillText("0", padding.left, height - padding.bottom + 15);
+    ctxGraph.fillText(maxF, width - padding.right, height - padding.bottom + 15);
+    
+    // Axis Titles
+    ctxGraph.font = "bold 11px 'Noto Sans TC'";
+    ctxGraph.fillText("外力 F", width / 2 + 10, height - 5);
+    
+    ctxGraph.save();
+    ctxGraph.translate(12, height / 2);
+    ctxGraph.rotate(-Math.PI / 2);
+    ctxGraph.fillText("加速度 a", 0, 0);
+    ctxGraph.restore();
+}
 
-    // Limit Markers
-    ctxGraph.fillStyle = "#16a34a";
-    ctxGraph.font = "10px sans-serif";
-    if (state.fLimit > 2) {
-        ctxGraph.fillText(`fₘₐₓ`, pLim.x, originY + 15);
+// Modal Logic
+function toggleModal(show) {
+    const modal = document.getElementById('infoModal');
+    const content = document.getElementById('modalContent');
+    
+    if (show) {
+        modal.classList.remove('hidden');
+        // Small timeout to allow display:block to apply before opacity transition
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }, 10);
+    } else {
+        modal.classList.add('opacity-0');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
     }
 }
 
