@@ -553,9 +553,11 @@ function drawArrow(ctx, fromX, fromY, toX, toY, color, text, labelPos = 'top') {
         
         if (labelPos === 'left') {
             tx -= 15;
+            ty += 5;
             align = 'right';
         } else if (labelPos === 'right') {
             tx += 15;
+            ty -= 5;
             align = 'left';
         } else if (labelPos === 'bottom' || labelPos === true) {
             ty += 20;
@@ -686,7 +688,7 @@ function drawSimulation() {
     // A. Normal Force R & Gravity mg
     let lenN = Math.min(state.N_force * scale * 0.5, 120); // Scale down vertical slightly visual
     // R - From Top of Box, Label to Left
-    drawArrow(ctxSim, centerBodyX, blockY, centerBodyX, blockY - lenN, "#1e293b", "R", 'left');
+    drawArrow(ctxSim, centerBodyX-5, centerBodyY+blockH/2, centerBodyX-5, blockY - lenN, "#1e293b", "R", 'left');
     
     // Weight Force (mg) - From Center of Mass, Label to Right
     drawArrow(ctxSim, centerBodyX, centerBodyY, centerBodyX, centerBodyY + lenN, "#9333ea", "mg", 'right');
