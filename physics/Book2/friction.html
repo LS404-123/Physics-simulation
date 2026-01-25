@@ -687,7 +687,7 @@ function drawSimulation() {
     // A. Normal Force R & Gravity mg
     let lenN = Math.min(state.N_force * scale * 0.5, 120); // Scale down vertical slightly visual
     // R - From Top of Box, Label to Left
-    drawArrow(ctxSim, centerBodyX-5, centerBodyY+blockH/2, centerBodyX-5, blockY - lenN, "#1e293b", "R", 'left');
+    drawArrow(ctxSim, centerBodyX-5, centerBodyY + blockH/2, centerBodyX-5, centerBodyY + blockH/2 - lenN, "#1e293b", "R", 'left');
     
     // Weight Force (mg) - From Center of Mass, Label to Right
     drawArrow(ctxSim, centerBodyX, centerBodyY, centerBodyX, centerBodyY + lenN, "#9333ea", "mg", 'right');
