@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>牛頓第二定律：連結體運動模擬</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif:ital,wght@1,400&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            overflow: hidden; /* Prevent scrolling on mobile */
+        }
+
+        .math-font {
+            font-family: 'Noto Serif', serif;
+            font-style: italic;
+        }
+
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -6px; 
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 1.3px;
+        }
+
+        /* Modal Animation */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms;
+        }
+        .modal-exit {
+            opacity: 1;
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 300ms, transform 300ms;
+        }
+
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-800 text-white p-3 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">⚛️</span>
+            <h1 class="text-lg font-bold">牛頓第二定律模擬器</h1>
+        </div>
+        <button onclick="window.simControls.toggleModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition">
+            教學筆記 📝
+        </button>
+    </header>
+
+    <!-- Main Content Layout -->
+    <div class="flex flex-1 flex-col md:flex-row h-full overflow-hidden">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-full md:w-80 bg-white p-4 overflow-y-auto border-r border-gray-200 shadow-lg z-10 flex flex-col gap-4">
+            
+            <!-- System Switch -->
+            <div class="bg-slate-100 p-3 rounded-lg border border-slate-300">
+                <h3 class="font-bold text-slate-700 mb-2 border-b pb-1">系統選擇</h3>
+                <div class="flex gap-2">
+                    <button id="btn-atwood" onclick="window.simControls.switchSystem('atwood')" class="flex-1 py-2 px-1 text-sm bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 transition">
+                        垂直-垂直<br>(阿特午機)
+                    </button>
+                    <button id="btn-equiv" onclick="window.simControls.switchSystem('equiv')" class="flex-1 py-2 px-1 text-sm bg-gray-200 text-gray-700 rounded shadow-sm hover:bg-gray-300 transition">
+                        水平等效<br>(展開模式)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="space-y-4">
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <label class="block text-sm font-medium text-blue-800 mb-1">
+                        物體 A 質量 (<span class="math-font">m</span><sub>1</sub>): <span id="val-m1" class="font-bold">2.0</span> kg
+                    </label>
+                    <input type="range" id="input-m1" min="1.0" max="10.0" step="0.5" value="2.0" class="w-full">
+                    <div class="text-xs text-blue-600 mt-1">💡 較輕的物體 (藍色)</div>
+                </div>
+
+                <div class="bg-red-50 p-3 rounded-lg border border-red-100">
+                    <label class="block text-sm font-medium text-red-800 mb-1">
+                        物體 B 質量 (<span class="math-font">m</span><sub>2</sub>): <span id="val-m2" class="font-bold">5.0</span> kg
+                    </label>
+                    <input type="range" id="input-m2" min="1.0" max="10.0" step="0.5" value="5.0" class="w-full">
+                    <div class="text-xs text-red-600 mt-1">💡 較重的物體 (紅色)</div>
+                </div>
+            </div>
+
+            <!-- Toggles -->
+            <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                <span class="text-sm font-medium text-gray-700">顯示受力圖 (FBD)</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="check-fbd" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                </label>
+            </div>
+
+            <!-- Play Controls -->
+            <div class="flex gap-2 mt-auto pt-4 border-t">
+                <button onclick="window.simControls.toggleSimulation()" id="btn-play" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded shadow transition flex justify-center items-center gap-2">
+                    <span>▶ 開始</span>
+                </button>
+                <button onclick="window.simControls.resetSimulation()" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded shadow transition">
+                    ↺ 重置
+                </button>
+            </div>
+            
+            <!-- Real-time Data Output -->
+            <div class="mt-2 text-xs text-gray-500 text-center">
+               狀態: <span id="status-text">靜止</span> | 時間: <span id="time-text">0.00</span>s
+            </div>
+
+        </aside>
+
+        <!-- Canvas Area -->
+        <main class="flex-1 relative bg-gray-100 cursor-crosshair h-full">
+            <canvas id="simCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- Floating Info Panel -->
+            <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded shadow-md border-l-4 border-indigo-500">
+                <h4 class="font-bold text-gray-700 text-sm mb-1">實時數據</h4>
+                <div class="text-sm">
+                    <div class="flex justify-between gap-4">
+                        <span>加速度 <span class="math-font">a</span>:</span>
+                        <span class="font-mono font-bold text-indigo-700" id="data-a">0.00 m/s²</span>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <span>繩張力 <span class="math-font">T</span>:</span>
+                        <span class="font-mono font-bold text-indigo-700" id="data-t">0.00 N</span>
+                    </div>
+                    <div class="flex justify-between gap-4 text-xs text-gray-500 mt-1 pt-1 border-t">
+                        <span>系統總質量:</span>
+                        <span class="font-mono" id="data-total-m">0.0 kg</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal (Pop-out Screen) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 transition-opacity duration-300" style="display: flex;">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-transform duration-300 scale-100 flex flex-col">
+            <!-- Modal Header -->
+            <div class="bg-indigo-600 p-4 sticky top-0 z-10">
+                <h2 class="text-white text-xl font-bold flex items-center gap-2">
+                    <span>👨‍🏫</span> 老師的物理筆記
+                </h2>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-6 text-gray-800">
+                
+                <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                    <h3 class="font-bold text-yellow-800 mb-2">🎯 學習目標</h3>
+                    <p class="text-sm text-yellow-900">
+                        這個模擬展示了兩個**物理上等價**的系統。
+                        你會發現，將阿特午機「展開」到水平面上，其力學原理是完全一樣的！
+                    </p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-bold text-lg text-blue-700 mb-2 border-b pb-1">系統 1: 阿特午機 (垂直)</h4>
+                        <p class="text-sm mb-2 text-gray-600">傳統的滑輪實驗。</p>
+                        <div class="bg-gray-100 p-3 rounded font-mono text-sm border border-gray-300">
+                            <div class="mb-1 text-center font-bold">公式</div>
+                            <div class="flex justify-center items-center gap-2 my-2">
+                                <span class="math-font">a</span> = 
+                                <div class="flex flex-col items-center text-center leading-none">
+                                    <span class="border-b border-black pb-1 mb-1 block w-full">(<span class="math-font">m</span><sub>2</sub> - <span class="math-font">m</span><sub>1</sub>)<span class="math-font">g</span></span>
+                                    <span>(<span class="math-font">m</span><sub>1</sub> + <span class="math-font">m</span><sub>2</sub>)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold text-lg text-purple-700 mb-2 border-b pb-1">系統 2: 水平等效 (展開)</h4>
+                        <p class="text-sm mb-2 text-gray-600">將系統展開，用等大的力拉動。</p>
+                        <div class="bg-gray-100 p-3 rounded font-mono text-sm border border-gray-300">
+                            <div class="mb-1 text-center font-bold">公式</div>
+                            <div class="flex justify-center items-center gap-2 my-2">
+                                <span class="math-font">a</span> = 
+                                <div class="flex flex-col items-center text-center leading-none">
+                                    <span class="border-b border-black pb-1 mb-1 block w-full"><span class="math-font">F</span><sub>2</sub> - <span class="math-font">F</span><sub>1</sub></span>
+                                    <span>(<span class="math-font">m</span><sub>1</sub> + <span class="math-font">m</span><sub>2</sub>)</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">其中 <span class="math-font">F</span> = <span class="math-font">mg</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded space-y-2">
+                    <p><strong>💡 觀察重點：</strong></p>
+                    <ul class="list-disc pl-5">
+                        <li>在<strong>水平模式</strong>中，我們用 <span class="math-font">m₁g</span> 的力向左拉，用 <span class="math-font">m₂g</span> 的力向右拉。</li>
+                        <li>這模擬了重力在阿特午機中的作用。</li>
+                        <li>請注意看中間繩子的<strong>張力 T</strong>，它同時拉著兩個物體！</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t bg-gray-50 text-right sticky bottom-0">
+                <button onclick="window.simControls.toggleModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:-translate-y-0.5">
+                    明白了，開始實驗！ 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        (function() {
+            // Physics Constants
+            const G = 9.81;
+            const PX_PER_METER = 150; // Scaled up: 150px = 1m for visualization
+            const TIME_SCALE = 0.25; // Slow down simulation speed further
+            
+            // State
+            let state = {
+                m1: 2.0, // kg (Left / Table)
+                m2: 5.0, // kg (Right / Hanging)
+                system: 'atwood', // 'atwood' or 'equiv'
+                isRunning: false,
+                time: 0,
+                y1: 0, // Displacement
+                y2: 0, 
+                v: 0,
+                a: 0,
+                tension: 0
+            };
+
+            // DOM Elements
+            let canvas, ctx, inputM1, inputM2, valM1, valM2, btnPlay, statusText, timeText, dataA, dataT, dataTotalM, checkFBD;
+            let animationId;
+            let lastTimestamp = 0;
+
+            function initElements() {
+                canvas = document.getElementById('simCanvas');
+                ctx = canvas.getContext('2d');
+                inputM1 = document.getElementById('input-m1');
+                inputM2 = document.getElementById('input-m2');
+                valM1 = document.getElementById('val-m1');
+                valM2 = document.getElementById('val-m2');
+                btnPlay = document.getElementById('btn-play');
+                statusText = document.getElementById('status-text');
+                timeText = document.getElementById('time-text');
+                dataA = document.getElementById('data-a');
+                dataT = document.getElementById('data-t');
+                dataTotalM = document.getElementById('data-total-m');
+                checkFBD = document.getElementById('check-fbd');
+
+                inputM1.addEventListener('input', updateInputs);
+                inputM2.addEventListener('input', updateInputs);
+                checkFBD.addEventListener('change', draw);
+            }
+
+            // --- Core Functions ---
+
+            function resizeCanvas() {
+                if (!canvas) return;
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+            }
+
+            function toggleModal() {
+                const modal = document.getElementById('modal-overlay');
+                if (modal.style.display === 'none') {
+                    modal.style.display = 'flex';
+                    setTimeout(() => modal.firstElementChild.style.transform = 'scale(1)', 10);
+                } else {
+                    modal.firstElementChild.style.transform = 'scale(0.95)';
+                    setTimeout(() => modal.style.display = 'none', 150);
+                }
+            }
+
+            function switchSystem(type) {
+                resetSimulation();
+                state.system = type;
+                
+                // UI Feedback
+                const btnAtwood = document.getElementById('btn-atwood');
+                const btnEquiv = document.getElementById('btn-equiv');
+                
+                if (type === 'atwood') {
+                    btnAtwood.classList.add('bg-blue-600', 'text-white');
+                    btnAtwood.classList.remove('bg-gray-200', 'text-gray-700');
+                    btnEquiv.classList.add('bg-gray-200', 'text-gray-700');
+                    btnEquiv.classList.remove('bg-blue-600', 'text-white');
+                } else {
+                    btnEquiv.classList.add('bg-blue-600', 'text-white');
+                    btnEquiv.classList.remove('bg-gray-200', 'text-gray-700');
+                    btnAtwood.classList.add('bg-gray-200', 'text-gray-700');
+                    btnAtwood.classList.remove('bg-blue-600', 'text-white');
+                }
+                
+                calculatePhysics();
+                draw();
+            }
+
+            function updateInputs() {
+                state.m1 = parseFloat(inputM1.value);
+                state.m2 = parseFloat(inputM2.value);
+                
+                valM1.textContent = state.m1.toFixed(1);
+                valM2.textContent = state.m2.toFixed(1);
+                
+                calculatePhysics();
+                draw();
+            }
+
+            function calculatePhysics() {
+                const { m1, m2, system } = state;
+                
+                if (system === 'atwood') {
+                    // a = g * (m2 - m1) / (m1 + m2)
+                    state.a = G * (m2 - m1) / (m1 + m2);
+                    // Tension T = 2*m1*m2*g / (m1+m2)
+                    state.tension = (2 * m1 * m2 * G) / (m1 + m2);
+                } else {
+                    // Horizontal Equivalent
+                    state.a = G * (m2 - m1) / (m1 + m2);
+                    state.tension = (2 * m1 * m2 * G) / (m1 + m2);
+                }
+
+                dataA.textContent = Math.abs(state.a).toFixed(2) + " m/s²";
+                dataT.textContent = state.tension.toFixed(2) + " N";
+                dataTotalM.textContent = (m1 + m2).toFixed(1) + " kg";
+            }
+
+            function toggleSimulation() {
+                if (state.isRunning) {
+                    state.isRunning = false;
+                    cancelAnimationFrame(animationId);
+                    btnPlay.innerHTML = "<span>▶ 繼續</span>";
+                    statusText.textContent = "暫停";
+                    btnPlay.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    btnPlay.classList.add('bg-green-600', 'hover:bg-green-700');
+                } else {
+                    state.isRunning = true;
+                    lastTimestamp = performance.now();
+                    requestAnimationFrame(animate); 
+                    btnPlay.innerHTML = "<span>⏸ 暫停</span>";
+                    statusText.textContent = "運行中";
+                    btnPlay.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    btnPlay.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                }
+            }
+
+            function resetSimulation() {
+                state.isRunning = false;
+                cancelAnimationFrame(animationId);
+                state.time = 0;
+                state.v = 0;
+                state.y1 = 0;
+                state.y2 = 0;
+                
+                btnPlay.innerHTML = "<span>▶ 開始</span>";
+                statusText.textContent = "靜止";
+                timeText.textContent = "0.00";
+                btnPlay.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                btnPlay.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+                calculatePhysics();
+                draw();
+            }
+
+            function animate(timestamp) {
+                if (!state.isRunning) return;
+
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                // Apply TIME_SCALE
+                const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05) * TIME_SCALE; 
+                lastTimestamp = timestamp;
+
+                state.v += state.a * dt;
+                const deltaPos = state.v * dt * PX_PER_METER;
+
+                if (state.system === 'atwood') {
+                    // Update positions
+                    state.y2 += deltaPos;
+                    state.y1 -= deltaPos;
+                    state.time += dt;
+
+                    // Check Ground Collision
+                    const cy = canvas.height / 3;
+                    const boxSize = 80; // Scaled up
+                    const groundY = canvas.height - 20;
+
+                    // Calculate current bottoms (base Y + offset + height)
+                    // base Y for blocks in Atwood is cy + 150 (extended string length)
+                    const baseBlockY = cy + 150;
+                    
+                    const leftBottom = (baseBlockY + state.y1) + boxSize;
+                    const rightBottom = (baseBlockY + state.y2) + boxSize;
+
+                    // Collision check
+                    if (leftBottom >= groundY || rightBottom >= groundY) {
+                         state.isRunning = false;
+                         btnPlay.innerHTML = "<span>⏹ 結束</span>";
+                    }
+
+                    // Check Top Pulley Collision
+                    const pulleyBottom = cy + 70; // Scaled Pulley R is 70
+                    const leftTop = (baseBlockY + state.y1);
+                    const rightTop = (baseBlockY + state.y2);
+
+                    if (leftTop <= pulleyBottom || rightTop <= pulleyBottom) {
+                        state.isRunning = false;
+                        btnPlay.innerHTML = "<span>⏹ 結束</span>";
+                    }
+
+                } else {
+                    // Horizontal Equivalent
+                    const maxOffset = canvas.width * 0.35;
+                    
+                    if (Math.abs(state.y1 + deltaPos) < maxOffset) {
+                        state.y1 += deltaPos;
+                        state.y2 += deltaPos;
+                        state.time += dt;
+                    } else {
+                        state.isRunning = false;
+                        btnPlay.innerHTML = "<span>⏹ 結束</span>";
+                    }
+                }
+
+                timeText.textContent = state.time.toFixed(2);
+                draw();
+                
+                if (state.isRunning) {
+                    animationId = requestAnimationFrame(animate);
+                }
+            }
+
+            // --- Drawing Engine ---
+
+            function draw() {
+                if (!ctx) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 3;
+
+                if (state.system === 'atwood') {
+                    drawAtwood(cx, cy);
+                } else {
+                    drawHorizontalEquiv(cx, cy);
+                }
+            }
+
+            function drawArrow(x, y, length, color, label, direction = 'up') {
+                if (!checkFBD.checked) return;
+
+                const headLen = 14; // Larger head for larger scale
+                const angle = direction === 'up' ? -Math.PI/2 : 
+                              direction === 'down' ? Math.PI/2 : 
+                              direction === 'left' ? Math.PI : 0;
+                
+                // Scaled down length
+                let pixelLen = length * 1.5; 
+                if (pixelLen < 35) pixelLen = 35; 
+                if (pixelLen > 100) pixelLen = 100;
+
+                const endX = x + Math.cos(angle) * pixelLen;
+                const endY = y + Math.sin(angle) * pixelLen;
+
+                // Calculate the point where the line should stop (base of arrow head)
+                // Head is an equilateral-ish triangle with angle 30deg (PI/6) from axis
+                // Projection of side onto axis is headLen * cos(30)
+                const headProj = headLen * Math.cos(Math.PI/6);
+                const lineEndX = endX - headProj * Math.cos(angle);
+                const lineEndY = endY - headProj * Math.sin(angle);
+
+                // Draw Line to the base of the head
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(lineEndX, lineEndY);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 4; // Thicker line
+                ctx.stroke();
+
+                // Draw Head (Triangle)
+                ctx.beginPath();
+                ctx.moveTo(endX, endY); // Tip
+                ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI / 6), endY - headLen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI / 6), endY - headLen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath(); 
+                ctx.fillStyle = color;
+                ctx.fill();
+
+                // Label
+                ctx.fillStyle = color;
+                ctx.font = "bold 16px 'Noto Sans TC'";
+                ctx.textAlign = "center";
+                
+                let tx = endX;
+                let ty = endY;
+                if (direction === 'up') 
+                    ty += 20
+                    tx += 10 ;
+                if (direction === 'down') 
+                    ty += 15;
+                if (direction === 'left') 
+                    ty += 15
+                    tx -= 20; 
+                if (direction === 'right')
+                    ty += 15 
+                    tx += 20;
+
+                ctx.fillText(label, tx, ty);
+            }
+
+            function drawBlock(x, y, w, h, color, massLabel, isM1) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + 5, y + 5, w, h); // Larger shadow offset
+                
+                const grad = ctx.createLinearGradient(x, y, x + w, y);
+                grad.addColorStop(0, color);
+                grad.addColorStop(1, adjustColor(color, -30));
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 3;
+                
+                ctx.fillRect(x, y, w, h);
+                ctx.strokeRect(x, y, w, h);
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 20px 'Noto Sans TC'"; // Larger font
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(massLabel, x + w/2, y + h/2);
+            }
+
+            function drawPulley(x, y, radius) {
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = "#94a3b8";
+                ctx.fill();
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                ctx.save();
+                ctx.translate(x, y);
+                const rotation = (state.y2 / radius); 
+                ctx.rotate(rotation);
+                
+                ctx.beginPath();
+                ctx.moveTo(-radius, 0);
+                ctx.lineTo(radius, 0);
+                ctx.moveTo(0, -radius);
+                ctx.lineTo(0, radius);
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, 2 * Math.PI); // Larger center bolt
+                ctx.fillStyle = "#333";
+                ctx.fill();
+            }
+
+            function drawAtwood(cx, cy) {
+                const pulleyR = 70; // Scaled up
+                const boxSize = 80; // Scaled up
+                const stringLength = 150; // Longer string
+                
+                // Positions
+                const leftY = cy + stringLength + state.y1;
+                const rightY = cy + stringLength + state.y2;
+                const leftX = cx - pulleyR;
+                const rightX = cx + pulleyR;
+
+                // Draw Ground
+                const groundY = canvas.height - 20;
+                ctx.fillStyle = "#94a3b8"; 
+                ctx.fillRect(0, groundY, canvas.width, 20);
+                // Hatching
+                ctx.beginPath();
+                ctx.strokeStyle = "#64748b";
+                ctx.lineWidth = 1;
+                for(let i=0; i<canvas.width; i+=25) {
+                    ctx.moveTo(i, groundY);
+                    ctx.lineTo(i-15, groundY+20);
+                }
+                ctx.stroke();
+                // Line
+                ctx.beginPath();
+                ctx.moveTo(0, groundY);
+                ctx.lineTo(canvas.width, groundY);
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+
+                // Support
+                ctx.beginPath();
+                ctx.moveTo(cx, 0);
+                ctx.lineTo(cx, cy);
+                ctx.strokeStyle = "#555";
+                ctx.lineWidth = 6;
+                ctx.stroke();
+
+                // String
+                ctx.beginPath();
+                ctx.moveTo(leftX, leftY);
+                ctx.lineTo(leftX, cy);
+                ctx.arc(cx, cy, pulleyR, Math.PI, 0);
+                ctx.lineTo(rightX, rightY);
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                drawPulley(cx, cy, pulleyR);
+
+                drawBlock(leftX - boxSize/2, leftY, boxSize, boxSize, "#3b82f6", `m₁`, true);
+                drawBlock(rightX - boxSize/2, rightY, boxSize, boxSize, "#ef4444", `m₂`, false);
+
+                if (checkFBD.checked) {
+                    drawArrow(leftX, leftY, state.tension * 2, "#d946ef", "T", "up");
+                    drawArrow(leftX, leftY + boxSize, state.m1 * G * 2, "#3b82f6", "m₁g", "down");
+                    drawArrow(rightX, rightY, state.tension * 2, "#d946ef", "T", "up");
+                    drawArrow(rightX, rightY + boxSize, state.m2 * G * 2, "#ef4444", "m₂g", "down");
+                }
+            }
+
+            function drawHorizontalEquiv(cx, cy) {
+                const boxSize = 80; // Scaled up
+                const gap = 300; // Wider gap
+                const tableY = cy + 150;
+                
+                // Draw Table
+                ctx.fillStyle = "#e2e8f0";
+                ctx.fillRect(0, tableY, canvas.width, 15);
+                ctx.strokeStyle = "#94a3b8";
+                ctx.strokeRect(0, tableY, canvas.width, 15);
+                
+                const currentCx = cx + state.y1;
+                
+                const m1X = currentCx - gap/2 - boxSize/2;
+                const m1Y = tableY - boxSize;
+                
+                const m2X = currentCx + gap/2 - boxSize/2;
+                const m2Y = tableY - boxSize;
+
+                // String connecting them
+                ctx.beginPath();
+                ctx.moveTo(m1X + boxSize, m1Y + boxSize/2);
+                ctx.lineTo(m2X, m2Y + boxSize/2);
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // Draw Blocks
+                drawBlock(m1X, m1Y, boxSize, boxSize, "#3b82f6", "m₁", true);
+                drawBlock(m2X, m2Y, boxSize, boxSize, "#ef4444", "m₂", false);
+
+                // Forces
+                if (checkFBD.checked) {
+                    // Internal Tension
+                    drawArrow(m1X + boxSize, m1Y + boxSize/2, state.tension * 2, "#d946ef", "T", "right");
+                    drawArrow(m2X, m2Y + boxSize/2, state.tension * 2, "#d946ef", "T", "left");
+                    
+                    // External Pulls (Simulating Gravity)
+                    // F1 = m1*g pulling Left
+                    drawArrow(m1X, m1Y + boxSize/2, state.m1 * G * 2, "#3b82f6", "m₁g", "left");
+                    
+                    // F2 = m2*g pulling Right
+                    drawArrow(m2X + boxSize, m2Y + boxSize/2, state.m2 * G * 2, "#ef4444", "m₂g", "right");
+                    
+                    // Normal and Gravity (Vertical)
+                    drawArrow(m1X + boxSize/2, m1Y, 50, "#94a3b8", "N", "up");
+                    drawArrow(m1X + boxSize/2, m1Y + boxSize, 50, "#94a3b8", "W", "down");
+                    
+                    drawArrow(m2X + boxSize/2, m2Y, 50, "#94a3b8", "N", "up");
+                    drawArrow(m2X + boxSize/2, m2Y + boxSize, 50, "#94a3b8", "W", "down");
+                } else {
+                    drawSimpleForce(m1X, m1Y + boxSize/2, "left", "m₁g");
+                    drawSimpleForce(m2X + boxSize, m2Y + boxSize/2, "right", "m₂g");
+                }
+            }
+
+            function drawSimpleForce(x, y, dir, label) {
+                const len = 50; // Scaled
+                const endX = dir === 'left' ? x - len : x + len;
+                
+                // Line
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                // Adjust line end to not overlap head
+                const headLen = 10;
+                const headProj = headLen * Math.cos(Math.PI/6);
+                const lineEndX = dir === 'left' ? endX + headProj : endX - headProj;
+                ctx.lineTo(lineEndX, y);
+                
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Arrow head
+                const angle = dir === 'left' ? Math.PI : 0;
+                ctx.beginPath();
+                ctx.moveTo(endX, y);
+                ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI/6), y - headLen * Math.sin(angle - Math.PI/6));
+                ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI/6), y - headLen * Math.sin(angle + Math.PI/6));
+                ctx.closePath();
+                ctx.fillStyle = "#000";
+                ctx.fill();
+
+                ctx.fillStyle = "#000";
+                ctx.font = "bold 16px 'Noto Sans TC'";
+                ctx.textAlign = "center";
+                ctx.fillText(label, endX, y - 15);
+            }
+
+            function adjustColor(color, amount) {
+                return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+            }
+
+            // --- Init & Expose ---
+            
+            // Expose functions to window for HTML access
+            window.simControls = {
+                toggleModal,
+                switchSystem,
+                toggleSimulation,
+                resetSimulation
+            };
+
+            window.onload = function() {
+                initElements();
+                resizeCanvas();
+                calculatePhysics();
+                draw();
+            };
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                draw();
+            });
+
+        })();
+    </script>
+</body>
+</html>
