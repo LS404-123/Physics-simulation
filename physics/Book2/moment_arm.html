@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理模擬：力矩與轉動</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax for LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3B82F6;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d; 
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 1.3px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Pop-up animation */
+        .modal-enter { opacity: 0; transform: scale(0.9); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+        .modal-exit { opacity: 1; }
+        .modal-exit-active { opacity: 0; transform: scale(0.9); transition: opacity 300ms, transform 300ms; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <nav class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center gap-2">
+            <span class="text-xl font-bold">物理實驗室</span>
+            <span class="text-sm bg-blue-500 px-2 py-1 rounded hidden sm:inline">中學物理模擬</span>
+        </div>
+        <button onclick="toggleModal(true)" class="text-sm bg-white text-blue-600 px-3 py-1 rounded-full font-bold hover:bg-blue-50 transition">
+            ? 原理教學
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- Simulation Area -->
+        <div class="relative flex-1 bg-white flex flex-col items-center justify-center p-4 border-b lg:border-b-0 lg:border-r border-slate-200">
+            <div class="canvas-container w-full h-full rounded-xl border border-slate-300 shadow-inner flex items-center justify-center overflow-hidden bg-slate-100 relative">
+                <canvas id="simCanvas" class="w-full h-full max-w-4xl max-h-[80vh]"></canvas>
+                
+                <!-- On-screen Legend -->
+                <div class="absolute top-4 left-4 bg-white/90 p-3 rounded-lg shadow-sm border border-slate-200 text-xs sm:text-sm backdrop-blur-sm pointer-events-none">
+                    <div class="font-bold mb-1 text-slate-500">圖例</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500"></span> <span id="forceLabel">施力 F</span></div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-black"></span> <span>支點</span></div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#8B4513]"></span> <span>木箱</span></div>
+                    <div id="legend-comp" class="hidden flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-600"></span> <span>垂直分量</span></div>
+                    <div id="legend-arm" class="hidden flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-600"></span> <span>力臂</span></div>
+                </div>
+
+                <!-- Reset Button (Overlay) -->
+                <button onclick="resetSimulation()" class="absolute top-4 right-4 bg-gray-200 hover:bg-gray-300 p-2 rounded-full shadow transition" title="重置">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74-2.74L3 12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls & Data Panel -->
+        <div class="w-full lg:w-96 bg-white flex flex-col h-1/2 lg:h-full overflow-y-auto z-20 shadow-xl">
+            <div class="p-6 space-y-6">
+                
+                <!-- Status Header -->
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 border-l-4 border-blue-500 pl-3">控制面板</h2>
+                    <p class="text-sm text-slate-500 mt-1">調整參數並觀察力矩變化</p>
+                </div>
+
+                <!-- Simulation Controls -->
+                <div class="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-sm text-slate-700">視覺輔助模式</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-comp" onclick="toggleMode('component')" class="px-3 py-2 text-sm rounded border border-slate-300 bg-white hover:bg-slate-50 transition active:scale-95 text-slate-600">
+                            顯示分量 \(F_{\perp}\)
+                        </button>
+                        <button id="btn-arm" onclick="toggleMode('arm')" class="px-3 py-2 text-sm rounded border border-slate-300 bg-white hover:bg-slate-50 transition active:scale-95 text-slate-600">
+                            顯示力臂 \(d_{\perp}\)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Playback -->
+                <div class="space-y-4">
+                     <button id="btn-start" onclick="toggleSimulation()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition transform active:scale-[0.98] flex justify-center items-center gap-2">
+                        <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <span id="btn-text">開始模擬轉動</span>
+                    </button>
+
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>傾斜角度 \(\theta\)</span>
+                            <span id="angle-val" class="font-mono font-bold text-blue-600">0°</span>
+                        </div>
+                        <input type="range" id="angle-slider" min="0" max="45" value="0" step="0.5" class="w-full" oninput="manualRotate(this.value)">
+                    </div>
+                </div>
+
+                <!-- Live Data -->
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <h3 class="font-bold text-blue-800 mb-3 text-sm">即時數據</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between border-b border-blue-200 pb-1">
+                            <span>施力 \(F\)</span>
+                            <span class="font-mono">100 N</span>
+                        </div>
+                        <div class="flex justify-between border-b border-blue-200 pb-1">
+                            <span id="calc-method-text">力臂 \(d_{\perp}\)</span>
+                            <span id="calc-d-val" class="font-mono">2.0 m</span>
+                        </div>
+                        <div class="flex justify-between pt-1">
+                            <span class="font-bold">力矩 \(\tau\)</span>
+                            <span id="calc-torque-val" class="font-mono font-bold text-lg text-red-600">200 Nm</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-xs text-blue-600 bg-white p-2 rounded">
+                        <span class="font-bold">老師筆記：</span>
+                        <span id="teacher-note">注意！當木箱開始傾斜，雖然水平力方向不變，但力臂長度會改變。</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal (Pop-up) -->
+    <div id="introModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100" id="modalContent">
+            <div class="bg-blue-600 p-5 text-white flex justify-between items-center sticky top-0">
+                <h2 class="text-2xl font-bold">歡迎各位同學！👋</h2>
+                <button onclick="toggleModal(false)" class="text-white hover:bg-blue-700 p-1 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-slate-700 leading-relaxed">
+                <p class="text-lg">
+                    這個模擬器是為了讓大家更清楚地看見<b>力矩 (Moment)</b> 的兩種計算方法。
+                </p>
+                
+                <div class="bg-gray-100 p-4 rounded-lg border-l-4 border-green-500">
+                    <h3 class="font-bold text-gray-800 mb-2">📚 核心原理</h3>
+                    <p>力矩的定義是：</p>
+                    <div class="py-2 text-center text-xl">
+                        \( \tau = F \times d \)
+                    </div>
+                    <p>但這裡的 \(d\) 很特別，我們有兩種看法：</p>
+                    <ul class="list-disc pl-5 mt-2 space-y-1">
+                        <li><b>方法一 (顯示力臂)：</b> 保留原本的力 \(F\)，尋找從支點到力作用線的垂直距離 \(d_{\perp}\)。</li>
+                        <li><b>方法二 (顯示分量)：</b> 將力分解成垂直於旋轉半徑的分量 \(F_{\perp}\)，直接乘以距離。</li>
+                    </ul>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border p-3 rounded hover:bg-blue-50 transition">
+                        <div class="font-bold text-blue-600 mb-1">步驟 1</div>
+                        <div class="text-sm">試試點擊右側的「顯示分量」或「顯示力臂」按鈕，觀察幾何線條的變化。</div>
+                    </div>
+                    <div class="border p-3 rounded hover:bg-blue-50 transition">
+                        <div class="font-bold text-blue-600 mb-1">步驟 2</div>
+                        <div class="text-sm">按下「開始模擬」，觀察當木箱傾斜時，力臂長度是如何變化的？力矩會變大還是變小？</div>
+                    </div>
+                </div>
+                
+                <div class="text-center pt-2">
+                    <button onclick="toggleModal(false)" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-700 hover:scale-105 transition">
+                        明白了，開始實驗！
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Physics & State Variables
+        const state = {
+            angle: 0,           // Degrees
+            isAnimating: false,
+            mode: 'none',       // 'none', 'component', 'arm'
+            boxW: 120,          // Logical units
+            boxH: 200,          // Logical units
+            force: 100,         // Newtons
+            pivotX: 0,          // Will be set based on canvas
+            pivotY: 0,
+            scale: 1,
+            animSpeed: 0.2
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const btnComp = document.getElementById('btn-comp');
+        const btnArm = document.getElementById('btn-arm');
+        const angleSlider = document.getElementById('angle-slider');
+        const angleVal = document.getElementById('angle-val');
+        
+        // --- Initialization ---
+        window.onload = () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            requestAnimationFrame(drawLoop);
+            // Ensure MathJax renders initially
+            setTimeout(() => {
+                if(window.MathJax) MathJax.typesetPromise();
+            }, 500);
+        };
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Set scale based on screen size to keep box visible
+            // We want the box (height 200) to take up about 40-50% of screen height
+            state.scale = Math.min(canvas.width / 400, canvas.height / 400);
+            
+            // Pivot is at bottom center-right area
+            state.pivotX = canvas.width * 0.6; 
+            state.pivotY = canvas.height * 0.8;
+            
+            draw();
+        }
+
+        // --- Interaction Logic ---
+
+        function toggleModal(show) {
+            const modal = document.getElementById('introModal');
+            if(show) {
+                modal.classList.remove('pointer-events-none', 'opacity-0');
+            } else {
+                modal.classList.add('pointer-events-none', 'opacity-0');
+            }
+        }
+
+        function toggleMode(mode) {
+            // Toggle logic
+            if (state.mode === mode) {
+                state.mode = 'none'; // Turn off if clicked again
+            } else {
+                state.mode = mode;
+            }
+            updateUI();
+            draw();
+        }
+
+        function updateUI() {
+            // Button Styles
+            const activeClass = "bg-blue-100 border-blue-500 text-blue-700 font-bold ring-2 ring-blue-200";
+            const inactiveClass = "bg-white border-slate-300 text-slate-600";
+
+            btnComp.className = `px-3 py-2 text-sm rounded border transition active:scale-95 ${state.mode === 'component' ? activeClass : inactiveClass}`;
+            btnArm.className = `px-3 py-2 text-sm rounded border transition active:scale-95 ${state.mode === 'arm' ? activeClass : inactiveClass}`;
+
+            // Legend
+            document.getElementById('legend-comp').classList.toggle('hidden', state.mode !== 'component');
+            document.getElementById('legend-arm').classList.toggle('hidden', state.mode !== 'arm');
+
+            // Data Update
+            const rad = state.angle * Math.PI / 180;
+            const armLen = state.boxH * Math.cos(rad) + state.boxW * Math.sin(rad); // Vertical distance from pivot to top-left
+            
+            // For component method: 
+            // r = sqrt(w^2 + h^2)
+            // torque = F * armLen
+            
+            const torque = state.force * (armLen / 100); // Scale down for realistic number display
+            
+            document.getElementById('calc-torque-val').innerText = torque.toFixed(1) + " Nm";
+            
+            if (state.mode === 'component') {
+                // FIXED: Escaped backslashes for JS string (\\d instead of \d)
+                document.getElementById('calc-method-text').innerHTML = "距離 \\(d\\) (對角線)";
+                const r = Math.sqrt(state.boxW**2 + state.boxH**2) / 100;
+                document.getElementById('calc-d-val').innerText = r.toFixed(2) + " m";
+                document.getElementById('teacher-note').innerText = "觀察分量模式：綠色箭頭是垂直於半徑的分量，只有它產生轉動效果。";
+            } else {
+                // FIXED: Escaped backslashes for JS string (\\d_{\\perp} instead of \d_{\perp})
+                document.getElementById('calc-method-text').innerHTML = "力臂 \\(d_{\\perp}\\)";
+                document.getElementById('calc-d-val').innerText = (armLen/100).toFixed(2) + " m";
+                if(state.angle > 0) {
+                     document.getElementById('teacher-note').innerText = "觀察：隨著木箱傾斜，力臂（支點到力作用線的垂直距離）實際上變長了，因此力矩變大，轉動更容易！";
+                } else {
+                    document.getElementById('teacher-note').innerText = "觀察力臂模式：紫色線代表從支點到力的作用線的最短（垂直）距離。";
+                }
+            }
+            
+            // Refresh MathJax if content changes (optional, simplistic check)
+            if(window.MathJax) MathJax.typesetPromise();
+        }
+
+        function toggleSimulation() {
+            state.isAnimating = !state.isAnimating;
+            const btn = document.getElementById('btn-start');
+            const btnText = document.getElementById('btn-text');
+            const icon = document.getElementById('icon-play');
+            
+            if(state.isAnimating) {
+                btnText.innerText = "暫停模擬";
+                btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>'; // Pause icon
+            } else {
+                btnText.innerText = "開始模擬轉動";
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>'; // Play icon
+            }
+        }
+
+        function resetSimulation() {
+            state.isAnimating = false;
+            state.angle = 0;
+            angleSlider.value = 0;
+            toggleSimulation(); // Reset button UI
+            // Ensure button is back to "Start" state if it was playing
+            state.isAnimating = false; 
+            const btn = document.getElementById('btn-start');
+            const btnText = document.getElementById('btn-text');
+            const icon = document.getElementById('icon-play');
+            btnText.innerText = "開始模擬轉動";
+            btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+            btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+
+            draw();
+            updateUI();
+        }
+
+        function manualRotate(val) {
+            state.angle = parseFloat(val);
+            angleVal.innerText = state.angle.toFixed(1) + "°";
+            if(state.isAnimating) toggleSimulation(); // Stop anim if manually dragging
+            updateUI();
+            draw();
+        }
+
+        // --- Animation Loop ---
+        function drawLoop() {
+            if(state.isAnimating) {
+                if(state.angle < 45) {
+                    state.angle += state.animSpeed;
+                    angleSlider.value = state.angle;
+                    angleVal.innerText = state.angle.toFixed(1) + "°";
+                    updateUI();
+                } else {
+                    // Stop at max angle
+                    state.isAnimating = false;
+                    toggleSimulation(); // Reset UI
+                }
+            }
+            draw();
+            requestAnimationFrame(drawLoop);
+        }
+
+        // --- Main Drawing Logic ---
+        function draw() {
+            // Clear
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const { pivotX, pivotY, boxW, boxH, angle, scale } = state;
+            const rad = angle * Math.PI / 180;
+
+            // Draw Ground
+            ctx.beginPath();
+            ctx.strokeStyle = "#64748b";
+            ctx.lineWidth = 2;
+            ctx.moveTo(0, pivotY);
+            ctx.lineTo(canvas.width, pivotY);
+            ctx.stroke();
+
+            // Diagonal hashes for ground
+            ctx.beginPath();
+            ctx.strokeStyle = "#cbd5e1";
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=20) {
+                ctx.moveTo(i, pivotY);
+                ctx.lineTo(i-10, pivotY+10);
+            }
+            ctx.stroke();
+
+            // --- BOX TRANSFORM ---
+            ctx.save();
+            ctx.translate(pivotX, pivotY);
+            ctx.rotate(rad); // Rotate around pivot (bottom-right of box)
+            
+            // Draw Box
+            // Pivot is at bottom-right (0,0) in local space
+            // So Top-Left is (-boxW, -boxH)
+            const scaledW = boxW * scale;
+            const scaledH = boxH * scale;
+
+            ctx.fillStyle = "#8B4513"; // Wood color
+            ctx.fillRect(-scaledW, -scaledH, scaledW, scaledH);
+            
+            // Box Border
+            ctx.strokeStyle = "#5D2E0C";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-scaledW, -scaledH, scaledW, scaledH);
+            
+            // Draw Radius Line (Pivot to Application Point) if needed for explanation
+            // For component mode, we visualize the diagonal
+            if(state.mode === 'component') {
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = "#334155";
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-scaledW, -scaledH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ctx.restore(); // End Box Transform
+
+            // --- FORCE VECTORS & ANNOTATIONS (World Space) ---
+            
+            // Calculate Top-Left Corner position in World Space
+            // Local (-W, -H) -> Rotate -> Translate
+            // x' = x*cos - y*sin, y' = x*sin + y*cos
+            // Local x = -scaledW, y = -scaledH
+            const cornerX = pivotX + (-scaledW * Math.cos(rad) - (-scaledH) * Math.sin(rad));
+            const cornerY = pivotY + (-scaledW * Math.sin(rad) + (-scaledH) * Math.cos(rad));
+
+            // Draw Force Vector F (Always horizontal to the right)
+            // Length of arrow
+            const forceLen = 80 * scale; 
+            
+            // Draw Main Force Arrow
+            drawArrow(ctx, cornerX, cornerY, cornerX + forceLen, cornerY, "#EF4444", 3, "F");
+
+            // --- Mode 1: Component View ---
+            if (state.mode === 'component') {
+                // Diagonal angle in world space
+                // Local angle of diagonal to horizontal: alpha = atan(H/W)
+                // World angle = alpha + theta
+                const alpha = Math.atan2(scaledH, scaledW); // This is angle from negative x-axis in local... wait
+                // Let's use vector math. Vector r = (cornerX - pivotX, cornerY - pivotY)
+                const rEx = cornerX - pivotX;
+                const rEy = cornerY - pivotY;
+                const rLen = Math.sqrt(rEx*rEx + rEy*rEy);
+                
+                // Unit vector of r
+                const uRx = rEx / rLen;
+                const uRy = rEy / rLen;
+
+                // Perpendicular vector to r (rotating -90 deg for "up/right" component relative to r)
+                // (x, y) -> (y, -x) gives 90 deg clockwise. We need projection of Force (1, 0)
+                // Angle of r relative to negative X axis?
+                // Let's just project Force Vector (forceLen, 0) onto perpendicular of r.
+                
+                // Vector F = (forceLen, 0)
+                // Direction of r is pointing top-leftish.
+                // We want component perpendicular to r.
+                // Direction perpendicular to r: (-uRy, uRx) or (uRy, -uRx).
+                // Let's visualize the decomposition visually.
+                
+                // Draw perpendicular line from tip of F to the line extending r
+                // Actually, standard textbook diagram: F decomposed into F_par (along r) and F_perp (perp to r)
+                
+                // Angle of r (from pivot to corner)
+                const angleR = Math.atan2(rEy, rEx);
+                const anglePerp = angleR + Math.PI/2; // Perpendicular direction
+                
+                // Magnitude of F_perp = F * sin(angle between F and r)
+                // Angle of F is 0. Angle between is |angleR|.
+                // Wait, r points Top-Left (negative X, negative Y). AngleR is like -120 deg.
+                // F points Right (0 deg).
+                // Angle between = 180 - (angle of diagonal with horizontal).
+                
+                const fPerpMag = forceLen * Math.sin(Math.abs(angleR)); // Simple projection magnitude
+                
+                // Draw F_perp Component Arrow (Green)
+                // Start at corner. Direction: Perpendicular to r.
+                // It should point roughly "Up and Right"
+                const fPerpX = fPerpMag * Math.cos(anglePerp);
+                const fPerpY = fPerpMag * Math.sin(anglePerp);
+                
+                drawArrow(ctx, cornerX, cornerY, cornerX + fPerpX, cornerY + fPerpY, "#16A34A", 3, "F⊥");
+                
+                // Draw Dashed Lines to complete rectangle
+                ctx.beginPath();
+                ctx.setLineDash([2, 2]);
+                ctx.strokeStyle = "#94a3b8";
+                ctx.moveTo(cornerX + fPerpX, cornerY + fPerpY);
+                ctx.lineTo(cornerX + forceLen, cornerY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw r line extension for clarity
+                ctx.beginPath();
+                ctx.strokeStyle = "#cbd5e1";
+                ctx.moveTo(pivotX, pivotY);
+                ctx.lineTo(cornerX, cornerY);
+                ctx.stroke();
+
+            }
+
+            // --- Mode 2: Moment Arm View ---
+            if (state.mode === 'arm') {
+                // Line of Action of Force: Horizontal line passing through (cornerX, cornerY)
+                // We need distance from Pivot (pivotX, pivotY) to this line.
+                // Since line is horizontal y = cornerY.
+                // Distance is simply |cornerY - pivotY|.
+                
+                const armDist = Math.abs(cornerY - pivotY);
+                
+                // Draw Line of Action (Dashed Red) extending back
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = "#fca5a5"; // Light red
+                ctx.moveTo(cornerX - 500 * scale, cornerY); // Extend left
+                ctx.lineTo(cornerX + 500 * scale, cornerY); // Extend right
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw Moment Arm (Purple Line from Pivot up to line of action)
+                // Pivot is at pivotX. We draw line to (pivotX, cornerY).
+                drawArrow(ctx, pivotX, pivotY, pivotX, cornerY, "#9333EA", 3, "", true); // Double arrow
+                
+                // Label d_perp
+                ctx.fillStyle = "#9333EA";
+                ctx.font = "bold 14px sans-serif";
+                ctx.fillText("d⊥", pivotX + 10, (pivotY + cornerY)/2);
+                
+                // Right angle symbol at intersection
+                ctx.beginPath();
+                ctx.strokeStyle = "#9333EA";
+                const size = 10;
+                // Intersection is at (pivotX, cornerY)
+                // Pivot is below, so we draw box at bottom of intersection
+                if (pivotY > cornerY) {
+                    ctx.moveTo(pivotX, cornerY + size);
+                    ctx.lineTo(pivotX + size, cornerY + size);
+                    ctx.lineTo(pivotX + size, cornerY);
+                }
+                ctx.stroke();
+            }
+            
+            // Draw Pivot (Equilateral Triangle)
+            ctx.beginPath();
+            ctx.fillStyle = "#000";
+            const pSize = 16;
+            const pHeight = pSize * Math.sqrt(3) / 2;
+            ctx.moveTo(pivotX, pivotY); // Top tip
+            ctx.lineTo(pivotX - pSize/2, pivotY + pHeight); // Bottom left
+            ctx.lineTo(pivotX + pSize/2, pivotY + pHeight); // Bottom right
+            ctx.fill();
+
+        }
+
+        // Helper: Draw Arrow
+        function drawArrow(ctx, fromX, fromY, toX, toY, color, width, label, double = false) {
+            const headlen = 10;
+            const fx = toX - fromX;
+            const fy = toY - fromY;
+            const angle = Math.atan2(fy, fx);
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = width;
+            
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // Arrowhead at 'to'
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+
+            if(double) {
+                // Arrowhead at 'from'
+                ctx.beginPath();
+                ctx.moveTo(fromX, fromY);
+                ctx.lineTo(fromX + headlen * Math.cos(angle - Math.PI / 6), fromY + headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(fromX + headlen * Math.cos(angle + Math.PI / 6), fromY + headlen * Math.sin(angle + Math.PI / 6));
+                ctx.fill();
+            }
+
+            if(label) {
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillStyle = color;
+                // Offset label slightly
+                ctx.fillText(label, toX + 5, toY - 5);
+            }
+        }
+
+    </script>
+</body>
+</html>
