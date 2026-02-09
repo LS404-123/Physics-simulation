@@ -197,145 +197,145 @@
     <!-- JAVASCRIPT: DATA & LOGIC                                -->
     <!-- ======================================================= -->
     <script>
-        // 1. 設定：如果您沒有圖片，會使用這個預設圖片
-        const DEFAULT_IMAGE = "https://placehold.co/600x400/e0e6ed/2c3e50?text=No+Image";
+    // ==========================================
+    // 1. 設定與除錯工具
+    // ==========================================
+    const DEFAULT_IMAGE = "https://placehold.co/600x400/e0e6ed/2c3e50?text=No+Image";
 
-        // 2. 資料庫：所有內容都在這裡管理！
-        //    只要在這裡新增項目，網頁就會自動更新。
-        const libraryData = [
-            {
-                category: "第一冊：熱與氣體",
-                items: [
-                    {
-                        title: "布朗運動",
-                        desc: "花粉粒子在水中被其他隨機運動的粒子碰撞",
-                        link: "physics/Book1/Brownian_motion.html",
-                        image: "screenshot/book1/brownian_motion.png" // 空白會顯示預設圖片，或者填入 "images/brownian.png"
-                    },
-                    {
-                        title: "氣體模擬",
-                        desc: "模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。",
-                        link: "physics/Book1/kinetic_theory.html",
-                        image: "screenshot/book1/gas_simulation.png" 
-                    }
-                ]
-            },
-            {
-                category: "第二冊：力與運動",
-                items: [
-                    {
-                        title: "位移和平均速率",
-                        desc: "物體的位移只會被物體的開始位置和最後位置決定。",
-                        link: "physics/Book2/displacement_avg_velocity.html",
-                        image: "screenshot/book2/velocity_displacement.png" 
-                    },
-                    {
-                        title: "運動線圖",
-                        desc: "在不同運動下，運動線圖會怎樣記錄物體的運動？",
-                        link: "physics/Book2/motion_graph.html",
-                        image: "screenshot/book2/motion_graph.png" 
-                    },
-                    {
-                        title: "勻加速度下降",
-                        desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。",
-                        link: "physics/Book2/free_falling.html",
-                        image: "screenshot/book2/free_falling.png" 
-                    },
-                    {
-                        title: "伽利略慣性思想實驗",
-                        desc: "當我們將一個物體從斜坡向下釋放到平面，他會一直走下去嗎？",
-                        link: "physics/Book2/galileo_interia.html",
-                        image: "screenshot/book2/galileo_interia.png" 
-                    },
-                    {
-                        title: "牛頓第二定律",
-                        desc: "當我們施加力到物體上，物體的運動會受什麽改變？",
-                        link: "physics/Book2/Newton_2nd_law.html",
-                        image: "screenshot/book2/Newton_2nd_law.png" 
-                    },
-                    {
-                        title: "彈簧秤的讀數",
-                        desc: "彈簧秤到底是怎樣量度物體的重量？",
-                        link: "physics/Book2/spring_balance.html",
-                        image: "screenshot/book2/spring_balance.png" 
-                    },
-                    {
-                        title: "在電梯内的表觀重量",
-                        desc: "我們可以在電梯内體驗無重力狀態嗎？",
-                        link: "physics/Book2/apparent_weight.html",
-                        image: "screenshot/book2/apparent_weight.png" 
-                    },
-                    {
-                        title: "摩擦力",
-                        desc: "就摩擦力的體現",
-                        link: "physics/Book2/friction.html",
-                        image: "screenshot/book2/friction.png" 
-                    },
-                    {
-                        title: "合力計算",
-                        desc: "我們會將一個物體所受的力分解為垂直和平行，然後找出合力",
-                        link: "physics/Book2/planar_net_force.html",
-                        image: "screenshot/book2/planar_net_force.png" 
-                    },
-                    {
-                        title: "斜坡上的力分解",
-                        desc: "當物體在斜坡上的時候，物體的淨力應該怎麽找出？",
-                        link: "physics/Book2/box_on_slope.html",
-                        image: "screenshot/book2/box_on_slope.png" 
-                    },
-                    {
-                        title: "力學分析",
-                        desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。",
-                        link: "physics/Book2/two_box_force_analysis.html",
-                        image: "screenshot/book2/two_body_force_simulation.png" 
-                    },
-                    {
-                        title: "門的力矩",
-                        desc: "你懂開門嗎？",
-                        link: "physics/Book2/door_torque.html",
-                        image: "screenshot/book2/door_torque.png" 
-                    },
-                    {
-                        title: "力矩分析",
-                        desc: "模擬一個受到多個力旋轉的木棍。",
-                        link: "physics/Book2/torque.html",
-                        image: "screenshot/book2/torque.png" 
-                    }
-                    
-                    
-                    // 您可以在這裡輕鬆複製並貼上新的區塊:
-                    // {
-                    //    title: "新模擬標題",
-                    //    desc: "說明...",
-                    //    link: "檔案路徑.html",
-                    //    image: "圖片路徑.png"
-                    // }
-                ]
-            }
-        ];
+    // ==========================================
+    // 2. 資料庫 (請注意逗號與括號)
+    // ==========================================
+    const libraryData = [
+        {
+            category: "第一冊：熱與氣體",
+            items: [
+                {
+                    title: "布朗運動",
+                    desc: "花粉粒子在水中被其他隨機運動的粒子碰撞",
+                    link: "physics/Book1/Brownian_motion.html",
+                    image: "screenshot/book1/brownian_motion.png"
+                },
+                {
+                    title: "氣體模擬",
+                    desc: "模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。",
+                    link: "physics/Book1/kinetic_theory.html",
+                    image: "screenshot/book1/gas_simulation.png" 
+                }
+            ]
+        },
+        {
+            category: "第二冊：力與運動",
+            items: [
+                {
+                    title: "位移和平均速率",
+                    desc: "物體的位移只會被物體的開始位置和最後位置決定。",
+                    link: "physics/Book2/displacement_avg_velocity.html",
+                    image: "screenshot/book2/velocity_displacement.png" 
+                },
+                {
+                    title: "運動線圖",
+                    desc: "在不同運動下，運動線圖會怎樣記錄物體的運動？",
+                    link: "physics/Book2/motion_graph.html",
+                    image: "screenshot/book2/motion_graph.png" 
+                },
+                {
+                    title: "勻加速度下降",
+                    desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。",
+                    link: "physics/Book2/free_falling.html",
+                    image: "screenshot/book2/free_falling.png" 
+                },
+                {
+                    title: "伽利略慣性思想實驗",
+                    desc: "當我們將一個物體從斜坡向下釋放到平面，他會一直走下去嗎？",
+                    link: "physics/Book2/galileo_interia.html",
+                    image: "screenshot/book2/galileo_interia.png" 
+                },
+                {
+                    title: "牛頓第二定律",
+                    desc: "當我們施加力到物體上，物體的運動會受什麽改變？",
+                    link: "physics/Book2/Newton_2nd_law.html",
+                    image: "screenshot/book2/Newton_2nd_law.png" 
+                },
+                {
+                    title: "彈簧秤的讀數",
+                    desc: "彈簧秤到底是怎樣量度物體的重量？",
+                    link: "physics/Book2/spring_balance.html",
+                    image: "screenshot/book2/spring_balance.png" 
+                },
+                {
+                    title: "在電梯内的表觀重量",
+                    desc: "我們可以在電梯内體驗無重力狀態嗎？",
+                    link: "physics/Book2/apparent_weight.html",
+                    image: "screenshot/book2/apparent_weight.png" 
+                },
+                {
+                    title: "摩擦力",
+                    desc: "就摩擦力的體現",
+                    link: "physics/Book2/friction.html",
+                    image: "screenshot/book2/friction.png" 
+                },
+                {
+                    title: "合力計算",
+                    desc: "我們會將一個物體所受的力分解為垂直和平行，然後找出合力",
+                    link: "physics/Book2/planar_net_force.html",
+                    image: "screenshot/book2/planar_net_force.png" 
+                },
+                {
+                    title: "斜坡上的力分解",
+                    desc: "當物體在斜坡上的時候，物體的淨力應該怎麽找出？",
+                    link: "physics/Book2/box_on_slope.html",
+                    image: "screenshot/book2/box_on_slope.png" 
+                },
+                {
+                    title: "力學分析",
+                    desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。",
+                    link: "physics/Book2/two_box_force_analysis.html",
+                    image: "screenshot/book2/two_body_force_simulation.png" 
+                },
+                {
+                    title: "門的力矩",
+                    desc: "你懂開門嗎？",
+                    link: "physics/Book2/door_torque.html",
+                    image: "screenshot/book2/door_torque.png" 
+                },
+                {
+                    title: "力矩分析",
+                    desc: "模擬一個受到多個力旋轉的木棍。",
+                    link: "physics/Book2/torque.html",
+                    image: "screenshot/book2/torque.png" 
+                }
+            ]
+        }
+    ];
 
-        // 3. 程式邏輯 (不需要修改)
-        //    這個函式會讀取上面的資料並產生 HTML
-        function renderLibrary() {
+    // ==========================================
+    // 3. 程式邏輯 (包含錯誤檢查)
+    // ==========================================
+    function renderLibrary() {
+        try {
+            console.log("開始渲染..."); // 在 Console 顯示訊息
             const container = document.getElementById('app-container');
+            
+            if (!container) {
+                alert("錯誤：找不到網頁容器 (app-container)");
+                return;
+            }
+
             let htmlContent = '';
 
-            libraryData.forEach(section => {
-                // 建立書本區塊
-                let sectionHtml = `
-                <div class="book-section">
-                    <h2 class="book-title">${section.category}</h2>
-                    <div class="simulation-grid">
-                `;
-
-                // 建立每個卡片
-                section.items.forEach(item => {
+            // 使用 map 方法更穩定
+            htmlContent = libraryData.map(section => {
+                const itemsHtml = section.items.map(item => {
+                    // 確保圖片路徑有效
                     const imageUrl = item.image ? item.image : DEFAULT_IMAGE;
                     
-                    sectionHtml += `
+                    return `
                         <div class="sim-card">
                             <div class="card-image">
-                                <img src="${imageUrl}" alt="${item.title}" onerror="this.src='${DEFAULT_IMAGE}'">
+                                <img src="${imageUrl}" 
+                                     alt="${item.title}" 
+                                     loading="lazy"
+                                     onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}'">
                             </div>
                             <div class="card-content">
                                 <h3>${item.title}</h3>
@@ -346,22 +346,31 @@
                             </div>
                         </div>
                     `;
-                });
+                }).join('');
 
-                // 關閉標籤
-                sectionHtml += `
+                return `
+                    <div class="book-section">
+                        <h2 class="book-title">${section.category}</h2>
+                        <div class="simulation-grid">
+                            ${itemsHtml}
+                        </div>
                     </div>
-                </div>`;
-                
-                htmlContent += sectionHtml;
-            });
+                `;
+            }).join('');
 
             container.innerHTML = htmlContent;
-        }
+            console.log("渲染成功！");
 
-        // 執行程式
-        document.addEventListener('DOMContentLoaded', renderLibrary);
-    </script>
+        } catch (error) {
+            // 如果出錯，會彈出視窗告訴你
+            console.error(error);
+            alert("網頁發生錯誤，請檢查 F12 Console。\n錯誤訊息: " + error.message);
+        }
+    }
+
+    // 確保網頁載入後執行
+    document.addEventListener('DOMContentLoaded', renderLibrary);
+</script>
 
 </body>
 </html>
