@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>物理模擬：力矩與轉動門</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MathJax for LaTeX -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' },
+            startup: {
+                ready: () => {
+                    MathJax.startup.defaultReady();
+                    window.mathJaxReady = true;
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+            background-color: #f0f4f8;
+            overflow: hidden; /* Prevent scrolling */
+            touch-action: none;
+        }
+        canvas {
+            touch-action: none;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: crosshair;
+        }
+        /* Custom Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px; width: 16px;
+            border-radius: 50%;
+            background: #2563eb;
+            margin-top: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        .mjx-chtml { font-size: 110% !important; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white p-3 shadow-md flex justify-between items-center z-20 shrink-0">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-door-open text-xl"></i>
+            <h1 class="text-lg font-bold">力矩模擬器</h1>
+        </div>
+        <button onclick="showModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full text-sm transition shadow-sm border border-blue-400">
+            <i class="fa-solid fa-book-open mr-1"></i> 教學筆記
+        </button>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- Canvas Area -->
+        <div class="relative flex-1 bg-white flex justify-center items-center overflow-hidden border-b md:border-b-0 md:border-r border-gray-200">
+            <canvas id="simCanvas"></canvas>
+            
+            <!-- Interactive Hint -->
+            <div class="absolute bottom-4 left-0 w-full text-center pointer-events-none opacity-60 text-sm text-gray-500">
+                <i class="fa-solid fa-hand-pointer animate-bounce"></i> 試著拖動門上的藍點或箭頭
+            </div>
+
+            <!-- Legend / Floating overlay -->
+            <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-gray-200 text-sm pointer-events-none select-none max-w-[200px]">
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-1 bg-blue-600 rounded-full"></div> 
+                        <span class="font-bold text-gray-700">施力 \(\vec{F}\)</span>
+                    </div>
+                    <div class="flex items-center gap-2" id="legend-perp">
+                        <div class="w-8 h-1 bg-red-500 rounded-full"></div> 
+                        <span class="text-gray-600">有效分量 \(F_{\perp}\)</span>
+                    </div>
+                    <div class="flex items-center gap-2" id="legend-par">
+                        <div class="w-8 h-1 border-t-2 border-gray-400 border-dashed"></div> 
+                        <span class="text-gray-600">無效分量 \(F_{\parallel}\)</span>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                    <div class="text-xs text-gray-500 mb-1">力矩公式 \(\tau = r F \cos\theta\)</div>
+                    <div class="font-bold text-blue-700 text-xl" id="torque-display">-- Nm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="w-full md:w-80 bg-gray-50 p-4 overflow-y-auto shrink-0 shadow-[0_0_15px_rgba(0,0,0,0.1)] z-10 flex flex-col gap-4">
+            
+            <!-- Control: Force -->
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                <div class="flex justify-between mb-1">
+                    <label class="font-bold text-gray-700">施力大小 \(F\)</label>
+                    <span id="val-force" class="text-blue-600 font-mono font-bold">50 N</span>
+                </div>
+                <input type="range" id="input-force" min="0" max="100" value="50" class="w-full accent-blue-600">
+            </div>
+
+            <!-- Control: Angle -->
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                <div class="flex justify-between mb-1">
+                    <label class="font-bold text-gray-700">角度 \(\theta\) (與法線)</label>
+                    <span id="val-angle" class="text-blue-600 font-mono font-bold">0°</span>
+                </div>
+                <input type="range" id="input-angle" min="-90" max="90" value="0" class="w-full accent-blue-600">
+                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>90°</span><span>0°</span><span>90°</span>
+                </div>
+            </div>
+
+            <!-- Control: Position -->
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                <div class="flex justify-between mb-1">
+                    <label class="font-bold text-gray-700">力臂 \(r\)</label>
+                    <span id="val-r" class="text-blue-600 font-mono font-bold">0.8 m</span>
+                </div>
+                <input type="range" id="input-r" min="0.1" max="1.0" step="0.01" value="0.8" class="w-full accent-blue-600">
+            </div>
+
+            <!-- Buttons -->
+            <div class="grid grid-cols-2 gap-2 mt-auto">
+                <button id="btn-components" class="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 font-semibold py-2 px-4 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-layer-group"></i> 顯示分量
+                </button>
+                <button id="btn-reset" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition text-sm">
+                    <i class="fa-solid fa-rotate-left"></i> 重置
+                </button>
+                <button id="btn-sim" class="col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> 開始模擬
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Educational Modal -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300">
+            <div class="bg-blue-600 p-4">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-lightbulb text-yellow-300 mr-2"></i>力矩原理</h2>
+            </div>
+            <div class="p-6 space-y-4 text-gray-700">
+                <p>
+                    <strong>力矩 (Torque, \(\tau\))</strong> 是令物體轉動的能力。
+                </p>
+                
+                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <p class="font-bold text-lg mb-2 text-blue-800">公式： \(\tau = r F_{\perp} = r F \cos\theta\)</p>
+                    <ul class="list-disc pl-5 space-y-1 text-sm text-blue-900">
+                        <li>\(\tau\)：力矩 (Nm)</li>
+                        <li>\(r\)：力臂 (轉軸到施力點的距離)</li>
+                        <li>\(F\)：施力大小</li>
+                        <li>\(\theta\)：<strong>力向量與法線的夾角</strong></li>
+                    </ul>
+                </div>
+
+                <div class="space-y-2 text-sm">
+                    <p class="font-bold text-gray-800">操作指南：</p>
+                    <ul class="list-disc pl-5">
+                        <li><span class="text-blue-600 font-bold">拖動</span>門上的藍點來改變力臂 \(r\)。</li>
+                        <li><span class="text-blue-600 font-bold">拖動</span>箭頭尖端來改變力的大小和角度。</li>
+                        <li>觀察當力與門板平行（\(\theta = 90^\circ\)）時，力矩變為多少？</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-100 flex justify-end">
+                <button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg transition shadow-lg">
+                    開始實驗
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 變數與狀態 ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let state = {
+            force: 50,       // Newtons
+            angle: 0,        // Degrees (相對於法線, 0 = 垂直門板)
+            r: 0.8,          // Meters (0.1 - 1.0)
+            doorAngle: 0,    // Radians (門的轉動角度)
+            angularVel: 0,   // Radians per frame
+            isSimulating: false,
+            showComponents: false,
+            doorWidthPx: 0,  
+            hingePos: { x: 0, y: 0 },
+            isDraggingr: false,
+            isDraggingHead: false
+        };
+
+        const PHYSICS = {
+            doorMass: 20,
+            friction: 0.96
+        };
+
+        // UI 元素
+        const ui = {
+            force: document.getElementById('input-force'),
+            angle: document.getElementById('input-angle'),
+            r: document.getElementById('input-r'),
+            valForce: document.getElementById('val-force'),
+            valAngle: document.getElementById('val-angle'),
+            valR: document.getElementById('val-r'),
+            torqueDisplay: document.getElementById('torque-display'),
+            btnSim: document.getElementById('btn-sim'),
+            btnReset: document.getElementById('btn-reset'),
+            btnComp: document.getElementById('btn-components'),
+            modal: document.getElementById('modal-overlay'),
+            modalContent: document.getElementById('modal-content')
+        };
+
+        // --- 初始化 ---
+        function init() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // 綁定 UI 事件
+            ui.force.addEventListener('input', updateStateFromUI);
+            ui.angle.addEventListener('input', updateStateFromUI);
+            ui.r.addEventListener('input', updateStateFromUI);
+            
+            ui.btnComp.addEventListener('click', () => {
+                state.showComponents = !state.showComponents;
+                ui.btnComp.classList.toggle('bg-blue-100');
+                ui.btnComp.classList.toggle('border-blue-500');
+                draw();
+            });
+
+            ui.btnSim.addEventListener('click', toggleSimulation);
+            ui.btnReset.addEventListener('click', resetSimulation);
+
+            // Canvas 互動事件
+            canvas.addEventListener('mousedown', handleInputStart);
+            canvas.addEventListener('mousemove', handleInputMove);
+            window.addEventListener('mouseup', handleInputEnd);
+            
+            canvas.addEventListener('touchstart', handleInputStart, {passive: false});
+            canvas.addEventListener('touchmove', handleInputMove, {passive: false});
+            window.addEventListener('touchend', handleInputEnd);
+
+            requestAnimationFrame(animate);
+            setTimeout(showModal, 500);
+            updateMathJax();
+        }
+
+        // --- 核心邏輯 ---
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // --- [設定] 調整門的位置與大小 ---
+            // x, y: 門軸(圓點)在畫布上的位置。
+            // 例如 x: canvas.width * 0.15 代表在左側 15% 的位置
+            state.hingePos = { x: canvas.width * 0.45, y: canvas.height * 0.45 };
+            
+            // 門的最大顯示寬度 (像素)
+            state.doorWidthPx = Math.min(canvas.width * 0.6, 350);
+            
+            draw();
+        }
+
+        function updateStateFromUI() {
+            state.force = parseInt(ui.force.value);
+            state.angle = parseInt(ui.angle.value);
+            state.r = parseFloat(ui.r.value);
+            updateUIText();
+            if (!state.isSimulating) draw();
+        }
+
+        function updateUIText() {
+            ui.valForce.innerText = Math.round(state.force) + " N";
+            // 這裡使用 Math.abs() 確保顯示的角度永遠是正數 (銳角)
+            ui.valAngle.innerText = Math.abs(Math.round(state.angle)) + "°";
+            ui.valR.innerText = state.r.toFixed(2) + " m";
+            
+            // 計算力矩: Tau = r * F * cos(angle_to_normal)
+            const rad = state.angle * (Math.PI / 180);
+            const torque = state.r * state.force * Math.cos(rad);
+            
+            // 使用更簡單的 LaTeX 更新方式，避免衝突
+            const latex = `\\tau = ${torque.toFixed(1)} \\, \\text{Nm}`;
+            ui.torqueDisplay.innerHTML = `\\( ${latex} \\)`;
+            
+            if (window.mathJaxReady) {
+                MathJax.typesetPromise([ui.torqueDisplay]).catch((err)=>console.log(err));
+            }
+        }
+        
+        function updateMathJax() {
+            if (window.mathJaxReady) {
+                 MathJax.typesetPromise();
+            }
+        }
+
+        // --- 互動處理 (拖曳) ---
+        function getLocalCoords(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+            
+            const mx = clientX - rect.left - state.hingePos.x;
+            const my = clientY - rect.top - state.hingePos.y;
+            
+            // 反旋轉門的角度，將鼠標座標轉到門的局部坐標系
+            // 門原本在 X 軸上
+            const cos = Math.cos(-state.doorAngle);
+            const sin = Math.sin(-state.doorAngle);
+            
+            return {
+                x: mx * cos - my * sin,
+                y: mx * sin + my * cos
+            };
+        }
+
+        function handleInputStart(evt) {
+            if (state.isSimulating) return; // 模擬中禁止編輯
+            
+            const p = getLocalCoords(evt);
+            const rPx = state.r * state.doorWidthPx;
+            
+            // 1. 檢測是否點擊到施力點 (r)
+            // 點在 (rPx, 0) 附近
+            if (Math.abs(p.x - rPx) < 30 && Math.abs(p.y) < 30) {
+                state.isDraggingr = true;
+                evt.preventDefault();
+                return;
+            }
+
+            // 2. 檢測是否點擊到箭頭頭部
+            // 計算當前箭頭頭部位置
+            // 法線是 Y 軸 (或 -Y)。這裡設 0 度是垂直向下 (+Y)
+            // 角度 theta 是與法線夾角。
+            // Fx (沿門) = F * sin(theta)
+            // Fy (垂直) = F * cos(theta)
+            // 繪圖時，我們通常畫箭頭指向門。
+            // 讓我們設定：施力點是 (rPx, 0)。
+            // 箭頭起點是 (rPx - Fx_vis, -Fy_vis) 指向 (rPx, 0) ?
+            // 不，通常物理圖是從施力點畫出去。
+            // 讓我們定義：從 (rPx, 0) 畫出去。
+            // 0度 = 垂直推門 = 沿著法線 = 沿 Y 軸 (為了視覺效果，我們畫在 Y 軸方向)
+            
+            const rad = state.angle * (Math.PI / 180);
+            const scale = 2.0; // 視覺縮放
+            const vecLen = state.force * scale;
+            
+            // 注意：法線是 Y 軸。
+            // 當 angle = 0, x=0, y=vecLen.
+            const headX = rPx + vecLen * Math.sin(rad);
+            const headY = vecLen * Math.cos(rad); // 在門的下方畫
+            
+            const distHead = Math.sqrt((p.x - headX)**2 + (p.y - headY)**2);
+            if (distHead < 30) {
+                state.isDraggingHead = true;
+                evt.preventDefault();
+            }
+        }
+
+        function handleInputMove(evt) {
+            if (!state.isDraggingr && !state.isDraggingHead) return;
+            evt.preventDefault();
+            
+            const p = getLocalCoords(evt);
+            
+            if (state.isDraggingr) {
+                // 限制 r 在門的範圍內
+                let newR = p.x / state.doorWidthPx;
+                newR = Math.max(0.1, Math.min(1.0, newR));
+                state.r = newR;
+                ui.r.value = newR;
+                ui.input = newR; // update slider
+            }
+            
+            if (state.isDraggingHead) {
+                // 計算從施力點 (rPx, 0) 到鼠標 (p.x, p.y) 的向量
+                const rPx = state.r * state.doorWidthPx;
+                const dx = p.x - rPx;
+                const dy = p.y; // 因為起點 y=0
+                
+                // 計算新的力大小 (長度)
+                const newLen = Math.sqrt(dx*dx + dy*dy);
+                let newForce = newLen / 2.0; // 縮放係數與上面一致
+                newForce = Math.min(100, Math.max(10, newForce)); // 限制範圍
+                state.force = newForce;
+                ui.force.value = newForce;
+                
+                // 計算新的角度 (相對於 Y 軸/法線)
+                // Math.atan2(y, x) 是對 X 軸的角度
+                // 我們要對 Y 軸的角度 -> atan2(x, y)
+                let newAngleRad = Math.atan2(dx, dy);
+                let newAngleDeg = newAngleRad * (180 / Math.PI);
+                
+                // 限制角度在 -90 到 90 之間 (只允許推，不允許拉穿過門)
+                // 其實 atan2(dx, dy) 如果 dy 是正的 (門下方)，範圍是 -90..90
+                // 如果拖到門上方，dy 是負的，角度會變成 >90 或 <-90
+                
+                if (Math.abs(newAngleDeg) > 90) {
+                    // 如果拖到背面，就限制住或者反轉
+                    if (newAngleDeg > 90) newAngleDeg = 90;
+                    if (newAngleDeg < -90) newAngleDeg = -90;
+                }
+                
+                state.angle = newAngleDeg;
+                ui.angle.value = newAngleDeg;
+            }
+            
+            updateUIText(); // 更新文字和 LaTeX
+            draw();
+        }
+
+        function handleInputEnd() {
+            state.isDraggingr = false;
+            state.isDraggingHead = false;
+        }
+
+        function toggleSimulation() {
+            if (state.isSimulating) {
+                state.isSimulating = false;
+                ui.btnSim.innerHTML = '<i class="fa-solid fa-play"></i> 繼續模擬';
+                ui.btnSim.className = "col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition transform active:scale-95 flex items-center justify-center gap-2";
+            } else {
+                state.isSimulating = true;
+                ui.btnSim.innerHTML = '<i class="fa-solid fa-pause"></i> 暫停';
+                ui.btnSim.className = "col-span-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition transform active:scale-95 flex items-center justify-center gap-2";
+            }
+        }
+
+        function resetSimulation() {
+            state.isSimulating = false;
+            state.doorAngle = 0;
+            state.angularVel = 0;
+            ui.btnSim.innerHTML = '<i class="fa-solid fa-play"></i> 開始模擬';
+            ui.btnSim.className = "col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition transform active:scale-95 flex items-center justify-center gap-2";
+            draw();
+        }
+
+        function animate() {
+            if (state.isSimulating) {
+                const rad = state.angle * (Math.PI / 180);
+                // Torque = r * F * cos(angle_to_normal)
+                // 注意：如果角度是90度(平行)，cos(90)=0，力矩為0。符合物理。
+                const torque = state.r * state.force * Math.cos(rad);
+                
+                const alpha = torque * 0.000002; // 簡化的轉動慣量係數
+                state.angularVel += alpha;
+                state.angularVel *= PHYSICS.friction;
+                state.doorAngle += state.angularVel;
+                draw();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // --- 繪圖邏輯 ---
+        function drawArrow(ctx, fromX, fromY, toX, toY, color, width, dashed = false) {
+            const headLength = 12;
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.beginPath();
+            if (dashed) ctx.setLineDash([5, 5]);
+            else ctx.setLineDash([]);
+            
+            ctx.lineWidth = width;
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            
+            // 線身
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            
+            // 箭頭頭部 (實心三角形)
+            ctx.beginPath();
+            ctx.setLineDash([]); // 頭部不虛線
+            const arrowX  = toX + headLength*0.5 * Math.cos(angle);
+            const arrowY  = toY + headLength*0.5 * Math.sin(angle);
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - headLength * Math.cos(angle - Math.PI / 6), arrowY - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(arrowX - headLength * Math.cos(angle + Math.PI / 6), arrowY - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(arrowX, arrowY);
+            ctx.fill();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            
+            // 1. 移動到門軸位置
+            ctx.translate(state.hingePos.x, state.hingePos.y);
+            
+            // 畫轉軸 (Hinge)
+            ctx.fillStyle = '#4b5563';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 2. 旋轉門
+            ctx.rotate(state.doorAngle);
+            
+            // 畫門
+            const L = state.doorWidthPx;
+            const thick = 14;
+            
+            // 陰影
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#d97706';
+            ctx.fillRect(0, -thick/2, L, thick);
+            ctx.shadowBlur = 0;
+            
+            // 門邊框
+            ctx.strokeStyle = '#92400e';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, -thick/2, L, thick);
+            
+            // 3. 在施力點建立坐標系
+            const rPx = state.r * L;
+            ctx.translate(rPx, 0); // 移動到施力點
+            
+            // 畫法線 (Normal) - 垂直於門
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#9ca3af'; // 灰色
+            ctx.lineWidth = 1;
+            ctx.moveTo(0, -100);
+            ctx.lineTo(0, 100); // 畫長一點
+            ctx.stroke();
+            
+            // 標註 "法線"
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '12px sans-serif';
+            ctx.fillText("法線", 5, -80);
+            
+            // 計算力向量終點
+            // 角度 0度 = 沿著法線向下 (+Y)
+            const rad = state.angle * (Math.PI / 180);
+            const scale = 2.0; 
+            const vecLen = state.force * scale;
+            
+            // F_perp (垂直分量) = F * cos(theta) -> 沿 Y 軸
+            // F_par (平行分量) = F * sin(theta) -> 沿 X 軸
+            const fy = vecLen * Math.cos(rad);
+            const fx = vecLen * Math.sin(rad);
+            
+            // 畫分量
+            if (state.showComponents && state.force > 5) {
+                // 有效分量 (垂直/紅色)
+                drawArrow(ctx, 0, 0, 0, fy, '#ef4444', 3);
+                
+                // 無效分量 (平行/灰色)
+                drawArrow(ctx, 0, 0, fx, 0, '#9ca3af', 2, true);
+                
+                // --- 新增：虛線投影 (Projection Lines) ---
+                // 從垂直分量尖端畫到合力尖端
+                ctx.beginPath();
+                ctx.setLineDash([2, 3]); // 細虛線
+                ctx.strokeStyle = '#bfdbfe'; // 淺藍色/灰色
+                ctx.lineWidth = 1;
+                ctx.moveTo(0, fy);
+                ctx.lineTo(fx, fy);
+                ctx.stroke();
+
+                // 從平行分量尖端畫到合力尖端
+                ctx.beginPath();
+                ctx.moveTo(fx, 0);
+                ctx.lineTo(fx, fy);
+                ctx.stroke();
+            }
+            
+            // 畫合力 (藍色)
+            if (state.force > 0) {
+                drawArrow(ctx, 0, 0, fx, fy, '#2563eb', 4);
+                
+                // 畫角度弧線 (從法線 Y 軸 到 力向量)
+                
+                ctx.beginPath();
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([]);
+                
+                // Canvas 的 arc 0 是 X 軸 (門)。
+                // 法線是 Y 軸 (PI/2)。
+                // 力的角度是 atan2(fy, fx).
+                const forceAngleCanvas = Math.atan2(fy, fx);
+                const normalAngleCanvas = Math.PI / 2;
+                
+                // 確保畫弧的方向正確
+                ctx.arc(0, 0, 30, forceAngleCanvas, normalAngleCanvas, state.angle < 0);
+                ctx.stroke();
+                
+                // 角度文字
+                ctx.fillStyle = '#1e40af';
+                ctx.font = 'bold 12px monospace';
+                // 文字位置放弧線中間
+                const midAngle = (normalAngleCanvas + forceAngleCanvas) / 2;
+                const txtX = 40 * Math.cos(midAngle);
+                const txtY = 40 * Math.sin(midAngle);
+                ctx.fillText(Math.abs(Math.ceil(state.angle)) + "°", txtX, txtY);
+            }
+            
+            // 畫施力點 (圓點) - 作為互動手柄
+            ctx.beginPath();
+            ctx.fillStyle = state.isDraggingr ? '#fff' : '#2563eb';
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2;
+            ctx.arc(0, 0, 6, 0, Math.PI*2); // 中心點
+            ctx.fill();
+            ctx.stroke();
+            
+            // 畫力臂標示線 (雙向箭頭)
+            ctx.translate(-rPx, 0); // 回到門軸
+            
+            ctx.strokeStyle = '#059669';
+            ctx.fillStyle = '#059669';
+            ctx.lineWidth = 2;
+            
+            // 線
+            ctx.beginPath();
+            ctx.moveTo(8, 25); // 留點空隙給箭頭
+            ctx.lineTo(rPx - 8, 25);
+            ctx.stroke();
+            
+            // 左箭頭
+            ctx.beginPath();
+            ctx.moveTo(0, 25);
+            ctx.lineTo(8, 21);
+            ctx.lineTo(8, 29);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 右箭頭
+            ctx.beginPath();
+            ctx.moveTo(rPx, 25);
+            ctx.lineTo(rPx - 8, 21);
+            ctx.lineTo(rPx - 8, 29);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#059669';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`r`, rPx/2, 20); // 簡化顯示，詳細數字在面板
+
+            ctx.restore();
+        }
+
+        // --- Modal ---
+        function showModal() {
+            ui.modal.classList.remove('opacity-0', 'pointer-events-none');
+            ui.modalContent.classList.remove('scale-95');
+            ui.modalContent.classList.add('scale-100');
+        }
+        function closeModal() {
+            ui.modal.classList.add('opacity-0', 'pointer-events-none');
+            ui.modalContent.classList.remove('scale-100');
+            ui.modalContent.classList.add('scale-95');
+        }
+        
+        window.showModal = showModal;
+        window.closeModal = closeModal;
+
+        init();
+    </script>
+</body>
+</html>
