@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>重力勢能 (GPE) 互動模擬</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            /* 動態漸變背景 */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+
+        /* Glassmorphism 效果 */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        canvas {
+            touch-action: none;
+            border-radius: 1rem;
+        }
+
+        /* 美化滑動條 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid currentColor;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        /* Bento Box Grid */
+        .bento-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 1024px) {
+            .bento-grid {
+                grid-template-columns: 2fr 1fr;
+                grid-template-rows: auto auto;
+            }
+
+            .bento-canvas {
+                grid-row: span 2;
+            }
+        }
+    </style>
+</head>
+
+<body class="text-gray-800 px-4 py-2 md:px-8 flex flex-col items-center min-h-screen">
+
+    <!-- Pop-out 教學彈窗 -->
+    <div id="introModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300">
+        <div class="glass p-8 rounded-2xl shadow-2xl max-w-lg w-[90%] transform transition-all scale-100">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b border-gray-300/50 pb-2">📚 物理原理提示</h2>
+            <div class="text-gray-700 space-y-4 text-sm md:text-base">
+                <p>重力勢能變化公式為：</p>
+                <div class="text-center text-xl my-2">
+                    $$ \Delta PE = mgH $$
+                </div>
+                <p>勢能的絕對值和參考高度有關，而$h$ 是物體<strong>相對於參考水平</strong>的高度。</p>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li>當物體在參考水平<strong>之上</strong>，$h > 0$，勢能為 <strong class="text-blue-600">正值</strong>。</li>
+                    <li>當物體在參考水平<strong>之下</strong>，$h < 0$，勢能為 <strong class="text-purple-600">負值</strong>。</li>
+                </ul>
+                <div class="bg-blue-50/80 p-3 rounded-lg border border-blue-200 mt-4">
+                    💡 <strong>重點：</strong> 勢能是一個「相對值」，取決於我們將哪裡設定為高度 $0$ 的參考點。
+                </div>
+            </div>
+            <button onclick="closeModal()"
+                class="mt-6 w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95">
+                開始探索模擬
+            </button>
+        </div>
+    </div>
+
+    <!-- 標題區 -->
+    <div class="w-full max-w-6xl mb-6 text-white drop-shadow-md">
+        <h1 class="text-3xl md:text-4xl font-black mb-2">重力勢能與參考水平</h1>
+        <p class="text-white/80 font-medium">拖曳物件或參考線，觀察勢能 $PE = mgh$ 的變化</p>
+    </div>
+
+    <!-- Bento Box 主容器 -->
+    <div class="bento-grid w-full max-w-6xl">
+
+        <!-- 模擬畫面區 (Canvas) -->
+        <div class="bento-canvas glass rounded-2xl overflow-hidden relative flex flex-col shadow-xl">
+            <div
+                class="absolute top-4 left-4 glass px-3 py-1.5 rounded-lg text-sm font-bold text-slate-700 z-10 shadow-sm border border-white/60">
+                $g = 9.81 \, \text{m/s}^2$
+            </div>
+
+            <!-- 動態教學筆記 -->
+            <div id="dynamicNote"
+                class="absolute top-4 right-4 glass px-4 py-2 rounded-lg text-sm font-bold shadow-sm border border-white/60 max-w-[200px] text-right transition-colors duration-300">
+                等待操作...
+            </div>
+
+            <canvas id="simCanvas" class="w-full h-[450px] md:h-[600px] cursor-crosshair flex-grow"></canvas>
+            <div
+                class="bg-white/40 border-t border-white/50 p-2 text-center text-xs font-medium text-gray-600 backdrop-blur-md">
+                👆 提示：可直接在上方畫布拖曳 <span class="text-red-500 font-bold">蘋果🍎</span> 或 <span
+                    class="text-green-600 font-bold">綠色虛線 (參考水平)</span>
+            </div>
+        </div>
+
+        <!-- 參數設定區 -->
+        <div class="glass rounded-2xl p-4 shadow-xl flex flex-col gap-5">
+            <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" viewBox="0 0 20 20"
+                    fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                        clip-rule="evenodd" />
+                </svg>
+                環境參數設定
+            </h2>
+
+            <div class="space-y-6">
+                <!-- 質量 -->
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-sm font-bold text-gray-700">物體質量 $m$</label>
+                        <span id="massVal"
+                            class="text-sm font-black text-indigo-600 bg-white/50 px-2 py-0.5 rounded">1.0 kg</span>
+                    </div>
+                    <input type="range" id="massSlider" min="0.1" max="5" step="0.1" value="1" class="text-indigo-500">
+                </div>
+
+                <!-- 高度 -->
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-sm font-bold text-gray-700">物體高度 $H$</label>
+                        <span id="objHeightVal"
+                            class="text-sm font-black text-red-500 bg-white/50 px-2 py-0.5 rounded">5.0 m</span>
+                    </div>
+                    <input type="range" id="objSlider" min="0" max="10" step="0.1" value="5" class="text-red-500">
+                </div>
+
+                <!-- 參考水平 -->
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-sm font-bold text-gray-700">參考水平高度 $h_0$</label>
+                        <span id="refHeightVal"
+                            class="text-sm font-black text-green-600 bg-white/50 px-2 py-0.5 rounded">0.0 m</span>
+                    </div>
+                    <input type="range" id="refSlider" min="0" max="10" step="0.1" value="0" class="text-green-600">
+                </div>
+            </div>
+        </div>
+
+        <!-- 計算結果區 -->
+        <div class="glass rounded-2xl p-4 shadow-xl flex flex-col justify-between">
+            <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b border-gray-300/40 pb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 20 20"
+                    fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z"
+                        clip-rule="evenodd" />
+                </svg>
+                實時數據分析
+            </h2>
+
+            <div class="space-y-4">
+                <!-- 目前勢能 -->
+                <div class="bg-white/60 p-4 rounded-xl border border-blue-200 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                    <p class="text-sm text-blue-800 font-bold mb-1">重力勢能 $PE = mgh$</p>
+                    <div class="text-xs text-gray-600 mb-2 font-mono bg-white/50 p-1.5 rounded inline-block">
+                        = <span id="eqMass">1</span> × 9.81 × <span id="eqhDiff">5</span>
+                    </div>
+                    <div class="text-4xl font-black tracking-tight drop-shadow-sm transition-colors duration-300"
+                        id="peResult" style="color: #1d4ed8;">49.1 J</div>
+                </div>
+
+                <!-- 最大可能勢能改變 -->
+                <div class="bg-white/60 p-4 rounded-xl border border-orange-200 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>
+                    <p class="text-sm text-orange-800 font-bold mb-1">跌至地面的勢能釋放 $\Delta PE$</p>
+                    <div class="text-xs text-gray-600 mb-2 font-mono bg-white/50 p-1.5 rounded inline-block">
+                        = m × g × H
+                    </div>
+                    <div class="text-3xl font-bold text-orange-600 drop-shadow-sm" id="maxPeResult">49.1 J</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal Logic
+        function closeModal() {
+            const modal = document.getElementById('introModal');
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // DOM Elements
+        const massSlider = document.getElementById('massSlider');
+        const objSlider = document.getElementById('objSlider');
+        const refSlider = document.getElementById('refSlider');
+
+        const massVal = document.getElementById('massVal');
+        const objHeightVal = document.getElementById('objHeightVal');
+        const refHeightVal = document.getElementById('refHeightVal');
+
+        const eqMass = document.getElementById('eqMass');
+        const eqhDiff = document.getElementById('eqhDiff');
+        const peResult = document.getElementById('peResult');
+        const maxPeResult = document.getElementById('maxPeResult');
+        const dynamicNote = document.getElementById('dynamicNote');
+
+        // Custom Slider Colors binding
+        function updateSliderColor(slider, color) {
+            slider.style.color = color; // For the custom thumb style
+        }
+
+        // Physics variables
+        let mass = 1.0;
+        let objY = 5.0; // actual height from ground (0-10m)
+        let refY = 0.0; // reference height (0-10m)
+        const g = 9.81;
+        const maxMeters = 11; // Display up to 11m
+
+        // Interaction state
+        let isDraggingObj = false;
+        let isDraggingRef = false;
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            // Height is handled by CSS, we just need the internal resolution to match
+            canvas.height = canvas.getBoundingClientRect().height;
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Coordinate Mapping (Meters to Pixels)
+        const groundMargin = 50; // Give more space at bottom for text
+        function getPixelsPerMeter() {
+            return (canvas.height - groundMargin - 30) / maxMeters;
+        }
+
+        function mToPx(meters) {
+            return canvas.height - groundMargin - (meters * getPixelsPerMeter());
+        }
+
+        function pxToM(px) {
+            let m = (canvas.height - groundMargin - px) / getPixelsPerMeter();
+            return Math.max(0, Math.min(10, m)); // clamp 0-10
+        }
+
+        // Event Listeners for Sliders
+        massSlider.addEventListener('input', (e) => { mass = parseFloat(e.target.value); updateUI(); });
+        objSlider.addEventListener('input', (e) => { objY = parseFloat(e.target.value); updateUI(); });
+        refSlider.addEventListener('input', (e) => { refY = parseFloat(e.target.value); updateUI(); });
+
+        // Mouse/Touch Interaction for Canvas
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientY = e.touches[0].clientY;
+            } else {
+                clientY = e.clientY;
+            }
+            return clientY - rect.top;
+        }
+
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('touchstart', startDrag, { passive: false }); // passive false to allow preventDefault
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('touchmove', drag, { passive: false });
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        function startDrag(e) {
+            // Only handle single touch or mouse
+            if (e.touches && e.touches.length > 1) return;
+
+            const my = getMousePos(e);
+            const objPx = mToPx(objY);
+            const refPx = mToPx(refY);
+
+            // Larger tolerance for mobile fat fingers
+            const tolerance = e.touches ? 40 : 25;
+
+            if (Math.abs(my - objPx) < tolerance) {
+                isDraggingObj = true;
+                if (e.type === 'touchstart') e.preventDefault();
+            } else if (Math.abs(my - refPx) < tolerance) {
+                isDraggingRef = true;
+                if (e.type === 'touchstart') e.preventDefault();
+            }
+        }
+
+        function drag(e) {
+            if (!isDraggingObj && !isDraggingRef) return;
+            e.preventDefault(); // Prevent scrolling while dragging on canvas
+            const my = getMousePos(e);
+            const newMeters = Math.round(pxToM(my) * 10) / 10; // snap to 0.1
+
+            if (isDraggingObj) {
+                objY = newMeters;
+                objSlider.value = objY;
+            } else if (isDraggingRef) {
+                refY = newMeters;
+                refSlider.value = refY;
+            }
+            updateUI();
+        }
+
+        function endDrag() {
+            isDraggingObj = false;
+            isDraggingRef = false;
+        }
+
+        // Drawing Functions
+        function drawArrow(fromX, fromY, toX, toY, color, label, side = 'right') {
+            const headlen = 10;
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2.5;
+            if (fromY > toY) {
+                ctx.beginPath();
+                ctx.moveTo(fromX, fromY - headlen * 0.9);
+                ctx.lineTo(toX, toY + headlen * 0.9);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(fromX, fromY + headlen * 0.9);
+                ctx.lineTo(toX, toY - headlen * 0.9);
+                ctx.stroke();
+            }
+
+            // Arrow heads
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(fromX + headlen * Math.cos(angle + Math.PI / 6), fromY + headlen * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(fromX + headlen * Math.cos(angle - Math.PI / 6), fromY + headlen * Math.sin(angle - Math.PI / 6));
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.fill();
+
+            // Label
+            ctx.font = "bold 15px 'Noto Sans TC', sans-serif";
+            ctx.textAlign = side === 'right' ? "left" : "right";
+            ctx.textBaseline = "middle";
+
+            let textX = side === 'right' ? fromX + 12 : fromX - 12;
+            let textY = (fromY + toY) / 2;
+
+            // [Req 1] 防重疊機制：如果箭頭太短，將文字移到外面
+            if (Math.abs(toY - fromY) < 30) {
+                textY = Math.min(fromY, toY) - 15; // Move above
+                ctx.textBaseline = "bottom";
+            }
+
+            // Text background glass effect
+            const metrics = ctx.measureText(label);
+            const padding = 4;
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.beginPath();
+            ctx.roundRect(
+                textX - (side === 'left' ? metrics.width : 0) - padding,
+                textY - 10 - (ctx.textBaseline === 'bottom' ? 10 : 0),
+                metrics.width + padding * 2,
+                20,
+                4
+            );
+            ctx.fill();
+
+            ctx.fillStyle = color;
+            ctx.fillText(label, textX, textY);
+        }
+
+        function drawApple(x, y) {
+            // Shadow
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.beginPath();
+            ctx.ellipse(x, y + 5, 12, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Apple body
+            const gradient = ctx.createRadialGradient(x - 5, y - 20, 2, x, y - 10, 20);
+            gradient.addColorStop(0, "#fca5a5"); // light red
+            gradient.addColorStop(1, "#dc2626"); // dark red
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y - 15, 18, 0, Math.PI * 2);
+            ctx.fill();
+
+            // stem
+            ctx.strokeStyle = "#4d7c0f";
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(x, y - 32);
+            ctx.quadraticCurveTo(x + 5, y - 42, x + 12, y - 38);
+            ctx.stroke();
+
+            // Leaf
+            ctx.fillStyle = "#65a30d";
+            ctx.beginPath();
+            ctx.ellipse(x + 8, y - 34, 6, 3, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Center dot for clarity on exact height
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function draw() {
+            // Clear canvas completely to let transparent background show
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width;
+
+            // 1. Draw Ground (y = 0)
+            const groundPx = mToPx(0);
+
+            // Ground pattern/color
+            ctx.fillStyle = "rgba(229, 231, 235, 0.6)"; // translucent gray
+            ctx.fillRect(0, groundPx, w, canvas.height - groundPx);
+
+            ctx.strokeStyle = "#6b7280";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, groundPx);
+            ctx.lineTo(w, groundPx);
+            ctx.stroke();
+
+            // Hatching lines for ground
+            ctx.strokeStyle = "rgba(107, 114, 128, 0.3)";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < w; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, groundPx);
+                ctx.lineTo(i - 15, groundPx + 15);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = "#4b5563";
+            ctx.font = "bold 16px 'Noto Sans TC', sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(" 地面", 15, groundPx + 25);
+
+            // 2. Draw Reference Line
+            const refPx = mToPx(refY);
+            ctx.strokeStyle = "#16a34a"; // green-600
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath();
+            ctx.moveTo(0, refPx);
+            ctx.lineTo(w, refPx);
+            ctx.stroke();
+            ctx.setLineDash([]); // reset
+
+            // Background for Reference Text to prevent overlap visibility
+            const refText = `參考高度 (h₀ = ${refY.toFixed(1)}m)`;
+            ctx.font = "bold 15px 'Noto Sans TC', sans-serif";
+            const refMet = ctx.measureText(refText);
+
+            // [Req 1] 防重疊：如果參考線離地面太近，文字移到線上方
+            let refTextY = refPx - 10;
+            if (groundPx - refPx < 30) {
+                refTextY = refPx - 15;
+            }
+
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.fillRect(10, refTextY - 10, refMet.width + 10, 20);
+            ctx.fillStyle = "#16a34a";
+            ctx.fillText(refText, 15, refTextY);
+
+            // 3. Draw Object (Apple)
+            const objPx = mToPx(objY);
+            // Center the object relatively
+            const objX = w / 2 - Math.min(80, w * 0.1);
+
+            // Draw horizontal projection line from object
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.5)";
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, objPx);
+            ctx.lineTo(w, objPx);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            drawApple(objX, objPx);
+
+            // 4. Dimension lines
+            const hDiff = objY - refY;
+            const diffColor = hDiff >= 0 ? "#2563eb" : "#9333ea"; // blue if positive, purple if negative
+            const diffText = `h = ${hDiff.toFixed(1)}m`;
+
+            // X positions for arrows based on screen width
+            const arrow1X = objX + 60;
+            const arrow2X = objX - 60;
+
+            // h (relative to ref)
+            if (Math.abs(hDiff) > 0.05) {
+                drawArrow(arrow1X, objPx, arrow1X, refPx, diffColor, diffText, 'right');
+            }
+
+            // h_max (relative to ground)
+            // [Req 1] 如果物體高度和參考高度很接近，且都在地面上方，確保線條不混淆
+            if (objY > 0.05) {
+                drawArrow(arrow2X, objPx, arrow2X, groundPx, "#ea580c", `H = ${objY.toFixed(1)}m`, 'left');
+            }
+        }
+
+        function updateUI() {
+            // Update Text
+            massVal.innerText = `${mass.toFixed(1)} kg`;
+            objHeightVal.innerText = `${objY.toFixed(1)} m`;
+            refHeightVal.innerText = `${refY.toFixed(1)} m`;
+
+            eqMass.innerText = mass.toFixed(1);
+            eqhDiff.innerText = (objY - refY).toFixed(1);
+
+            // Calculations
+            const pe = mass * g * (objY - refY);
+            const maxPe = mass * g * objY;
+
+            peResult.innerText = `${pe.toFixed(1)} J`;
+
+            // Dynamic Teaching Notes & Colors based on PE sign
+            if (pe < -0.1) {
+                peResult.style.color = "#9333ea"; // Purple
+                dynamicNote.innerHTML = "⬇️ 物體在參考線之下<br><span class='text-purple-600'>重力勢能為負值！</span>";
+                dynamicNote.className = "absolute top-4 right-4 bg-purple-100/90 border border-purple-300 px-4 py-2 rounded-lg text-sm font-bold shadow-sm text-right transition-colors duration-300 backdrop-blur";
+            } else if (pe > 0.1) {
+                peResult.style.color = "#1d4ed8"; // Blue
+                dynamicNote.innerHTML = "⬆️ 物體在參考線之上<br><span class='text-blue-600'>重力勢能為正值。</span>";
+                dynamicNote.className = "absolute top-4 right-4 bg-blue-100/90 border border-blue-300 px-4 py-2 rounded-lg text-sm font-bold shadow-sm text-right transition-colors duration-300 backdrop-blur";
+            } else {
+                peResult.style.color = "#374151"; // Gray
+                dynamicNote.innerHTML = "🎯 物體恰好在參考線上<br><span class='text-gray-700'>重力勢能為零。</span>";
+                dynamicNote.className = "absolute top-4 right-4 bg-gray-100/90 border border-gray-300 px-4 py-2 rounded-lg text-sm font-bold shadow-sm text-right transition-colors duration-300 backdrop-blur";
+            }
+
+            maxPeResult.innerText = `${maxPe.toFixed(1)} J`;
+
+            draw();
+        }
+
+        // Init
+        window.onload = () => {
+            setTimeout(() => {
+                resizeCanvas();
+                updateUI();
+            }, 100);
+        };
+
+    </script>
+</body>
+
+</html>
