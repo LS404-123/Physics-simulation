@@ -21,7 +21,7 @@
 2.	善用pop out screen，將原理解釋給學生，當新頁面開始後，將pop screen顯示給學生。 
 3.	加入MathJax套件去順利顯示數學公式。
 4.	在完成整個程序的雛形後，以Bento Box和Glassmorphism美化整個程式。
-5.	留意在不同設備(Ipad,手機,電腦)上的視窗大小和操縱範圍。
+5.	將整個模擬大小限制在1100 * 700 内，為ipad air的大小。
 <通用要求>
 
 ## graph

@@ -1,300 +1,636 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-HK">
 
 <head>
     <meta charset="UTF-8">
-    <title>物理模擬：系統能量守恆分析</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>滑輪系統能量守恆模擬</title>
+
+    <!-- MathJax for rendering formulas -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
+            margin: 0;
+            padding: 5px 0 0 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1d1d1f;
+            overflow: hidden;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-container {
+            width: 1100px;
+            height: 700px;
+            display: grid;
+            grid-template-columns: 2.2fr 1fr;
+            grid-template-rows: 50px 1fr 230px;
+            gap: 10px;
+            padding: 10px 20px 20px 20px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #333;
+        }
+
+        .canvas-area {
+            grid-column: 1;
+            grid-row: 2 / 4;
+            position: relative;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            padding: 20px;
         }
 
-        #sim-container {
-            position: relative;
-            width: 600px;
-            height: 400px;
-            background-color: white;
-            border: 2px solid #333;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 桌面 */
-        #table {
-            position: absolute;
-            top: 150px;
-            left: 200px;
-            width: 400px;
-            height: 250px;
-            background-color: #95a5a6;
-            border-top: 4px solid #7f8c8d;
-        }
-
-        /* 地面 */
-        #ground {
-            position: absolute;
-            bottom: 0;
+        svg {
             width: 100%;
-            height: 20px;
-            background: repeating-linear-gradient(45deg, #bdc3c7, #bdc3c7 10px, #95a5a6 10px, #95a5a6 20px);
-        }
-
-        /* 方塊 X */
-        #blockX {
-            position: absolute;
-            top: 110px;
-            /* 150 - 40 */
-            left: 450px;
-            width: 40px;
-            height: 40px;
-            background-color: #e74c3c;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            z-index: 10;
-        }
-
-        /* 方塊 Y */
-        #blockY {
-            position: absolute;
-            top: 150px;
-            left: 140px;
-            width: 50px;
-            height: 50px;
-            background-color: #3498db;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            z-index: 10;
-        }
-
-        /* 滑輪 */
-        #pulley {
-            position: absolute;
-            top: 135px;
-            left: 185px;
-            width: 30px;
-            height: 30px;
-            background-color: #34495e;
-            border-radius: 50%;
-            z-index: 20;
-        }
-
-        /* 繩子 */
-        #string-h {
-            position: absolute;
-            top: 150px;
-            height: 2px;
-            background: black;
-        }
-
-        #string-v {
-            position: absolute;
-            left: 200px;
-            width: 2px;
-            background: black;
-        }
-
-        /* 能量條樣式 */
-        .energy-bar-container {
-            position: absolute;
-            width: 60px;
-            height: 80px;
+            height: 100%;
             background: rgba(255, 255, 255, 0.7);
-            border: 1px solid #ccc;
-            padding: 2px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .controls {
+            grid-column: 2;
+            grid-row: 2;
+            padding: 10px;
             display: flex;
-            flex-direction: column-reverse;
-            font-size: 10px;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .energy-details {
+            margin-top: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 5px;
+            flex-grow: 1;
+        }
+
+        .energy-details h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+            color: #444;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .data-row span {
+            color: #666;
+        }
+
+        .data-row b {
+            color: #000;
+            font-family: monospace;
+        }
+
+        .dashboard-container {
+            grid-column: 2;
+            grid-row: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .dashboard {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            width: 800px;
+            max-height: 600px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.85);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ff3b30;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        button.action-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        button.action-btn:hover:not(:disabled) {
+            background: #fff;
+            transform: translateY(-1px);
+        }
+
+        button.action-btn.primary {
+            background: #007aff;
+            color: white;
+        }
+
+        button.action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .select-group {
+            background: rgba(255, 255, 255, 0.4);
+            padding: 8px 12px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        select {
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: white;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 8px;
+            border-radius: 10px;
             text-align: center;
         }
 
-        .bar {
-            width: 100%;
-            transition: height 0.05s;
+        .stat-box span {
+            display: block;
+            font-size: 0.7rem;
+            color: #555;
         }
 
-        .pe-bar {
-            background-color: #2ecc71;
+        .stat-box b {
+            font-size: 1rem;
+            color: #111;
+            font-family: monospace;
         }
 
-        /* 勢能 - 綠色 */
-        .ke-bar {
-            background-color: #f1c40f;
-        }
-
-        /* 動能 - 黃色 */
-
-        .controls {
-            margin-top: 20px;
-            gap: 10px;
-            display: flex;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            border: none;
-            background-color: #2c3e50;
-            color: white;
-        }
-
-        button:hover {
-            background-color: #34495e;
-        }
-
-        .data-display {
-            margin-top: 15px;
-            background: #fff;
-            padding: 15px;
+        .note-box {
+            background: rgba(255, 249, 196, 0.4);
+            border-left: 4px solid #fbc02d;
+            padding: 12px 0px 12px 9px;
             border-radius: 8px;
-            width: 570px;
+            font-size: 0.85rem;
+            flex-grow: 1;
+        }
+
+        .note-highlight {
+            color: #d32f2f;
+            font-weight: bold;
         }
     </style>
 </head>
 
 <body>
 
-    <h2>物理實驗：連體運動的能量守恆</h2>
-    <p>設定：$m_X = 0.5\text{ kg}, m_Y = 1.0\text{ kg}, h = 1.0\text{ m}$ ($g \approx 9.8\text{ ms}^{-2}$)</p>
-
-    <div id="sim-container">
-        <div id="ground"></div>
-        <div id="table"></div>
-        <div id="pulley"></div>
-
-        <div id="string-h"></div>
-        <div id="string-v"></div>
-
-        <div id="blockX">X
-            <div class="energy-bar-container" style="top: -90px; left: -10px;">
-                <div id="ke-x" class="bar ke-bar" style="height: 0%;"></div>
-                <span>KE(X)</span>
-            </div>
-        </div>
-
-        <div id="blockY">Y
-            <div class="energy-bar-container" style="top: -90px; left: -5px;">
-                <div id="pe-y" class="bar pe-bar" style="height: 100%;"></div>
-                <div id="ke-y" class="bar ke-bar" style="height: 0%;"></div>
-                <span>E(Y)</span>
+    <div class="modal-overlay glass" id="introModal">
+        <div class="modal-content glass">
+            <button class="close-btn" onclick="closeModal()">✕</button>
+            <h2>教學原理：能量轉化</h2>
+            <p>當系統釋放後，方塊 Y 損失的重力勢能轉化為整個系統的動能：</p>
+            $$ m_y g \Delta h = \frac{1}{2}(m_x + m_y)v^2 $$
+            <p><strong>觀察重點：</strong> 隨時查看右側的數值面板，確認 $PE$ 的減少量是否與 $KE$ 的增加量完全相等。</p>
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="action-btn primary" style="width: 120px;" onclick="closeModal()">進入模擬</button>
             </div>
         </div>
     </div>
 
-    <div class="controls">
-        <button onclick="startSim()">釋放系統</button>
-        <button onclick="resetSim()" style="background-color: #95a5a6;">重置</button>
-    </div>
+    <div class="app-container glass">
+        <div class="header glass">
+            <h1>滑輪系統：能量轉化模擬</h1>
+            <button class="action-btn" style="flex: none; padding: 6px 16px;"
+                onclick="document.getElementById('introModal').classList.remove('hidden')">原理說明</button>
+        </div>
 
-    <div class="data-display" id="info">
-        <b>狀態：</b> 靜止釋放前 | <b>系統總能量：</b> <span id="total-e">9.80</span> J
+        <!-- Replaced Canvas with SVG based on provided setup -->
+        <div class="canvas-area glass">
+            <svg id="simSvg" viewBox="0 0 450 300" preserveAspectRatio="xMidYMid meet"
+                xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <style>
+                        .bar-bg {
+                            fill: rgba(0, 0, 0, 0.08);
+                        }
+
+                        .bar-val {
+                            font-family: monospace;
+                            font-size: 10px;
+                            text-anchor: middle;
+                            fill: #111;
+                        }
+
+                        .bar-lbl-bg {
+                            fill: rgba(196, 188, 188, 0.925);
+                        }
+
+                        .bar-lbl {
+                            font-family: sans-serif;
+                            font-size: 9px;
+                            font-weight: bold;
+                            text-anchor: middle;
+                            fill: #333;
+                        }
+                    </style>
+                </defs>
+
+                <!-- 地面 -->
+                <rect x="0" y="290" width="450" height="10" fill="#e0e0e0" />
+                <line x1="0" y1="290" x2="450" y2="290" stroke="black" stroke-width="2" />
+
+                <!-- 桌子本體底色 (縮小並上移) -->
+                <rect x="140" y="60" width="310" height="230" fill="#d0d0d0" />
+                <!-- 桌子邊緣黑線 -->
+                <polyline points="140,290 140,60 450,60" fill="none" stroke="black" stroke-width="2" />
+                <!-- 桌子文字 -->
+                <text x="295" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#333"
+                    text-anchor="middle" letter-spacing="2">平滑桌子</text>
+
+                <!-- 滑輪固定支架 -->
+                <line x1="120" y1="45" x2="140" y2="60" stroke="black" stroke-width="5" stroke-linecap="round" />
+
+                <!-- 繩子 -->
+                <line id="stringH" x1="120" y1="33" x2="300" y2="33" stroke="black" stroke-width="1.5" />
+                <line id="stringV" x1="108" y1="45" x2="108" y2="100" stroke="black" stroke-width="1.5" />
+
+                <!-- 滑輪 -->
+                <circle cx="120" cy="45" r="12" fill="white" stroke="black" stroke-width="1.5" />
+                <circle cx="120" cy="45" r="2" fill="black" />
+
+                <!-- 1m 參考線與箭頭 (移至最左側以防重疊) -->
+                <g id="dimGroup" style="transition: opacity 0.2s;">
+                    <line x1="10" y1="140" x2="80" y2="140" stroke="black" stroke-width="1.5" stroke-dasharray="4,3" />
+                    <line x1="10" y1="290" x2="130" y2="290" stroke="black" stroke-width="1.5" stroke-dasharray="4,3" />
+                    <line x1="20" y1="280" x2="20" y2="150" stroke="black" stroke-width="1.5" />
+                    <polygon points="20,140 15,150 25,150" fill="black" />
+                    <polygon points="20,290 15,280 25,280" fill="black" />
+                    <text x="45" y="220" font-family="Times New Roman, serif" font-size="14" text-anchor="end">1
+                        m</text>
+                </g>
+
+                <!-- 物體 X -->
+                <rect id="blockX" x="300" y="20" width="40" height="40" fill="white" stroke="black"
+                    stroke-width="1.5" />
+                <text id="labelX" x="320" y="46" font-family="Times New Roman, serif" font-style="italic" font-size="18"
+                    text-anchor="middle">X</text>
+
+                <!-- 物體 Y -->
+                <rect id="blockY" x="88" y="100" width="40" height="40" fill="white" stroke="black"
+                    stroke-width="1.5" />
+                <text id="labelY" x="108" y="126" font-family="Times New Roman, serif" font-style="italic"
+                    font-size="18" text-anchor="middle">Y</text>
+
+                <!-- SVG 內嵌能量柱 -->
+                <g id="bar_pex_group">
+                    <rect x="-6" y="-50" width="12" height="50" class="bar-bg" />
+                    <rect id="bar_pex_fill" x="-6" y="-50" width="12" height="0" fill="#60a5fa" />
+                    <rect x="-10" y="4" width="20" height="16" class="bar-lbl-bg" rx="2" />
+                    <text x="0" y="14" class="bar-lbl">PE<tspan baseline-shift="sub" font-size="0.7em">x</tspan></text>
+                    <text id="bar_pex_val" x="0" y="-54" class="bar-val"></text>
+                </g>
+
+                <g id="bar_kex_group">
+                    <rect x="-6" y="-50" width="12" height="50" class="bar-bg" />
+                    <rect id="bar_kex_fill" x="-6" y="-50" width="12" height="0" fill="#4ade80" />
+                    <rect x="-10" y="4" width="20" height="16" class="bar-lbl-bg" rx="2" />
+                    <text x="0" y="14" class="bar-lbl">KE<tspan baseline-shift="sub" font-size="0.7em">x</tspan></text>
+                    <text id="bar_kex_val" x="0" y="-54" class="bar-val"></text>
+                </g>
+
+                <g id="bar_pey_group">
+                    <rect x="-6" y="-50" width="12" height="50" class="bar-bg" />
+                    <rect id="bar_pey_fill" x="-6" y="-50" width="12" height="0" fill="#60a5fa" />
+                    <rect x="-10" y="4" width="20" height="16" class="bar-lbl-bg" rx="2" />
+                    <text x="0" y="14" class="bar-lbl">PE<tspan baseline-shift="sub" font-size="0.7em">y</tspan></text>
+                    <text id="bar_pey_val" x="0" y="-54" class="bar-val"></text>
+                </g>
+
+                <g id="bar_key_group">
+                    <rect x="-6" y="-50" width="12" height="50" class="bar-bg" />
+                    <rect id="bar_key_fill" x="-6" y="-50" width="12" height="0" fill="#4ade80" />
+                    <rect x="-10" y="4" width="20" height="16" class="bar-lbl-bg" rx="2" />
+                    <text x="0" y="14" class="bar-lbl">KE<tspan baseline-shift="sub" font-size="0.7em">y</tspan></text>
+                    <text id="bar_key_val" x="0" y="-54" class="bar-val"></text>
+                </g>
+            </svg>
+        </div>
+
+        <div class="controls glass">
+            <div class="btn-group">
+                <button class="action-btn primary" id="playBtn">播放</button>
+                <button class="action-btn" id="pauseBtn" disabled>暫停</button>
+                <button class="action-btn" id="resetBtn">重設</button>
+            </div>
+
+            <div class="select-group">
+                <label>方塊 X 質量 ($m_x$)</label>
+                <select id="mx_select">
+                    <option value="0.5">0.5 kg</option>
+                    <option value="1.0">1.0 kg</option>
+                    <option value="2.0">2.0 kg</option>
+                </select>
+            </div>
+
+            <div class="select-group">
+                <label>方塊 Y 質量 ($m_y$)</label>
+                <select id="my_select">
+                    <option value="0.5">0.5 kg</option>
+                    <option value="1.0" selected>1.0 kg</option>
+                    <option value="2.0">2.0 kg</option>
+                </select>
+            </div>
+
+            <div
+                style="display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.9rem; padding-top: 5px; padding-bottom: 0px;">
+                <input type="checkbox" id="slowmo" style="transform: scale(1.1);">
+                <label for="slowmo">慢動作 (0.25x)</label>
+            </div>
+
+            <div class="energy-details">
+                <h3>能量數值細節 (Energy Detail)</h3>
+                <div class="data-row"><span>方塊 X 動能 ($KE_x$)</span><b id="val_kex">0.00 J</b></div>
+                <div class="data-row"><span>方塊 Y 動能 ($KE_y$)</span><b id="val_key">0.00 J</b></div>
+                <div class="data-row"><span>方塊 Y 勢能 ($PE_y$)</span><b id="val_pey">9.81 J</b></div>
+                <div style="margin-top: 10px; font-size: 0.75rem; color: #777; font-style: italic;">
+                    * 註：忽略桌面摩擦力及繩子質量。
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-container">
+            <div class="dashboard glass">
+                <div class="stat-box"><span>時間 (t)</span><b id="lbl_t">0.00 s</b></div>
+                <div class="stat-box"><span>速度 (v)</span><b id="lbl_v">0.00 m/s</b></div>
+                <div class="stat-box"><span>$PE_y$</span><b id="lbl_pe_lost">0.00 J</b></div>
+                <div class="stat-box"><span>系統總動能</span><b id="lbl_ke_total">0.00 J</b></div>
+            </div>
+
+            <div class="note-box glass" id="teachingNote">
+                <strong>實時能量筆記：</strong><br>
+                <div id="note_content" style="margin-top:5px; line-height: 1.4;">
+                    準備釋放系統...
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // 物理參數
-        const mX = 0.5;
-        const mY = 1.0;
-        const g = 9.8;
-        const h0 = 1.0; // 初始高度 1m
-        const totalGPE = mY * g * h0; // 初始總能量
+        function closeModal() { document.getElementById('introModal').classList.add('hidden'); }
 
-        let animationId;
-        let startTime;
-        let running = false;
+        // SVG Elements Mapping
+        const blockX = document.getElementById('blockX');
+        const labelX = document.getElementById('labelX');
+        const blockY = document.getElementById('blockY');
+        const labelY = document.getElementById('labelY');
+        const stringH = document.getElementById('stringH');
+        const stringV = document.getElementById('stringV');
+        const dimGroup = document.getElementById('dimGroup');
 
-        // 畫布比例：1m = 180px
-        const scale = 180;
-        const groundY = 380; // 地面在畫布中的位置
+        const barKexGroup = document.getElementById('bar_kex_group');
+        const barKexFill = document.getElementById('bar_kex_fill');
+        const barKexVal = document.getElementById('bar_kex_val');
 
-        function updatePositions(t) {
-            // 加速度 a = (mY * g) / (mX + mY)
-            const a = (mY * g) / (mX + mY);
-            let s = 0.5 * a * t * t;
-            let v = a * t;
+        const barPeyGroup = document.getElementById('bar_pey_group');
+        const barPeyFill = document.getElementById('bar_pey_fill');
+        const barPeyVal = document.getElementById('bar_pey_val');
 
-            // 限制 Y 落地
-            if (s >= h0) {
-                s = h0;
-                v = Math.sqrt(2 * a * h0);
-                running = false;
-                cancelAnimationFrame(animationId);
+        const barPexGroup = document.getElementById('bar_pex_group');
+        const barPexFill = document.getElementById('bar_pex_fill');
+        const barPexVal = document.getElementById('bar_pex_val');
+
+        const barKeyGroup = document.getElementById('bar_key_group');
+        const barKeyFill = document.getElementById('bar_key_fill');
+        const barKeyVal = document.getElementById('bar_key_val');
+
+        // UI Elements
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const mxSelect = document.getElementById('mx_select');
+        const mySelect = document.getElementById('my_select');
+        const slowmoCb = document.getElementById('slowmo');
+
+        const lbl_t = document.getElementById('lbl_t');
+        const lbl_v = document.getElementById('lbl_v');
+        const lbl_pe_lost = document.getElementById('lbl_pe_lost');
+        const lbl_ke_total = document.getElementById('lbl_ke_total');
+        const val_kex = document.getElementById('val_kex');
+        const val_key = document.getElementById('val_key');
+        const val_pey = document.getElementById('val_pey');
+        const noteContent = document.getElementById('note_content');
+
+        const g = 9.81;
+        let mx = 0.5;
+        let my = 1.0;
+        const h_initial = 1.0;
+
+        let s = 0; let v = 0; let t = 0; let a = 0;
+        let isRunning = false;
+        let lastTimestamp = 0;
+
+        // SVG Scaling Logic (更新了比例: 現在下落距離從 y=140 到 y=290, 總共 150 單位的長距離)
+        const SVG_SCALE = 150;
+
+        function init() {
+            s = 0; v = 0; t = 0;
+            mx = parseFloat(mxSelect.value);
+            my = parseFloat(mySelect.value);
+            a = (my * g) / (mx + my);
+            updateDashboard();
+            updateVisuals();
+        }
+
+        function updateDashboard() {
+            lbl_t.innerText = t.toFixed(2) + ' s';
+            lbl_v.innerText = v.toFixed(2) + ' m/s';
+
+            const pe_y_current = my * g * (h_initial - s);
+            const pe_lost = my * g * s;
+            const ke_x = 0.5 * mx * v * v;
+            const ke_y = 0.5 * my * v * v;
+            const ke_total = ke_x + ke_y;
+
+            lbl_pe_lost.innerText = pe_y_current.toFixed(2) + ' J';
+            lbl_ke_total.innerText = ke_total.toFixed(2) + ' J';
+            val_kex.innerText = ke_x.toFixed(2) + ' J';
+            val_key.innerText = ke_y.toFixed(2) + ' J';
+            val_pey.innerText = pe_y_current.toFixed(2) + ' J';
+
+            if (s === 0) {
+                noteContent.innerHTML = `系統靜止。方塊 Y 擁有 <span class="note-highlight">${(my * g * h_initial).toFixed(2)} J</span> 的勢能。`;
+            } else if (s < h_initial) {
+                noteContent.innerHTML = `重力作功轉化為動能。系統總力學能恆定為 <span class="note-highlight">${(my * g * h_initial).toFixed(2)} J</span>。`;
+            } else {
+                noteContent.innerHTML = `到達地面！ X 和 Y 的動能總和恰好等於 PE的損失。`;
             }
+        }
 
-            // 更新方塊位置
-            const xPos = 450 - (s * scale);
-            const yPos = 150 + (s * scale);
+        function updateSvgBar(group, fillRect, valText, x, y, value, maxVal) {
+            group.setAttribute('transform', `translate(${x}, ${y})`);
+            const maxHeight = 50; // max pixel height in SVG space
+            const height = Math.max(0, (value / maxVal) * maxHeight);
 
-            document.getElementById('blockX').style.left = xPos + 'px';
-            document.getElementById('blockY').style.top = yPos + 'px';
+            fillRect.setAttribute('y', -height);
+            fillRect.setAttribute('height', height);
 
-            // 更新繩子
-            document.getElementById('string-h').style.left = '200px';
-            document.getElementById('string-h').style.width = (xPos - 200) + 'px';
-            document.getElementById('string-v').style.top = '150px';
-            document.getElementById('string-v').style.height = (yPos - 150) + 'px';
-
-            // 計算能量
-            const currentPE_Y = mY * g * (h0 - s);
-            const currentKE_X = 0.5 * mX * v * v;
-            const currentKE_Y = 0.5 * mY * v * v;
-            const totalE = currentPE_Y + currentKE_X + currentKE_Y;
-
-            // 更新 Bar Chart (以 totalGPE 為 100%)
-            document.getElementById('pe-y').style.height = (currentPE_Y / totalGPE * 100) + '%';
-            document.getElementById('ke-y').style.height = (currentKE_Y / totalGPE * 100) + '%';
-            document.getElementById('ke-x').style.height = (currentKE_X / totalGPE * 100) + '%';
-
-            // 更新文字資訊
-            document.getElementById('total-e').innerText = totalE.toFixed(2);
-            document.getElementById('info').innerHTML = `
-                <b>狀態：</b> ${s >= h0 ? "方塊 Y 已落地" : "運動中..."} | 
-                <b>速度 v：</b> ${v.toFixed(2)} m/s | 
-                <b>系統總能量：</b> ${totalE.toFixed(2)} J
-            `;
-
-            if (running) {
-                animationId = requestAnimationFrame(() => {
-                    const now = performance.now();
-                    updatePositions((now - startTime) / 1000);
-                });
+            if (value > 0.01) {
+                valText.textContent = value.toFixed(1);
+                valText.setAttribute('y', -height - 4);
+            } else {
+                valText.textContent = '';
             }
         }
 
-        function startSim() {
-            if (running) return;
-            running = true;
-            startTime = performance.now();
-            updatePositions(0);
+        function updateVisuals() {
+            const svgDisplacement = s * SVG_SCALE;
+
+            // Dynamic coords based on NEW initial setup
+            const currX = 300 - svgDisplacement;
+            const currY = 100 + svgDisplacement;
+
+            // Move Block X
+            blockX.setAttribute('x', currX);
+            labelX.setAttribute('x', currX + 20);
+            stringH.setAttribute('x2', currX);
+
+            // Move Block Y
+            blockY.setAttribute('y', currY);
+            labelY.setAttribute('y', currY + 26);
+            stringV.setAttribute('y2', currY);
+
+            // Fade out dim lines once moving starts
+            dimGroup.style.opacity = s < 0.05 ? '1' : '0';
+
+            // Energy Visualization Updates
+            const pe_x = 0; // Fix: pe_x is constantly 0 based on context, previously undefined
+            const pe_y = my * g * (h_initial - s);
+            const ke_y = 0.5 * my * v * v;
+            const ke_x = 0.5 * mx * v * v;
+            const totalE = my * g * h_initial;
+
+            // Attach bars to blocks logic (重新對齊能量柱位置)
+            updateSvgBar(barPexGroup, barPexFill, barPexVal, currX + 55, 60, pe_x, totalE);
+            updateSvgBar(barKexGroup, barKexFill, barKexVal, currX + 75, 60, ke_x, totalE);
+            updateSvgBar(barPeyGroup, barPeyFill, barPeyVal, 45, currY + 40, pe_y, totalE);
+            updateSvgBar(barKeyGroup, barKeyFill, barKeyVal, 65, currY + 40, ke_y, totalE);
         }
 
-        function resetSim() {
-            running = false;
-            cancelAnimationFrame(animationId);
-            document.getElementById('blockX').style.left = '450px';
-            document.getElementById('blockY').style.top = '150px';
-            document.getElementById('string-h').style.width = '250px';
-            document.getElementById('string-v').style.height = '0px';
-            document.getElementById('pe-y').style.height = '100%';
-            document.getElementById('ke-y').style.height = '0%';
-            document.getElementById('ke-x').style.height = '0%';
-            document.getElementById('total-e').innerText = "9.80";
-            document.getElementById('info').innerHTML = `<b>狀態：</b> 靜止釋放前 | <b>系統總能量：</b> 9.80 J`;
+        function loop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            let dt = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+            if (dt > 0.1) dt = 0.1;
+
+            if (isRunning) {
+                let simDt = dt * (slowmoCb.checked ? 0.25 : 1);
+                t += simDt; v += a * simDt; s += v * simDt;
+                if (s >= h_initial) {
+                    s = h_initial;
+                    v = Math.sqrt(2 * a * h_initial);
+                    isRunning = false;
+                    playBtn.disabled = false; pauseBtn.disabled = true;
+                }
+                updateDashboard();
+            }
+            updateVisuals();
+            requestAnimationFrame(loop);
         }
 
-        // 初始化繩子
-        resetSim();
+        playBtn.addEventListener('click', () => { if (s >= h_initial) init(); isRunning = true; lastTimestamp = 0; playBtn.disabled = true; pauseBtn.disabled = false; });
+        pauseBtn.addEventListener('click', () => { isRunning = false; playBtn.disabled = false; pauseBtn.disabled = true; });
+        resetBtn.addEventListener('click', () => { isRunning = false; playBtn.disabled = false; pauseBtn.disabled = true; init(); });
+        mxSelect.addEventListener('change', init);
+        mySelect.addEventListener('change', init);
+
+        init();
+        requestAnimationFrame(loop);
     </script>
 </body>
 
