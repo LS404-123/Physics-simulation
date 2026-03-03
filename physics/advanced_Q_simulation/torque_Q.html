@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中學物理：力矩與繩子張力模擬</title>
+
+    <!-- 配置與載入 MathJax 用於顯示數學公式 -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --primary: #1a365d;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        /* 動態漸層背景 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Microsoft JhengHei';
+            background-color: #4158D0;
+            background-image: linear-gradient(43deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+            background-attachment: fixed;
+            color: #2f3542;
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* 毛玻璃通用類別 */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            padding: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        /* Bento Box 網格佈局 */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .header-bento {
+            grid-column: span 12;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .canvas-bento {
+            grid-column: span 8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls-bento {
+            grid-column: span 4;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .data-bento {
+            grid-column: span 6;
+        }
+
+        .notes-bento {
+            grid-column: span 6;
+            background: rgba(255, 243, 205, 0.85);
+            border-left: 6px solid #ffc107;
+        }
+
+        /* RWD 響應式設計 */
+        @media (max-width: 992px) {
+            .canvas-bento {
+                grid-column: span 12;
+            }
+
+            .controls-bento {
+                grid-column: span 12;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .data-bento {
+                grid-column: span 12;
+            }
+
+            .notes-bento {
+                grid-column: span 12;
+            }
+
+            body {
+                padding: 10px;
+            }
+
+            .bento-grid {
+                gap: 15px;
+            }
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            color: var(--primary);
+            font-size: 28px;
+        }
+
+        h3 {
+            margin: 0 0 15px 0;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 畫布與圖例 */
+        .canvas-wrapper {
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 14px;
+            justify-content: center;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+
+        .color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* 控制面板與滑桿美化 */
+        .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* 按鈕美化 */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: bold;
+            color: var(--primary);
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        button.danger {
+            background: rgba(255, 71, 87, 0.8);
+            color: white;
+            border: none;
+        }
+
+        button.success {
+            background: rgba(46, 213, 115, 0.8);
+            color: white;
+            border: none;
+        }
+
+        /* 數據顯示 */
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+            font-size: 16px;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-value {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .tension-display {
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 26px;
+            font-weight: 900;
+            color: white;
+            transition: all 0.4s ease;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 教學彈窗 Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 1;
+            visibility: visible;
+            transition: all 0.3s;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .modal-content {
+            max-width: 600px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .modal-content h2 {
+            color: var(--primary);
+            margin-top: 0;
+        }
+
+        .math-box {
+            background: #f1f2f6;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+            font-size: 18px;
+            overflow-x: auto;
+        }
+
+        .start-btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            font-size: 18px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 教學彈窗 -->
+    <div id="tutorialModal" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <h2>📚 課前原理簡介：力矩平衡</h2>
+            <p>當樹木傾斜時，<strong>重力</strong>會對樹根（支點）產生一個使樹倒下的力矩（Torque）：</p>
+            <div class="math-box">
+                \(\tau_{W} = W \times d_{\text{CG}}\)
+            </div>
+            <p>為了不讓樹倒下，繩子的「垂直有效分量（\(T_{\perp}\)）」必須提供一個大小相等的反方向力矩來拉住它：</p>
+            <div class="math-box">
+                \(\tau_{T} = T_{\perp} \times \text{綁點距離}\)
+            </div>
+            <p>而繩子的實際張力 \(T\) 則受到繩子與樹幹夾角 \(\theta\) 的影響：</p>
+            <div class="math-box">
+                \(T = \frac{T_{\perp}}{\sin(\theta)}\)
+            </div>
+            <p><strong>💡 觀察重點：</strong></p>
+            <ul style="line-height: 1.6;">
+                <li><strong>綁得越低（距離支點越近）</strong>：需要的有效拉力分量 \(T_{\perp}\) 就越大！</li>
+                <li><strong>夾角越偏離 90°（\(\sin\theta\) 越小）</strong>：會浪費力氣在無效的分線上，導致繩子的<strong>實際張力 \(T\) 飆升</strong>！</li>
+            </ul>
+            <button class="start-btn" onclick="closeModal()">開始動手操作 🚀</button>
+        </div>
+    </div>
+
+    <div class="bento-grid">
+        <!-- 畫布區域 -->
+        <div class="glass-panel canvas-bento">
+            <div class="canvas-wrapper">
+                <canvas id="simCanvas" width="800" height="500"></canvas>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background: #e74c3c;"></div> 實際張力 \(T\)
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #3498db;"></div> 垂直有效分量 \(T_{\perp}\)
+                </div>
+            </div>
+        </div>
+
+        <!-- 控制區域 -->
+        <div class="glass-panel controls-bento">
+            <h3>🎛️ 控制面板</h3>
+            <div class="control-group">
+                <label>
+                    <span>綁點與支點距離:</span>
+                    <span id="treeDistVal" style="color:var(--primary);">220 m</span>
+                </label>
+                <input type="range" id="treeDist" min="60" max="280" value="220">
+                <div style="display:flex; justify-content:space-between; font-size:12px; color:#666; margin-top:4px;">
+                    <span>近地 (位置Q)</span><span>高處 (位置P)</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>繩子與樹幹夾角 (\(\theta\)):</span>
+                    <span id="ropeAngleVal" style="color:var(--primary);">90°</span>
+                </label>
+                <!-- 限制夾角以防過度極端導致交點在太遠的地方 -->
+                <input type="range" id="ropeAngle" min="45" max="135" value="120">
+                <div style="display:flex; justify-content:space-between; font-size:12px; color:#666; margin-top:4px;">
+                    <span>45° (陡峭)</span><span>90° (垂直)</span><span>135° (朝下)</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button onclick="setPreset('P', 'horizontal')">位置 P + 水平 (120°)</button>
+                <button onclick="setPreset('P', 'perp')">位置 P + 垂直 (90°)</button>
+                <button onclick="setPreset('Q', 'horizontal')" class="danger">選項 B (Q+水平)</button>
+                <button onclick="setPreset('Q', 'perp')" class="success">選項 D (Q+垂直)</button>
+            </div>
+        </div>
+
+        <!-- 數據區域 -->
+        <div class="glass-panel data-bento">
+            <h3>📊 實時物理數據</h3>
+            <div class="data-row"><span>重力產生之力矩 (\(\tau_W\)):</span> <span class="data-value" id="valTorqueW">--</span>
+                Nm
+            </div>
+            <div class="data-row"><span>所需的有效分量 (\(T_{\perp}\)):</span> <span class="data-value" id="valFperp"
+                    style="color:#3498db;">--</span></div>
+            <!-- 將原本的角度顯示替換為計算出的燈柱綁點高度 -->
+            <div class="data-row"><span>所需燈柱綁點高度 (\(h\)):</span> <span class="data-value" id="valPostHeight">--</span>
+            </div>
+
+            <div id="tensionDisplay" class="tension-display">
+                實際張力 T = 載入中...
+            </div>
+        </div>
+
+        <!-- 老師點評區域 -->
+        <div class="glass-panel notes-bento">
+            <h3 style="color:#d35400;">📝 老師點評與觀察</h3>
+            <p style="margin-bottom:8px;"><strong>1. 觀察藍色箭頭 (\(T_{\perp}\))：</strong></p>
+            <p style="margin-top:0; font-size:15px; padding-left:15px;">滑動「綁點距離」，你會發現綁得越靠近支點，代表所需有效拉力的藍色箭頭就會變得越長！</p>
+
+            <p style="margin-bottom:8px;"><strong>2. 觀察紅色箭頭 (\(T\))：</strong></p>
+            <p style="margin-top:0; font-size:15px; padding-left:15px;">調整「繩子與樹幹夾角」。當夾角偏離 90 度越多時，紅色箭頭會比藍色箭頭長很多，這是因為
+                \(\sin\theta\) 變小，導致實際張力暴增。同時可以觀察到右側對應的燈柱綁點高度會隨著夾角改變。</p>
+        </div>
+    </div>
+
+    <script>
+        // 關閉教學彈窗
+        function closeModal() {
+            document.getElementById('tutorialModal').classList.add('hidden');
+            MathJax.typesetPromise(); // 重新渲染背景的 MathJax
+        }
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 物理與幾何常數
+        const PIVOT = { x: 350, y: 450 }; // 支點位置
+        const POST_X = 700;               // 燈柱在右側
+        const TREE_LENGTH = 350;
+        const TREE_ANGLE_DEG = 120;       // 120度代表向左上方傾斜
+        const TREE_ANGLE_RAD = TREE_ANGLE_DEG * Math.PI / 180;
+        const TREE_WEIGHT = 1000;         // 樹木重量單位
+        const CG_DIST = TREE_LENGTH * 0.45; // 重心距離支點
+
+        // DOM 元素綁定
+        const sliderTree = document.getElementById('treeDist');
+        const sliderAngle = document.getElementById('ropeAngle');
+        const valTree = document.getElementById('treeDistVal');
+        const valAngleUI = document.getElementById('ropeAngleVal');
+
+        const valTorqueW = document.getElementById('valTorqueW');
+        const valFperp = document.getElementById('valFperp');
+        const valPostHeight = document.getElementById('valPostHeight');
+        const tensionDisplay = document.getElementById('tensionDisplay');
+
+        // 預先計算重力產生的恆定力矩 (取絕對值保證正數)
+        const torqueW = Math.abs(TREE_WEIGHT * (CG_DIST * Math.cos(TREE_ANGLE_RAD)));
+
+        function draw() {
+            const treeDist = parseFloat(sliderTree.value);
+            const ropeAngleDeg = parseFloat(sliderAngle.value);
+            const ropeAngleRad = ropeAngleDeg * Math.PI / 180;
+
+            // 更新 UI 數值顯示
+            valTree.innerText = treeDist.toFixed(0) + ' m';
+            valAngleUI.innerText = ropeAngleDeg.toFixed(0) + '°';
+
+            // 清理畫布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 計算綁點並畫繩子
+            const attachTreeX = PIVOT.x + treeDist * Math.cos(TREE_ANGLE_RAD);
+            const attachTreeY = PIVOT.y - treeDist * Math.sin(TREE_ANGLE_RAD);
+
+            // 計算繩子相對於水平方向的絕對角度 (標準極坐標系)
+            // 樹的角度是 120度。假設繩子向右，所以它的角度是 120度 - 夾角
+            const ropeGlobalAngleRad = TREE_ANGLE_RAD - ropeAngleRad;
+
+            // 計算與燈柱(x = POST_X)的交點Y座標
+            const attachPostX = POST_X;
+            // 注意：Canvas Y軸朝下，因此用減法計算高度差
+            const attachPostY = attachTreeY - (attachPostX - attachTreeX) * Math.tan(ropeGlobalAngleRad);
+
+            // 計算實際需要的燈柱高度
+            const actualPostHeight = PIVOT.y - attachPostY;
+
+            // 為了視覺美觀，確保畫出來的燈柱至少高過綁點，或者預設的高度 50
+            const visualPostTopY = Math.min(50, attachPostY - 20);
+
+            // 2. 繪製環境背景
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#a4b0be';
+            // 地面
+            ctx.beginPath(); ctx.moveTo(50, PIVOT.y); ctx.lineTo(750, PIVOT.y); ctx.stroke();
+            // 燈柱
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#747d8c';
+            ctx.beginPath(); ctx.moveTo(POST_X, PIVOT.y); ctx.lineTo(POST_X, visualPostTopY); ctx.stroke();
+
+            // 3. 繪製樹木 (向左傾)
+            const treeEndX = PIVOT.x + TREE_LENGTH * Math.cos(TREE_ANGLE_RAD);
+            const treeEndY = PIVOT.y - TREE_LENGTH * Math.sin(TREE_ANGLE_RAD);
+
+            ctx.lineWidth = 16;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#8e44ad';
+            ctx.beginPath(); ctx.moveTo(PIVOT.x, PIVOT.y); ctx.lineTo(treeEndX, treeEndY); ctx.stroke();
+
+            // 樹葉
+            ctx.fillStyle = '#2ed573';
+            ctx.beginPath(); ctx.arc(treeEndX, treeEndY, 50, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(treeEndX - 25, treeEndY + 30, 45, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(treeEndX + 30, treeEndY + 20, 40, 0, Math.PI * 2); ctx.fill();
+
+            // 4. 繪製重心與重力 (W)
+            const cgX = PIVOT.x + CG_DIST * Math.cos(TREE_ANGLE_RAD);
+            const cgY = PIVOT.y - CG_DIST * Math.sin(TREE_ANGLE_RAD);
+
+            ctx.fillStyle = '#2f3542';
+            ctx.beginPath(); ctx.arc(cgX, cgY, 8, 0, Math.PI * 2); ctx.fill();
+            drawArrow(ctx, cgX, cgY, cgX, cgY + 70, '#2f3542', 4, 'W (重力)');
+
+            // 繪製繩子
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#dfe4ea';
+            ctx.beginPath(); ctx.moveTo(attachTreeX, attachTreeY); ctx.lineTo(attachPostX, attachPostY); ctx.stroke();
+
+            // 5. 核心物理計算
+            // 垂直分量 T_perp = Torque / 綁點距離
+            const fPerpReq = torqueW / treeDist;
+
+            // 實際張力 T = T_perp / sin(theta)
+            const sinTheta = Math.sin(ropeAngleRad);
+            let tension = fPerpReq / sinTheta;
+            if (!isFinite(tension)) tension = 9999; // 防止除以 0
+
+            // 6. 畫出向量與輔助線
+            // 繩子向量 (用於畫箭頭)
+            const rX = attachPostX - attachTreeX;
+            const rY = attachPostY - attachTreeY;
+            const ropeLength = Math.sqrt(rX * rX + rY * rY);
+            const normRx = rX / ropeLength;
+            const normRy = rY / ropeLength;
+
+            // 樹幹向量 (從支點指向樹冠)
+            const treeVx = Math.cos(TREE_ANGLE_RAD);
+            const treeVy = -Math.sin(TREE_ANGLE_RAD);
+
+            const forceScale = 0.1; // 視覺縮放比例
+
+            // 畫出實際張力 T (紅色箭頭)
+            const drawTensionLength = tension * forceScale;
+            drawArrow(ctx, attachTreeX, attachTreeY,
+                attachTreeX + normRx * drawTensionLength,
+                attachTreeY + normRy * drawTensionLength,
+                '#e74c3c', 5, 'T', true);
+
+            // 畫出垂直有效分量 T_perp (藍色箭頭)
+            // 尋找垂直於樹幹且指向燈柱的法向量
+            let normTreeX = -treeVy;
+            let normTreeY = treeVx;
+            if (normTreeX * normRx + normTreeY * normRy < 0) {
+                normTreeX = -normTreeX; normTreeY = -normTreeY;
+            }
+
+            const drawFperpLength = fPerpReq * forceScale;
+            drawArrow(ctx, attachTreeX, attachTreeY,
+                attachTreeX + normTreeX * drawFperpLength,
+                attachTreeY + normTreeY * drawFperpLength,
+                '#3498db', 4, 'T⊥', false);
+
+            // 繪製節點 (綁點與支點)
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath(); ctx.arc(attachTreeX, attachTreeY, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(PIVOT.x, PIVOT.y, 10, 0, Math.PI * 2); ctx.fill();
+
+            // 支點文字 (加入白底防重疊)
+            ctx.font = 'bold 18px "Microsoft JhengHei"';
+            ctx.shadowColor = 'white'; ctx.shadowBlur = 4;
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillText('支點 O', PIVOT.x - 25, PIVOT.y + 25);
+            ctx.shadowBlur = 0;
+
+            // 7. 更新數據面版
+            valTorqueW.innerText = torqueW.toFixed(0);
+            valFperp.innerText = fPerpReq.toFixed(0);
+            valPostHeight.innerText = actualPostHeight.toFixed(1) + ' m';
+
+            // 更新危險警示區塊
+            tensionDisplay.innerText = `實際張力 T = ${tension.toFixed(0)} N m`;
+            tensionDisplay.style.transform = `translateX(0)`; // 預設重置位移特效
+
+            if (tension < 400) {
+                tensionDisplay.style.backgroundColor = 'var(--success)';
+                tensionDisplay.style.color = 'white';
+            } else if (tension < 800) {
+                tensionDisplay.style.backgroundColor = 'var(--warning)';
+                tensionDisplay.style.color = '#2f3542'; // 深色字增加對比
+            } else {
+                tensionDisplay.style.backgroundColor = 'var(--danger)';
+                tensionDisplay.style.color = 'white';
+                // 震動特效 (模擬快斷了)
+                tensionDisplay.style.transform = `translateX(${Math.random() * 4 - 2}px)`;
+            }
+        }
+
+        // 畫帶有文字與防重疊發光的箭頭
+        function drawArrow(context, fromx, fromy, tox, toy, color, width, label, isTextBelow = false) {
+            const headlen = 12;
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+
+            context.beginPath();
+            context.strokeStyle = color;
+            context.lineWidth = width;
+            context.moveTo(fromx, fromy);
+            context.lineTo(tox - headlen * Math.cos(angle) * 0.9, toy - headlen * Math.sin(angle) * 0.9);
+            context.stroke();
+
+            context.beginPath();
+            context.fillStyle = color;
+            context.moveTo(tox, toy);
+            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            context.fill();
+
+            if (label != 'W (重力)') {
+                context.font = 'bold 18px "Microsoft JhengHei", Arial';
+                // 發光防重疊
+                context.shadowColor = 'rgba(255,255,255,0.9)';
+                context.shadowBlur = 6;
+                context.fillStyle = color;
+
+                let textX = tox + 10;
+                let textY = toy + (isTextBelow ? 20 : -10);
+                context.fillText(label, textX, textY);
+                context.shadowBlur = 0; // 重置
+            } else {
+                context.font = 'bold 18px "Microsoft JhengHei", Arial';
+                // 發光防重疊
+                context.shadowColor = 'rgba(255,255,255,0.9)';
+                context.shadowBlur = 6;
+                context.fillStyle = color;
+
+                let textX = tox - 80;
+                let textY = toy - 20;
+                context.fillText(label, textX, textY);
+                context.shadowBlur = 0; // 重置
+            }
+        }
+
+        // 預設情境按鈕邏輯 (已簡化為直接設定角度)
+        function setPreset(pos, angleType) {
+            let d = pos === 'P' ? 240 : 100;
+            sliderTree.value = d;
+
+            if (angleType === 'horizontal') {
+                // 水平繩索意味著它在極座標系中角度是 0 度
+                // 因為 樹木角度(120) - 繩索夾角 = 0，所以夾角必須是 120 度
+                sliderAngle.value = 120;
+            } else if (angleType === 'perp') {
+                sliderAngle.value = 90;
+            }
+            draw();
+        }
+
+        // 事件監聽與初始化
+        sliderTree.addEventListener('input', draw);
+        sliderAngle.addEventListener('input', draw);
+
+        // 初始載入
+        setPreset('P', 'horizontal'); 
+    </script>
+</body>
+
+</html>
