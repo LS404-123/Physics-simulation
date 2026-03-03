@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <title>物理模擬：系統能量守恆分析</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #sim-container {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            background-color: white;
+            border: 2px solid #333;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 桌面 */
+        #table {
+            position: absolute;
+            top: 150px;
+            left: 200px;
+            width: 400px;
+            height: 250px;
+            background-color: #95a5a6;
+            border-top: 4px solid #7f8c8d;
+        }
+
+        /* 地面 */
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 20px;
+            background: repeating-linear-gradient(45deg, #bdc3c7, #bdc3c7 10px, #95a5a6 10px, #95a5a6 20px);
+        }
+
+        /* 方塊 X */
+        #blockX {
+            position: absolute;
+            top: 110px;
+            /* 150 - 40 */
+            left: 450px;
+            width: 40px;
+            height: 40px;
+            background-color: #e74c3c;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* 方塊 Y */
+        #blockY {
+            position: absolute;
+            top: 150px;
+            left: 140px;
+            width: 50px;
+            height: 50px;
+            background-color: #3498db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* 滑輪 */
+        #pulley {
+            position: absolute;
+            top: 135px;
+            left: 185px;
+            width: 30px;
+            height: 30px;
+            background-color: #34495e;
+            border-radius: 50%;
+            z-index: 20;
+        }
+
+        /* 繩子 */
+        #string-h {
+            position: absolute;
+            top: 150px;
+            height: 2px;
+            background: black;
+        }
+
+        #string-v {
+            position: absolute;
+            left: 200px;
+            width: 2px;
+            background: black;
+        }
+
+        /* 能量條樣式 */
+        .energy-bar-container {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid #ccc;
+            padding: 2px;
+            display: flex;
+            flex-direction: column-reverse;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .bar {
+            width: 100%;
+            transition: height 0.05s;
+        }
+
+        .pe-bar {
+            background-color: #2ecc71;
+        }
+
+        /* 勢能 - 綠色 */
+        .ke-bar {
+            background-color: #f1c40f;
+        }
+
+        /* 動能 - 黃色 */
+
+        .controls {
+            margin-top: 20px;
+            gap: 10px;
+            display: flex;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: none;
+            background-color: #2c3e50;
+            color: white;
+        }
+
+        button:hover {
+            background-color: #34495e;
+        }
+
+        .data-display {
+            margin-top: 15px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            width: 570px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>物理實驗：連體運動的能量守恆</h2>
+    <p>設定：$m_X = 0.5\text{ kg}, m_Y = 1.0\text{ kg}, h = 1.0\text{ m}$ ($g \approx 9.8\text{ ms}^{-2}$)</p>
+
+    <div id="sim-container">
+        <div id="ground"></div>
+        <div id="table"></div>
+        <div id="pulley"></div>
+
+        <div id="string-h"></div>
+        <div id="string-v"></div>
+
+        <div id="blockX">X
+            <div class="energy-bar-container" style="top: -90px; left: -10px;">
+                <div id="ke-x" class="bar ke-bar" style="height: 0%;"></div>
+                <span>KE(X)</span>
+            </div>
+        </div>
+
+        <div id="blockY">Y
+            <div class="energy-bar-container" style="top: -90px; left: -5px;">
+                <div id="pe-y" class="bar pe-bar" style="height: 100%;"></div>
+                <div id="ke-y" class="bar ke-bar" style="height: 0%;"></div>
+                <span>E(Y)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="startSim()">釋放系統</button>
+        <button onclick="resetSim()" style="background-color: #95a5a6;">重置</button>
+    </div>
+
+    <div class="data-display" id="info">
+        <b>狀態：</b> 靜止釋放前 | <b>系統總能量：</b> <span id="total-e">9.80</span> J
+    </div>
+
+    <script>
+        // 物理參數
+        const mX = 0.5;
+        const mY = 1.0;
+        const g = 9.8;
+        const h0 = 1.0; // 初始高度 1m
+        const totalGPE = mY * g * h0; // 初始總能量
+
+        let animationId;
+        let startTime;
+        let running = false;
+
+        // 畫布比例：1m = 180px
+        const scale = 180;
+        const groundY = 380; // 地面在畫布中的位置
+
+        function updatePositions(t) {
+            // 加速度 a = (mY * g) / (mX + mY)
+            const a = (mY * g) / (mX + mY);
+            let s = 0.5 * a * t * t;
+            let v = a * t;
+
+            // 限制 Y 落地
+            if (s >= h0) {
+                s = h0;
+                v = Math.sqrt(2 * a * h0);
+                running = false;
+                cancelAnimationFrame(animationId);
+            }
+
+            // 更新方塊位置
+            const xPos = 450 - (s * scale);
+            const yPos = 150 + (s * scale);
+
+            document.getElementById('blockX').style.left = xPos + 'px';
+            document.getElementById('blockY').style.top = yPos + 'px';
+
+            // 更新繩子
+            document.getElementById('string-h').style.left = '200px';
+            document.getElementById('string-h').style.width = (xPos - 200) + 'px';
+            document.getElementById('string-v').style.top = '150px';
+            document.getElementById('string-v').style.height = (yPos - 150) + 'px';
+
+            // 計算能量
+            const currentPE_Y = mY * g * (h0 - s);
+            const currentKE_X = 0.5 * mX * v * v;
+            const currentKE_Y = 0.5 * mY * v * v;
+            const totalE = currentPE_Y + currentKE_X + currentKE_Y;
+
+            // 更新 Bar Chart (以 totalGPE 為 100%)
+            document.getElementById('pe-y').style.height = (currentPE_Y / totalGPE * 100) + '%';
+            document.getElementById('ke-y').style.height = (currentKE_Y / totalGPE * 100) + '%';
+            document.getElementById('ke-x').style.height = (currentKE_X / totalGPE * 100) + '%';
+
+            // 更新文字資訊
+            document.getElementById('total-e').innerText = totalE.toFixed(2);
+            document.getElementById('info').innerHTML = `
+                <b>狀態：</b> ${s >= h0 ? "方塊 Y 已落地" : "運動中..."} | 
+                <b>速度 v：</b> ${v.toFixed(2)} m/s | 
+                <b>系統總能量：</b> ${totalE.toFixed(2)} J
+            `;
+
+            if (running) {
+                animationId = requestAnimationFrame(() => {
+                    const now = performance.now();
+                    updatePositions((now - startTime) / 1000);
+                });
+            }
+        }
+
+        function startSim() {
+            if (running) return;
+            running = true;
+            startTime = performance.now();
+            updatePositions(0);
+        }
+
+        function resetSim() {
+            running = false;
+            cancelAnimationFrame(animationId);
+            document.getElementById('blockX').style.left = '450px';
+            document.getElementById('blockY').style.top = '150px';
+            document.getElementById('string-h').style.width = '250px';
+            document.getElementById('string-v').style.height = '0px';
+            document.getElementById('pe-y').style.height = '100%';
+            document.getElementById('ke-y').style.height = '0%';
+            document.getElementById('ke-x').style.height = '0%';
+            document.getElementById('total-e').innerText = "9.80";
+            document.getElementById('info').innerHTML = `<b>狀態：</b> 靜止釋放前 | <b>系統總能量：</b> 9.80 J`;
+        }
+
+        // 初始化繩子
+        resetSim();
+    </script>
+</body>
+
+</html>
