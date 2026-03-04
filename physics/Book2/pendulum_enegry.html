@@ -11,7 +11,6 @@
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
         };
     </script>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
@@ -41,6 +40,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
             color: var(--text-main);
+            will-change: background-position;
         }
 
         @keyframes gradientBG {
@@ -435,11 +435,13 @@
         const ctx = canvas.getContext('2d');
 
         const g = 9.81;
-        const dt = 0.005; // 進一步減慢模擬速度
-        let isPaused = true; // 預設暫停，等待按下開始
-        let hasStarted = false; // 標記模擬是否已啟動
+        const dt = 0.005; // 模擬步長
+        let isPaused = true; // 預設暫停
+        let hasStarted = false; // 標記是否啟動
         let dampingEnabled = false;
-        const dampingFactor = 0.15;
+        const dampingFactor = 0.05;
+        const subSteps = 10;
+        const subDt = dt / subSteps;
 
         class SinglePendulum {
             constructor(originX, originY, length, mass, angle) {
@@ -464,6 +466,18 @@
                 this.sysMaxEnergy = this.mass * g * h;
             }
 
+            // RK4 導函數：給定目前的狀態 (theta, omega)，回傳 [d_theta, d_omega]
+            getDerivatives(currentAngle, currentVelocity) {
+                let phys_L = this.length / 100;
+                let dTheta = currentVelocity;
+                let dOmega = (-g * Math.sin(currentAngle)) / phys_L;
+
+                if (dampingEnabled) {
+                    dOmega -= dampingFactor * currentVelocity;
+                }
+                return [dTheta, dOmega];
+            }
+
             update() {
                 if (this.isDragging) {
                     this.aVelocity = 0;
@@ -471,35 +485,46 @@
                 }
 
                 if (!isPaused) {
-                    let phys_L = this.length / 100; // 真實擺長(公尺)
                     let prevVelocity = this.aVelocity;
                     let prevAngle = this.angle;
 
-                    // a = -(g/L) * sin(theta)
-                    let force = -g * Math.sin(this.angle);
-                    this.aAcceleration = force / phys_L;
+                    // --- Sub-stepping with RK4 ---
+                    for (let i = 0; i < subSteps; i++) {
+                        // k1
+                        let [dTheta1, dOmega1] = this.getDerivatives(this.angle, this.aVelocity);
 
-                    if (dampingEnabled) {
-                        this.aAcceleration -= dampingFactor * this.aVelocity;
+                        // k2
+                        let [dTheta2, dOmega2] = this.getDerivatives(
+                            this.angle + dTheta1 * subDt * 0.5,
+                            this.aVelocity + dOmega1 * subDt * 0.5
+                        );
+
+                        // k3
+                        let [dTheta3, dOmega3] = this.getDerivatives(
+                            this.angle + dTheta2 * subDt * 0.5,
+                            this.aVelocity + dOmega2 * subDt * 0.5
+                        );
+
+                        // k4
+                        let [dTheta4, dOmega4] = this.getDerivatives(
+                            this.angle + dTheta3 * subDt,
+                            this.aVelocity + dOmega3 * subDt
+                        );
+
+                        // 合併權重更新狀態
+                        this.angle += (subDt / 6) * (dTheta1 + 2 * dTheta2 + 2 * dTheta3 + dTheta4);
+                        this.aVelocity += (subDt / 6) * (dOmega1 + 2 * dOmega2 + 2 * dOmega3 + dOmega4);
                     }
 
-                    // Euler-Cromer 積分 (加入 dt 控制速度)
-                    this.aVelocity += this.aAcceleration * dt;
-                    this.angle += this.aVelocity * dt;
-
+                    // 碰撞與最高/低點邏輯
                     let x = this.originX + this.length * Math.sin(this.angle);
                     let y = this.originY + this.length * Math.cos(this.angle);
 
-                    // 檢測最高點 (速度正負反轉，且角度不接近0)
-                    if (prevVelocity * this.aVelocity <= 0 && Math.abs(this.angle) > 0.1) {
-                        if (this.angle > 0 && !this.rightMaxPos) {
-                            this.rightMaxPos = { x, y };
-                        } else if (this.angle < 0 && !this.leftMaxPos) {
-                            this.leftMaxPos = { x, y };
-                        }
+                    if (prevVelocity * this.aVelocity <= 0 && Math.abs(this.angle) > 0.01) {
+                        if (this.angle > 0 && !this.rightMaxPos) this.rightMaxPos = { x, y };
+                        else if (this.angle < 0 && !this.leftMaxPos) this.leftMaxPos = { x, y };
                     }
 
-                    // 檢測最低點 (角度正負反轉)
                     if (prevAngle * this.angle <= 0 && !this.minPos) {
                         this.minPos = { x, y };
                     }
