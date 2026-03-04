@@ -32,7 +32,7 @@
             justify-content: center;
             align-items: flex-start;
             /* 往上移 */
-            padding-top: 5vh;
+            padding-top: 0px;
             /* 距離頂部一點空間 */
             /* 動態漸變背景，增強毛玻璃質感 */
             background: linear-gradient(-45deg, #1a2a6c, #b21f1f, #fdbb2d);
@@ -437,7 +437,7 @@
         let isPaused = true; // 預設暫停，等待按下開始
         let hasStarted = false; // 標記模擬是否已啟動
         let dampingEnabled = false;
-        const dampingFactor = 0.015;
+        const dampingFactor = 0.15;
 
         class SinglePendulum {
             constructor(originX, originY, length, mass, angle) {
@@ -575,7 +575,7 @@
                 // 標籤
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '11px Arial';
-                ctx.fillText('勢能', startX, startY + barMaxHeight + 14);
+                ctx.fillText('勢能', startX - barWidth, startY + barMaxHeight + 14);
                 ctx.fillText('動能', startX + barWidth + gap, startY + barMaxHeight + 14);
 
                 // === 繪製最高/最低點標記 ===
@@ -687,11 +687,11 @@
 
             // 數據面板更新
             document.getElementById('val-angle').innerText = metrics.abs_angle_deg.toFixed(1) + "°";
-            document.getElementById('val-vel').innerText = metrics.velocity.toFixed(2) + " 米/秒";
+            document.getElementById('val-vel').innerText = metrics.velocity.toFixed(2) + " m/s";
 
-            document.getElementById('txt-pe').innerText = metrics.pe.toFixed(0) + " 焦耳";
-            document.getElementById('txt-ke').innerText = metrics.ke.toFixed(0) + " 焦耳";
-            document.getElementById('txt-te').innerText = metrics.te.toFixed(0) + " 焦耳";
+            document.getElementById('txt-pe').innerText = metrics.pe.toFixed(0) + " J";
+            document.getElementById('txt-ke').innerText = metrics.ke.toFixed(0) + " J";
+            document.getElementById('txt-te').innerText = metrics.te.toFixed(0) + " J";
         }
 
         // --- 主循環 ---
