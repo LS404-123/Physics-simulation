@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>單擺能量守恆模擬</title>
+    <!-- 引入 MathJax 顯示數學公式 -->
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            --pe-color: #00d2ff;
+            --ke-color: #ff007f;
+            --te-color: #39ff14;
+            --text-main: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* 往上移 */
+            padding-top: 5vh;
+            /* 距離頂部一點空間 */
+            /* 動態漸變背景，增強毛玻璃質感 */
+            background: linear-gradient(-45deg, #1a2a6c, #b21f1f, #fdbb2d);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* 限制大小為 iPad Air 尺寸 (1100 x 700) */
+        #app-wrapper {
+            width: 1100px;
+            height: 700px;
+            box-sizing: border-box;
+            position: relative;
+            margin: 0 auto;
+            /* 左右置中 */
+        }
+
+        /* Bento Box Grid 佈局 */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 80px 1fr 1.2fr;
+            gap: 20px;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* 毛玻璃共用樣式 */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 各區塊定位 */
+        .header {
+            grid-column: 1 / -1;
+            grid-row: 1;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .canvas-area {
+            grid-column: 1;
+            grid-row: 2 / 4;
+            position: relative;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .energy-area {
+            grid-column: 2;
+            grid-row: 2;
+            justify-content: space-evenly;
+        }
+
+        .controls-area {
+            grid-column: 2;
+            grid-row: 3;
+            justify-content: space-evenly;
+        }
+
+        /* 能量條樣式 */
+        .energy-title {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+
+        .bar-wrapper {
+            margin-bottom: 15px;
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .bar-bg {
+            height: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .fill-pe {
+            background: var(--pe-color);
+            box-shadow: 0 0 8px var(--pe-color);
+        }
+
+        .fill-ke {
+            background: var(--ke-color);
+            box-shadow: 0 0 8px var(--ke-color);
+        }
+
+        .fill-te {
+            background: var(--te-color);
+            box-shadow: 0 0 8px var(--te-color);
+        }
+
+        /* 控制項樣式 */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .switch-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* 重要數據筆記浮窗 (在 Canvas 內) */
+        .data-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 15px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+        }
+
+        .data-overlay span {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
+        /* Pop-out Modal 樣式 */
+        #intro-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            width: 80%;
+            max-width: 700px;
+            background: rgba(20, 30, 48, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #00d2ff;
+        }
+
+        .math-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+
+        .start-btn {
+            background: #00d2ff;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 12px 30px;
+            margin-top: 20px;
+        }
+
+        .start-btn:hover {
+            background: #39ff14;
+            color: #000;
+        }
+
+        /* 隱藏輔助class */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app-wrapper">
+        <!-- 原理解釋 Pop-out Screen -->
+        <div id="intro-modal">
+            <div class="modal-content glass-panel">
+                <h2>力學能守恆定律</h2>
+                <p>歡迎來到單擺模擬器！請觀察單擺在擺動過程中，動能與勢能的相互轉換。</p>
+
+                <div class="math-box">
+                    <p>1. <strong>重力勢能</strong>：物體因高度而具有的能量。<br>
+                        $$E_p = mgh$$
+                    </p>
+                    <p>2. <strong>動能</strong>：物體因運動而具有的能量。<br>
+                        $$E_k = \frac{1}{2}mv^2$$
+                    </p>
+                    <p>3. <strong>總力學能</strong>：若無空氣阻力，總能守恆。<br>
+                        $$E_{總} = E_p + E_k = \text{常數}$$
+                    </p>
+                </div>
+
+                <p>💡 提示：你可以直接拖曳擺錘來設定初始角度，並隨時調整質量與擺長。</p>
+                <button class="start-btn" onclick="closeModal()">開始模擬</button>
+            </div>
+        </div>
+
+        <!-- 主界面 Bento Grid -->
+        <div class="bento-grid">
+
+            <!-- 頂部標題 -->
+            <div class="glass-panel header">
+                <h1>單擺動能與勢能模擬</h1>
+                <!-- 移除了頂部暫停按鈕，集中到底部控制區 -->
+            </div>
+
+            <!-- 視覺模擬區 -->
+            <div class="glass-panel canvas-area">
+                <!-- 根據Grid空間設置內部高寬度，確保清晰度且不重疊 -->
+                <canvas id="simCanvas" width="700" height="500"></canvas>
+
+                <!-- 實時數據與防重疊筆記 -->
+                <div class="data-overlay">
+                    <small>📝 筆記：<br>最高點 $\rightarrow$ 速度=0，動能最低。<br>最低點 $\rightarrow$ 速度最快，勢能最低。</small>
+                </div>
+            </div>
+
+            <!-- 能量狀態區 -->
+            <div class="glass-panel energy-area">
+                <h3 class="energy-title">實時數據</h3>
+
+                <div style="font-size: 1.1rem; line-height: 2.2; margin-top: 10px;">
+                    <div style="display:flex; justify-content:space-between;"><span>重力勢能 ($E_p$):</span> <span
+                            id="txt-pe" style="color:var(--pe-color); font-weight:bold;">0 焦耳</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>動能 ($E_k$):</span> <span id="txt-ke"
+                            style="color:var(--ke-color); font-weight:bold;">0 焦耳</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>總力學能 ($E_{總}$):</span> <span
+                            id="txt-te" style="color:var(--te-color); font-weight:bold;">0 焦耳</span></div>
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+                    <div style="display:flex; justify-content:space-between;"><span>即時角度:</span> <span id="val-angle"
+                            style="color:#f1c40f; font-weight:bold;">0.0°</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>即時速度:</span> <span id="val-vel"
+                            style="color:#f1c40f; font-weight:bold;">0.00 米/秒</span></div>
+                </div>
+            </div>
+
+            <!-- 參數控制區 -->
+            <div class="glass-panel controls-area">
+                <h3 class="energy-title">模擬控制</h3>
+
+                <div class="slider-group">
+                    <label>初始角度 $\theta$: <span id="val-init-angle">60.0°</span></label>
+                    <input type="range" id="input-angle" min="-90" max="90" value="60" step="1">
+                    <small style="color:rgba(255,255,255,0.6); margin-top:5px;">* 模擬開始前，也可直接在畫布上拖曳小球設定高度</small>
+                </div>
+
+                <div class="switch-group">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="damping-toggle" style="width:18px; height:18px;">
+                        空氣阻力
+                    </label>
+                    <div style="display:flex; gap: 10px;">
+                        <button id="start-btn" style="background:#00d2ff; color:#000; font-weight:bold;">開始模擬</button>
+                        <button id="reset-btn" style="background: rgba(255,50,50,0.3);">重置</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- UI 互動邏輯 ---
+        function closeModal() {
+            document.getElementById('intro-modal').classList.add('hidden');
+            // MathJax 預設在載入時已解析，不需再次呼叫
+        }
+
+        // --- 物理模擬邏輯 ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const g = 9.81;
+        const dt = 0.005; // 進一步減慢模擬速度
+        let isPaused = true; // 預設暫停，等待按下開始
+        let hasStarted = false; // 標記模擬是否已啟動
+        let dampingEnabled = false;
+        const dampingFactor = 0.015;
+
+        class SinglePendulum {
+            constructor(originX, originY, length, mass, angle) {
+                this.originX = originX;
+                this.originY = originY;
+                this.length = length;
+                this.mass = mass;
+                this.angle = angle;
+                this.aVelocity = 0;
+                this.aAcceleration = 0;
+                this.isDragging = false;
+                this.leftMaxPos = null;
+                this.rightMaxPos = null;
+                this.minPos = null;
+                this.calcMaxEnergy();
+            }
+
+            calcMaxEnergy() {
+                // 動態基準能量：以目前拉起的高度的初始勢能作為能量棒的最大基準
+                let phys_L = this.length / 100;
+                let h = phys_L * (1 - Math.cos(this.angle));
+                this.sysMaxEnergy = this.mass * g * h;
+            }
+
+            update() {
+                if (this.isDragging) {
+                    this.aVelocity = 0;
+                    return;
+                }
+
+                if (!isPaused) {
+                    let phys_L = this.length / 100; // 真實擺長(公尺)
+                    let prevVelocity = this.aVelocity;
+                    let prevAngle = this.angle;
+
+                    // a = -(g/L) * sin(theta)
+                    let force = -g * Math.sin(this.angle);
+                    this.aAcceleration = force / phys_L;
+
+                    if (dampingEnabled) {
+                        this.aAcceleration -= dampingFactor * this.aVelocity;
+                    }
+
+                    // Euler-Cromer 積分 (加入 dt 控制速度)
+                    this.aVelocity += this.aAcceleration * dt;
+                    this.angle += this.aVelocity * dt;
+
+                    let x = this.originX + this.length * Math.sin(this.angle);
+                    let y = this.originY + this.length * Math.cos(this.angle);
+
+                    // 檢測最高點 (速度正負反轉，且角度不接近0)
+                    if (prevVelocity * this.aVelocity <= 0 && Math.abs(this.angle) > 0.1) {
+                        if (this.angle > 0 && !this.rightMaxPos) {
+                            this.rightMaxPos = { x, y };
+                        } else if (this.angle < 0 && !this.leftMaxPos) {
+                            this.leftMaxPos = { x, y };
+                        }
+                    }
+
+                    // 檢測最低點 (角度正負反轉)
+                    if (prevAngle * this.angle <= 0 && !this.minPos) {
+                        this.minPos = { x, y };
+                    }
+                }
+            }
+
+            draw() {
+                // 畫垂直參考線 (虛線)
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(this.originX, this.originY);
+                ctx.lineTo(this.originX, this.originY + this.length + 40);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]); // 重置
+
+                let x = this.originX + this.length * Math.sin(this.angle);
+                let y = this.originY + this.length * Math.cos(this.angle);
+
+                // 畫繩子 (加上光暈效果配合 Glassmorphism)
+                ctx.beginPath();
+                ctx.moveTo(this.originX, this.originY);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // 畫支點
+                ctx.beginPath();
+                ctx.arc(this.originX, this.originY, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // 畫擺錘 (根據質量調整大小，加上發光)
+                let radius = 12 + Math.sqrt(this.mass) * 2;
+
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(0, 210, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 210, 255, 0.9)';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 重置陰影以免影響其他繪圖
+                ctx.shadowBlur = 0;
+
+                // === 繪製跟隨小球的動態能量棒 ===
+                let metrics = this.getMetrics();
+                let barWidth = 10;
+                let barMaxHeight = 60;
+                let gap = 6;
+                let startX = x + radius + 15; // 放在小球右側跟隨
+                let startY = y - barMaxHeight / 2;
+
+                let curMax = Math.max(this.sysMaxEnergy, 0.1);
+                let peHeight = (metrics.pe / curMax) * barMaxHeight;
+                let keHeight = (metrics.ke / curMax) * barMaxHeight;
+
+                // 勢能背景與填充
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(startX, startY, barWidth, barMaxHeight);
+                ctx.fillStyle = '#00d2ff'; // pe-color
+                ctx.fillRect(startX, startY + barMaxHeight - peHeight, barWidth, peHeight);
+
+                // 動能背景與填充
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(startX + barWidth + gap, startY, barWidth, barMaxHeight);
+                ctx.fillStyle = '#ff007f'; // ke-color
+                ctx.fillRect(startX + barWidth + gap, startY + barMaxHeight - keHeight, barWidth, keHeight);
+
+                // 標籤
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '11px Arial';
+                ctx.fillText('勢能', startX, startY + barMaxHeight + 14);
+                ctx.fillText('動能', startX + barWidth + gap, startY + barMaxHeight + 14);
+
+                // === 繪製最高/最低點標記 ===
+                const drawMarker = (pos, label, color, alignLeft) => {
+                    if (!pos) return;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 14px Arial';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                    ctx.shadowBlur = 4;
+                    let offsetX = alignLeft ? -50 : 15;
+                    if (label === '最低點') offsetX = -20;
+                    let offsetY = label === '最低點' ? 25 : 5;
+                    ctx.fillText(label, pos.x + offsetX, pos.y + offsetY);
+                    ctx.shadowBlur = 0;
+                };
+
+                drawMarker(this.leftMaxPos, '最高點', 'rgba(255, 100, 100, 0.9)', true);
+                drawMarker(this.rightMaxPos, '最高點', 'rgba(255, 100, 100, 0.9)', false);
+                drawMarker(this.minPos, '最低點', 'rgba(100, 255, 100, 0.9)', false);
+            }
+
+            getMetrics() {
+                let phys_L = this.length / 100; // 將像素轉成公尺計算能量
+                // 嚴格依賴高度計算勢能：h = L - L*cos(theta)
+                let h = phys_L * (1 - Math.cos(this.angle));
+                let exact_pe = this.mass * g * h;
+
+                // 嚴格依賴速度計算動能：v = L * omega
+                let v = phys_L * Math.abs(this.aVelocity);
+                let exact_ke = 0.5 * this.mass * v * v;
+
+                // 確保拖曳時或尚未開始模擬時，物體處於靜止狀態，動能為 0
+                if (this.isDragging || !hasStarted) {
+                    exact_ke = 0;
+                    v = 0;
+                }
+
+                // 總能量為兩者動態相加 (由於數值積分法，可能會有些微波動，這符合真實物理引擎的表現)
+                let te = exact_pe + exact_ke;
+
+                // 計算相對於垂直線的絕對角度
+                let normAngle = this.angle % (2 * Math.PI);
+                if (normAngle > Math.PI) normAngle -= 2 * Math.PI;
+                else if (normAngle < -Math.PI) normAngle += 2 * Math.PI;
+                let absAngleDeg = Math.abs(normAngle * 180 / Math.PI);
+
+                return {
+                    pe: exact_pe,
+                    ke: exact_ke,
+                    te: te,
+                    velocity: v,
+                    abs_angle_deg: absAngleDeg
+                };
+            }
+
+            checkDrag(mouseX, mouseY) {
+                let x = this.originX + this.length * Math.sin(this.angle);
+                let y = this.originY + this.length * Math.cos(this.angle);
+                let radius = 12 + Math.sqrt(this.mass) * 2;
+                let dx = mouseX - x;
+                let dy = mouseY - y;
+                if (dx * dx + dy * dy <= (radius + 20) * (radius + 20)) {
+                    this.isDragging = true;
+                    return true;
+                }
+                return false;
+            }
+
+            drag(mouseX, mouseY) {
+                // 只有在模擬尚未開始時，才允許拖曳改變初始高度
+                if (this.isDragging && !hasStarted) {
+                    let dx = mouseX - this.originX;
+                    let dy = mouseY - this.originY;
+                    this.angle = Math.atan2(dx, dy);
+
+                    // 拖曳時保證速度為 0，並重新計算 UI 能量棒基準
+                    this.aVelocity = 0;
+                    this.leftMaxPos = null;
+                    this.rightMaxPos = null;
+                    this.minPos = null;
+                    this.calcMaxEnergy();
+
+                    // 同步更新 UI 滑桿
+                    let deg = (this.angle * 180 / Math.PI);
+                    if (deg > 180) deg -= 360;
+                    let angleInput = document.getElementById('input-angle');
+                    if (angleInput) {
+                        angleInput.value = deg;
+                        document.getElementById('val-init-angle').innerText = deg.toFixed(1) + "°";
+                    }
+                }
+            }
+        }
+
+        // 實例化單擺 (固定擺長與質量，初始角度60度)
+        const pendulum = new SinglePendulum(canvas.width / 2, 50, 220, 15, 60 * Math.PI / 180);
+
+        // --- UI 更新邏輯 ---
+        function updateUI() {
+            let metrics = pendulum.getMetrics();
+
+            // 數據面板更新
+            document.getElementById('val-angle').innerText = metrics.abs_angle_deg.toFixed(1) + "°";
+            document.getElementById('val-vel').innerText = metrics.velocity.toFixed(2) + " 米/秒";
+
+            document.getElementById('txt-pe').innerText = metrics.pe.toFixed(0) + " 焦耳";
+            document.getElementById('txt-ke').innerText = metrics.ke.toFixed(0) + " 焦耳";
+            document.getElementById('txt-te').innerText = metrics.te.toFixed(0) + " 焦耳";
+        }
+
+        // --- 主循環 ---
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pendulum.update();
+            pendulum.draw();
+            updateUI();
+            requestAnimationFrame(animate);
+        }
+
+        // --- 事件綁定 ---
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // 考量到 CSS 縮放，計算正確的內部座標
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            pendulum.checkDrag(mouseX, mouseY);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (pendulum.isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+                pendulum.drag(mouseX, mouseY);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (pendulum.isDragging) {
+                pendulum.isDragging = false;
+            }
+        });
+
+        // 參數控制: 初始角度
+        document.getElementById('input-angle').addEventListener('input', (e) => {
+            if (hasStarted) return; // 模擬開始後鎖定
+            let val = parseFloat(e.target.value);
+            pendulum.angle = val * Math.PI / 180;
+            document.getElementById('val-init-angle').innerText = val.toFixed(1) + "°";
+            pendulum.aVelocity = 0;
+            pendulum.leftMaxPos = null;
+            pendulum.rightMaxPos = null;
+            pendulum.minPos = null;
+            pendulum.calcMaxEnergy();
+        });
+
+        document.getElementById('damping-toggle').addEventListener('change', (e) => {
+            dampingEnabled = e.target.checked;
+            if (!dampingEnabled) {
+                pendulum.sysMaxEnergy = pendulum.getMetrics().te;
+            }
+        });
+
+        // 開始模擬按鈕
+        const startBtn = document.getElementById('start-btn');
+        startBtn.addEventListener('click', () => {
+            if (!hasStarted) {
+                hasStarted = true;
+                isPaused = false;
+                startBtn.innerText = "暫停";
+                startBtn.style.background = "rgba(255,255,255,0.2)";
+                startBtn.style.color = "#ffffff";
+                document.getElementById('input-angle').disabled = true; // 鎖定滑桿
+            } else {
+                // 切換暫停/播放
+                isPaused = !isPaused;
+                startBtn.innerText = isPaused ? "繼續" : "暫停";
+                startBtn.style.background = isPaused ? "#39ff14" : "rgba(255,255,255,0.2)";
+                startBtn.style.color = isPaused ? "#000" : "#ffffff";
+            }
+        });
+
+        // 空白鍵控制開始/暫停
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                startBtn.click();
+            }
+        });
+
+        // 重置按鈕
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            isPaused = true;
+            hasStarted = false;
+
+            // 重置為滑桿設定的角度
+            let initialAngleDeg = parseFloat(document.getElementById('input-angle').value);
+            pendulum.angle = initialAngleDeg * Math.PI / 180;
+            pendulum.aVelocity = 0;
+            pendulum.aAcceleration = 0;
+            pendulum.leftMaxPos = null;
+            pendulum.rightMaxPos = null;
+            pendulum.minPos = null;
+            pendulum.calcMaxEnergy();
+
+            // 重置按鈕狀態
+            startBtn.innerText = "開始模擬";
+            startBtn.style.background = "#00d2ff";
+            startBtn.style.color = "#000";
+            document.getElementById('input-angle').disabled = false;
+        });
+
+        // 啟動
+        animate();
+    </script>
+</body>
+
+</html>
