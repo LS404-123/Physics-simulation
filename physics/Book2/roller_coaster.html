@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>過山車能量守恆模擬 (Bento Glassmorphism)</title>
+
+    <!-- 加入 MathJax 設定檔以支援 inlineMath $...$ -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --primary: rgba(37, 99, 235, 0.8);
+            --primary-hover: rgba(29, 78, 216, 0.9);
+            --bg-gradient: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+            --text: #1e293b;
+            --glass-bg: rgba(255, 255, 255, 0.35);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+
+            --pe-color: #3b82f6;
+            --ke-color: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 4px;
+        }
+
+        .bento-container {
+            width: 1100px;
+            height: 600px;
+            display: grid;
+            grid-template-columns: 820px 1fr;
+            grid-template-rows: 60px 150px auto;
+            gap: 20px;
+            position: relative;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: var(--glass-shadow);
+            padding: 20px;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        header h2 {
+            margin: 0 0 5px 0;
+            font-size: 24px;
+            color: #0f172a;
+        }
+
+        header p {
+            margin: 0;
+            font-size: 14px;
+            color: #334155;
+        }
+
+        .canvas-section {
+            grid-column: 1 / 2;
+            grid-row: 2 / 4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        canvas {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .controls-panel {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+
+        button {
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: var(--primary);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .checkbox-container input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.4);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .val-pe {
+            color: var(--pe-color);
+        }
+
+        .val-ke {
+            color: var(--ke-color);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-content {
+            width: 600px;
+            max-width: 90%;
+            text-align: left;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .close-modal-btn {
+            margin-top: 20px;
+            width: 100%;
+            background: #10b981;
+        }
+
+        .close-modal-btn:hover {
+            background: #059669;
+        }
+
+        #message-box {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.85);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 10;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 教學 Pop out Modal -->
+    <div id="introModal" class="modal-overlay">
+        <div class="glass-panel modal-content">
+            <h3>🎢 物理原理解釋：能量守恆</h3>
+            <p>在這個模擬中，我們將觀察過山車在無摩擦力軌道上的運動。</p>
+            <ul>
+                <li><strong>動能 (Kinetic Energy)</strong>：與速度有關，公式為 $$E_k = \frac{1}{2}mv^2$$</li>
+                <li><strong>重力勢能 (Potential Energy)</strong>：我們將<strong>軌道最低點設為勢能零點</strong>。公式為 $$E_p = mgh$$</li>
+            </ul>
+            <p>根據<strong>能量守恆定律 (Conservation of Energy)</strong>，只要沒有摩擦力損耗，系統的總力學能將保持不變：</p>
+            <div style="text-align: center;">
+                $$E_{Total} = E_k + E_p = \text{常數}$$
+            </div>
+            <p><em>提示：觀察過山車如何在兩側山丘間擺盪，系統會在最高點與最低點自動暫停，讓你方便解說能量轉換！</em></p>
+            <button id="closeModalBtn" class="close-modal-btn">我明白了，開始模擬</button>
+        </div>
+    </div>
+
+    <div class="bento-container">
+
+        <header class="glass-panel">
+            <h2>過山車：能量守恆定律</h2>
+            <p>觀察物體在重力作用下的動能與勢能轉換。軌道最低點為 PE = 0。</p>
+        </header>
+
+        <div class="glass-panel canvas-section">
+            <div style="position: relative;">
+                <canvas id="simCanvas" width="760" height="480"></canvas>
+                <div id="message-box">📍 狀態提示</div>
+            </div>
+        </div>
+
+        <div class="glass-panel controls-panel">
+            <button id="startBtn">開始模擬</button>
+            <button id="resetBtn">重置</button>
+            <label class="checkbox-container">
+                <input type="checkbox" id="limitLineToggle">
+                顯示理論極限高度
+            </label>
+        </div>
+
+
+    </div>
+
+    <script>
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            document.getElementById('introModal').style.opacity = '0';
+            setTimeout(() => document.getElementById('introModal').style.display = 'none', 300);
+        });
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageBox = document.getElementById('message-box');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const limitLineToggle = document.getElementById('limitLineToggle');
+
+
+        const GRAVITY = 80;
+        const MASS = 1;
+        const CANVAS_HEIGHT = canvas.height;
+        const MIN_HEIGHT = 50;
+
+        let trackPoints = [];
+        const NUM_POINTS = 1000;
+        const START_X = 50;
+        const END_X = 710;
+
+        let isRunning = false;
+        let cart = { s: 0, v: 0, x: 0, y: 0 };
+        let initialTotalEnergy = 0;
+
+        // Checkpoint 狀態標記
+        let hasPausedAtPeak = false;
+        let hasPausedAtValley = false;
+
+        let lastTime = 0;
+        let animationId;
+
+        function generateTrack() {
+            trackPoints = [];
+            let currentDistance = 0;
+
+            for (let i = 0; i <= NUM_POINTS; i++) {
+                let x = START_X + ((END_X - START_X) * i) / NUM_POINTS;
+                let y;
+
+                let scaledX = x * (750 / 710);
+                if (scaledX <= 300) {
+                    y = 200 + 150 * Math.cos(Math.PI * (scaledX - 50) / 250);
+                } else {
+                    y = 250 - 200 * Math.cos(Math.PI * (scaledX - 300) / 450);
+                }
+
+                if (i > 0) {
+                    let prev = trackPoints[i - 1];
+                    let dx = x - prev.x;
+                    let dy = y - prev.y;
+                    currentDistance += Math.sqrt(dx * dx + dy * dy);
+                }
+
+                trackPoints.push({ x: x, y: y, s: currentDistance });
+            }
+        }
+
+        function getTrackData(s) {
+            if (s <= 0) {
+                let p1 = trackPoints[0], p2 = trackPoints[1];
+                return { x: p1.x, y: p1.y, angle: Math.atan2(p2.y - p1.y, p2.x - p1.x) };
+            }
+            if (s >= trackPoints[trackPoints.length - 1].s) {
+                let p1 = trackPoints[trackPoints.length - 2], p2 = trackPoints[trackPoints.length - 1];
+                return { x: p2.x, y: p2.y, angle: Math.atan2(p2.y - p1.y, p2.x - p1.x) };
+            }
+
+            let low = 0, high = trackPoints.length - 1;
+            while (low <= high) {
+                let mid = Math.floor((low + high) / 2);
+                if (trackPoints[mid].s < s) low = mid + 1;
+                else high = mid - 1;
+            }
+
+            let p1 = trackPoints[high] || trackPoints[0];
+            let p2 = trackPoints[low] || trackPoints[1];
+            let ratio = (s - p1.s) / (p2.s - p1.s);
+
+            return {
+                x: p1.x + ratio * (p2.x - p1.x),
+                y: p1.y + ratio * (p2.y - p1.y),
+                angle: Math.atan2(p2.y - p1.y, p2.x - p1.x)
+            };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.height; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
+            for (let i = 0; i < canvas.width; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+
+            ctx.beginPath();
+            ctx.setLineDash([8, 4]);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.moveTo(0, CANVAS_HEIGHT - MIN_HEIGHT);
+            ctx.lineTo(canvas.width, CANVAS_HEIGHT - MIN_HEIGHT);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#3b82f6';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('參考高度 (PE = 0)', 10, CANVAS_HEIGHT - MIN_HEIGHT + 15);
+
+            // 繪製起始高度水平線
+            ctx.beginPath();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 5.5;
+            let startY = CANVAS_HEIGHT - trackPoints[0].y;
+            ctx.moveTo(0, startY);
+            ctx.lineTo(trackPoints[0].x, startY);
+            ctx.stroke();
+            ctx.fillStyle = '#475569';
+            ctx.font = 'italic 12px sans-serif';
+            ctx.fillText('起始高度 (h₀)', 10, startY - 8);
+
+            let limitY = (initialTotalEnergy / (MASS * GRAVITY)) + MIN_HEIGHT;
+            if (limitLineToggle.checked && limitY <= CANVAS_HEIGHT) {
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.moveTo(0, CANVAS_HEIGHT - limitY);
+                ctx.lineTo(canvas.width, CANVAS_HEIGHT - limitY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ef4444';
+                ctx.fillText(`理論極限高度`, 300, CANVAS_HEIGHT - limitY - 8);
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(trackPoints[0].x, CANVAS_HEIGHT - trackPoints[0].y);
+            for (let i = 1; i < trackPoints.length; i++) {
+                ctx.lineTo(trackPoints[i].x, CANVAS_HEIGHT - trackPoints[i].y);
+            }
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            let trackData = getTrackData(cart.s);
+            let angle = trackData.angle;
+            let h = cart.y - MIN_HEIGHT;
+            let currentPE = Math.max(0, MASS * GRAVITY * h);
+            let currentKE = Math.max(0, initialTotalEnergy - currentPE);
+
+
+            ctx.save();
+            ctx.translate(cart.x, CANVAS_HEIGHT - cart.y - 5);
+
+            const maxBarHeight = 50;
+            let peHeight = (currentPE / initialTotalEnergy) * maxBarHeight;
+            let keHeight = (currentKE / initialTotalEnergy) * maxBarHeight;
+            if (peHeight > maxBarHeight) peHeight = maxBarHeight;
+            if (keHeight < 0) keHeight = 0;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(-26, -110, 52, 70);
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-26, -110, 52, 70);
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(-20, -55 - peHeight, 15, peHeight);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(5, -55 - keHeight, 15, keHeight);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('PE', -12.5, -42);
+            ctx.fillText('KE', 12.5, -42);
+
+            ctx.rotate(-angle);
+
+            ctx.fillStyle = '#10b981';
+            ctx.strokeStyle = '#064e3b';
+            ctx.lineWidth = 3;
+            ctx.fillRect(-16, -20, 32, 20);
+            ctx.strokeRect(-16, -20, 32, 20);
+
+            ctx.fillStyle = '#334155';
+            ctx.beginPath();
+            ctx.arc(-10, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(10, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function updatePhysics(dt) {
+            if (!isRunning) return;
+
+            const subSteps = 10;
+            const subDt = dt / subSteps;
+            let pauseRequested = false;
+
+            for (let step = 0; step < subSteps; step++) {
+                let currentData = getTrackData(cart.s);
+                let oldV = cart.v;
+                let oldX = cart.x;
+
+                let accel = -GRAVITY * Math.sin(currentData.angle);
+                cart.v += accel * subDt;
+                cart.s += cart.v * subDt;
+
+                if (cart.s < 0) {
+                    cart.s = 0;
+                    cart.v = Math.abs(cart.v) * 0.5;
+                }
+                if (cart.s > trackPoints[trackPoints.length - 1].s) {
+                    cart.s = trackPoints[trackPoints.length - 1].s;
+                    cart.v = -Math.abs(cart.v) * 0.5;
+                }
+
+                let newData = getTrackData(cart.s);
+                cart.x = newData.x;
+                cart.y = newData.y;
+
+                // 解除 Checkpoint 鎖定 (當離開該區域或速度足夠大時)
+                if (Math.abs(cart.x - 300) > 15) hasPausedAtValley = false;
+                if (Math.abs(cart.v) > 50) hasPausedAtPeak = false;
+
+                // Checkpoint 1: 最低點 (經過 x=300)
+                const check_point_1 = 285;
+                if (!hasPausedAtValley && ((oldX <= check_point_1 && cart.x > check_point_1) || (oldX >= check_point_1 && cart.x < check_point_1))) {
+                    pauseRequested = true;
+                    hasPausedAtValley = true;
+                    messageBox.textContent = '📍 抵達最低點！(勢能為 0，動能最大)';
+                    messageBox.style.background = 'rgba(59, 130, 246, 0.9)';
+                    messageBox.style.opacity = '1';
+                }
+
+                // Checkpoint 2: 最高點 (速度方向反轉，且已離開起點)
+                if (!hasPausedAtPeak && cart.s > 10 && ((oldV > 0 && cart.v <= 0) || (oldV < 0 && cart.v >= 0))) {
+                    pauseRequested = true;
+                    hasPausedAtPeak = true;
+                    messageBox.textContent = '📍 抵達最高點！(動能耗盡，勢能最大)';
+                    messageBox.style.background = 'rgba(239, 68, 68, 0.9)';
+                    messageBox.style.opacity = '1';
+                }
+            }
+
+            if (pauseRequested) {
+                isRunning = false;
+                startBtn.textContent = "繼續模擬";
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            let dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (dt > 0.05) dt = 0.05;
+            dt *= 0.5; // 減速播放
+
+            updatePhysics(dt);
+            draw();
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function init() {
+            generateTrack();
+            cart.s = 0;
+            cart.v = 0; // 移除滑桿後，預設無初速，純靠勢能滑動
+
+            let startData = getTrackData(0);
+            cart.x = startData.x;
+            cart.y = startData.y;
+
+            let initialH = cart.y - MIN_HEIGHT;
+            initialTotalEnergy = MASS * GRAVITY * initialH;
+
+            messageBox.style.opacity = '0';
+            hasPausedAtPeak = false;
+            hasPausedAtValley = false;
+            isRunning = false;
+            startBtn.textContent = "開始模擬";
+
+            draw();
+        }
+
+        startBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            startBtn.textContent = isRunning ? "暫停模擬" : "繼續模擬";
+            if (isRunning) messageBox.style.opacity = '0';
+        });
+
+        resetBtn.addEventListener('click', () => init());
+
+        init();
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+
+</html>
