@@ -49,11 +49,10 @@
 
         .bento-container {
             width: 1100px;
-            height: 600px;
-            display: grid;
-            grid-template-columns: 820px 1fr;
-            grid-template-rows: 60px 150px auto;
-            gap: 20px;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
             position: relative;
         }
 
@@ -88,8 +87,7 @@
         }
 
         .canvas-section {
-            grid-column: 1 / 2;
-            grid-row: 2 / 4;
+            flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -103,11 +101,12 @@
         }
 
         .controls-panel {
-            grid-column: 2 / 3;
-            grid-row: 2 / 3;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
         }
 
 
@@ -257,7 +256,7 @@
 
         <div class="glass-panel canvas-section">
             <div style="position: relative;">
-                <canvas id="simCanvas" width="760" height="480"></canvas>
+                <canvas id="simCanvas" width="1060" height="520"></canvas>
                 <div id="message-box">📍 狀態提示</div>
             </div>
         </div>
@@ -296,7 +295,7 @@
         let trackPoints = [];
         const NUM_POINTS = 1000;
         const START_X = 50;
-        const END_X = 710;
+        const END_X = 1010;
 
         let isRunning = false;
         let cart = { s: 0, v: 0, x: 0, y: 0 };
@@ -317,11 +316,11 @@
                 let x = START_X + ((END_X - START_X) * i) / NUM_POINTS;
                 let y;
 
-                let scaledX = x * (750 / 710);
-                if (scaledX <= 300) {
-                    y = 200 + 150 * Math.cos(Math.PI * (scaledX - 50) / 250);
+                let scaledX = x * (1050 / 1010);
+                if (scaledX <= 450) {
+                    y = 250 + 200 * Math.cos(Math.PI * (scaledX - 50) / 400);
                 } else {
-                    y = 250 - 200 * Math.cos(Math.PI * (scaledX - 300) / 450);
+                    y = 300 - 250 * Math.cos(Math.PI * (scaledX - 450) / 600);
                 }
 
                 if (i > 0) {
@@ -429,7 +428,8 @@
 
 
             ctx.save();
-            ctx.translate(cart.x, CANVAS_HEIGHT - cart.y - 5);
+            const cart_offset = 6;
+            ctx.translate(cart.x, CANVAS_HEIGHT - cart.y - cart_offset);
 
             const maxBarHeight = 50;
             let peHeight = (currentPE / initialTotalEnergy) * maxBarHeight;
@@ -437,22 +437,25 @@
             if (peHeight > maxBarHeight) peHeight = maxBarHeight;
             if (keHeight < 0) keHeight = 0;
 
+            const barOffsetX = 45;
+            const barOffsetY = -60;
+
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.fillRect(-26, -110, 52, 70);
+            ctx.fillRect(barOffsetX, barOffsetY, 52, 70);
             ctx.strokeStyle = 'rgba(0,0,0,0.2)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(-26, -110, 52, 70);
+            ctx.strokeRect(barOffsetX, barOffsetY, 52, 70);
 
             ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(-20, -55 - peHeight, 15, peHeight);
+            ctx.fillRect(barOffsetX + 6, barOffsetY + 55 - peHeight, 15, peHeight);
             ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(5, -55 - keHeight, 15, keHeight);
+            ctx.fillRect(barOffsetX + 31, barOffsetY + 55 - keHeight, 15, keHeight);
 
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('PE', -12.5, -42);
-            ctx.fillText('KE', 12.5, -42);
+            ctx.fillText('PE', barOffsetX + 13.5, barOffsetY + 68);
+            ctx.fillText('KE', barOffsetX + 38.5, barOffsetY + 68);
 
             ctx.rotate(-angle);
 
@@ -503,11 +506,11 @@
                 cart.y = newData.y;
 
                 // 解除 Checkpoint 鎖定 (當離開該區域或速度足夠大時)
-                if (Math.abs(cart.x - 300) > 15) hasPausedAtValley = false;
+                if (Math.abs(cart.x - 433) > 15) hasPausedAtValley = false;
                 if (Math.abs(cart.v) > 50) hasPausedAtPeak = false;
 
-                // Checkpoint 1: 最低點 (經過 x=300)
-                const check_point_1 = 285;
+                // Checkpoint 1: 最低點 (經過新軌道的最低點)
+                const check_point_1 = 433;
                 if (!hasPausedAtValley && ((oldX <= check_point_1 && cart.x > check_point_1) || (oldX >= check_point_1 && cart.x < check_point_1))) {
                     pauseRequested = true;
                     hasPausedAtValley = true;
