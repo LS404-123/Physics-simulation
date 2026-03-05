@@ -265,6 +265,45 @@
             color: #d32f2f;
             font-weight: bold;
         }
+
+        .canvas-btn {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+
+        .canvas-btn:hover {
+            background: rgba(255, 255, 255, 0.95);
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .canvas-btn:active {
+            transform: scale(0.9);
+        }
+
+        .canvas-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: #007aff;
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
     </style>
 </head>
 
@@ -292,6 +331,14 @@
 
         <!-- Replaced Canvas with SVG based on provided setup -->
         <div class="canvas-area glass">
+            <button class="canvas-btn" id="canvasPlayBtn" title="播放/暫停">
+                <svg viewBox="0 0 24 24" id="playIcon">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+                <svg viewBox="0 0 24 24" id="pauseIcon" style="display: none;">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                </svg>
+            </button>
             <svg id="simSvg" viewBox="0 0 450 300" preserveAspectRatio="xMidYMid meet"
                 xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -506,6 +553,15 @@
         const val_pey = document.getElementById('val_pey');
         const noteContent = document.getElementById('note_content');
 
+        const canvasPlayBtn = document.getElementById('canvasPlayBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+
+        function toggleCanvasPlayIcon(running) {
+            playIcon.style.display = running ? 'none' : 'block';
+            pauseIcon.style.display = running ? 'block' : 'none';
+        }
+
         const g = 9.81;
         let mx = 0.5;
         let my = 1.0;
@@ -616,6 +672,7 @@
                     v = Math.sqrt(2 * a * h_initial);
                     isRunning = false;
                     playBtn.disabled = false; pauseBtn.disabled = true;
+                    toggleCanvasPlayIcon(false);
                 }
                 updateDashboard();
             }
@@ -623,9 +680,34 @@
             requestAnimationFrame(loop);
         }
 
-        playBtn.addEventListener('click', () => { if (s >= h_initial) init(); isRunning = true; lastTimestamp = 0; playBtn.disabled = true; pauseBtn.disabled = false; });
-        pauseBtn.addEventListener('click', () => { isRunning = false; playBtn.disabled = false; pauseBtn.disabled = true; });
-        resetBtn.addEventListener('click', () => { isRunning = false; playBtn.disabled = false; pauseBtn.disabled = true; init(); });
+        playBtn.addEventListener('click', () => {
+            if (s >= h_initial) init();
+            isRunning = true;
+            lastTimestamp = 0;
+            playBtn.disabled = true;
+            pauseBtn.disabled = false;
+            toggleCanvasPlayIcon(true);
+        });
+        pauseBtn.addEventListener('click', () => {
+            isRunning = false;
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            toggleCanvasPlayIcon(false);
+        });
+        resetBtn.addEventListener('click', () => {
+            isRunning = false;
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            init();
+            toggleCanvasPlayIcon(false);
+        });
+        canvasPlayBtn.addEventListener('click', () => {
+            if (isRunning) {
+                pauseBtn.click();
+            } else {
+                playBtn.click();
+            }
+        });
         mxSelect.addEventListener('change', init);
         mySelect.addEventListener('change', init);
 

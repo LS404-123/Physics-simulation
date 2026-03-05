@@ -289,8 +289,8 @@
 
         const GRAVITY = 80;
         const MASS = 1;
-        const CANVAS_HEIGHT = canvas.height;
-        const MIN_HEIGHT = 50;
+        const CAN_HEIGHT = canvas.height;
+        const MIN_HEIGHT = 1; // Shifted downward from 50
 
         let trackPoints = [];
         const NUM_POINTS = 1000;
@@ -318,9 +318,9 @@
 
                 let scaledX = x * (1050 / 1010);
                 if (scaledX <= 450) {
-                    y = 250 + 200 * Math.cos(Math.PI * (scaledX - 50) / 400);
+                    y = 200 + 200 * Math.cos(Math.PI * (scaledX - 50) / 400);
                 } else {
-                    y = 300 - 250 * Math.cos(Math.PI * (scaledX - 450) / 600);
+                    y = 250 - 250 * Math.cos(Math.PI * (scaledX - 450) / 600);
                 }
 
                 if (i > 0) {
@@ -374,20 +374,20 @@
             ctx.setLineDash([8, 4]);
             ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2;
-            ctx.moveTo(0, CANVAS_HEIGHT - MIN_HEIGHT);
-            ctx.lineTo(canvas.width, CANVAS_HEIGHT - MIN_HEIGHT);
+            ctx.moveTo(0, CAN_HEIGHT - MIN_HEIGHT);
+            ctx.lineTo(canvas.width, CAN_HEIGHT - MIN_HEIGHT);
             ctx.stroke();
             ctx.setLineDash([]);
             ctx.fillStyle = '#3b82f6';
             ctx.font = '12px sans-serif';
-            ctx.fillText('參考高度 (PE = 0)', 10, CANVAS_HEIGHT - MIN_HEIGHT + 15);
+            ctx.fillText('參考高度 (PE = 0)', 10, CAN_HEIGHT - MIN_HEIGHT + 15);
 
             // 繪製起始高度水平線
             ctx.beginPath();
             ctx.setLineDash([]);
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 5.5;
-            let startY = CANVAS_HEIGHT - trackPoints[0].y;
+            let startY = CAN_HEIGHT - trackPoints[0].y;
             ctx.moveTo(0, startY);
             ctx.lineTo(trackPoints[0].x, startY);
             ctx.stroke();
@@ -396,26 +396,26 @@
             ctx.fillText('起始高度 (h₀)', 10, startY - 8);
 
             let limitY = (initialTotalEnergy / (MASS * GRAVITY)) + MIN_HEIGHT;
-            if (limitLineToggle.checked && limitY <= CANVAS_HEIGHT) {
+            if (limitLineToggle.checked && limitY <= CAN_HEIGHT) {
                 ctx.beginPath();
                 ctx.setLineDash([5, 5]);
                 ctx.strokeStyle = '#ef4444';
                 ctx.lineWidth = 2;
-                ctx.moveTo(0, CANVAS_HEIGHT - limitY);
-                ctx.lineTo(canvas.width, CANVAS_HEIGHT - limitY);
+                ctx.moveTo(0, CAN_HEIGHT - limitY);
+                ctx.lineTo(canvas.width, CAN_HEIGHT - limitY);
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.fillStyle = '#ef4444';
-                ctx.fillText(`理論極限高度`, 300, CANVAS_HEIGHT - limitY - 8);
+                ctx.fillText(`理論極限高度`, 300, CAN_HEIGHT - limitY - 8);
             }
 
             ctx.beginPath();
-            ctx.moveTo(trackPoints[0].x, CANVAS_HEIGHT - trackPoints[0].y);
+            ctx.moveTo(trackPoints[0].x, CAN_HEIGHT - trackPoints[0].y);
             for (let i = 1; i < trackPoints.length; i++) {
-                ctx.lineTo(trackPoints[i].x, CANVAS_HEIGHT - trackPoints[i].y);
+                ctx.lineTo(trackPoints[i].x, CAN_HEIGHT - trackPoints[i].y);
             }
             ctx.strokeStyle = '#475569';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 5; // Extra thick track for extra large car
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.stroke();
@@ -428,49 +428,50 @@
 
 
             ctx.save();
-            const cart_offset = 6;
-            ctx.translate(cart.x, CANVAS_HEIGHT - cart.y - cart_offset);
+            const cart_offset = 12; // Scaled offset
+            ctx.translate(cart.x, CAN_HEIGHT - cart.y - cart_offset);
 
-            const maxBarHeight = 50;
+            const maxBarHeight = 60; // Slightly taller bars
             let peHeight = (currentPE / initialTotalEnergy) * maxBarHeight;
             let keHeight = (currentKE / initialTotalEnergy) * maxBarHeight;
             if (peHeight > maxBarHeight) peHeight = maxBarHeight;
             if (keHeight < 0) keHeight = 0;
 
-            const barOffsetX = 45;
-            const barOffsetY = -60;
+            const barOffsetX = 60; // Further offset for larger car
+            const barOffsetY = -100; // Hover higher
 
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.fillRect(barOffsetX, barOffsetY, 52, 70);
+            ctx.fillRect(barOffsetX, barOffsetY, 60, 80);
             ctx.strokeStyle = 'rgba(0,0,0,0.2)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(barOffsetX, barOffsetY, 52, 70);
+            ctx.strokeRect(barOffsetX, barOffsetY, 60, 80);
 
             ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(barOffsetX + 6, barOffsetY + 55 - peHeight, 15, peHeight);
+            ctx.fillRect(barOffsetX + 8, barOffsetY + 65 - peHeight, 18, peHeight);
             ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(barOffsetX + 31, barOffsetY + 55 - keHeight, 15, keHeight);
+            ctx.fillRect(barOffsetX + 34, barOffsetY + 65 - keHeight, 18, keHeight);
 
             ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 11px sans-serif';
+            ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('PE', barOffsetX + 13.5, barOffsetY + 68);
-            ctx.fillText('KE', barOffsetX + 38.5, barOffsetY + 68);
+            ctx.fillText('PE', barOffsetX + 17, barOffsetY + 75);
+            ctx.fillText('KE', barOffsetX + 43, barOffsetY + 75);
 
             ctx.rotate(-angle);
 
+            // Scaled Car (200%)
             ctx.fillStyle = '#10b981';
             ctx.strokeStyle = '#064e3b';
-            ctx.lineWidth = 3;
-            ctx.fillRect(-16, -20, 32, 20);
-            ctx.strokeRect(-16, -20, 32, 20);
+            ctx.lineWidth = 4;
+            ctx.fillRect(-32, -40, 64, 40); // 32x20 -> 64x40
+            ctx.strokeRect(-32, -40, 64, 40);
 
             ctx.fillStyle = '#334155';
             ctx.beginPath();
-            ctx.arc(-10, 0, 5, 0, Math.PI * 2);
+            ctx.arc(-20, 0, 10, 0, Math.PI * 2); // r=5 -> r=10
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(10, 0, 5, 0, Math.PI * 2);
+            ctx.arc(20, 0, 10, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
