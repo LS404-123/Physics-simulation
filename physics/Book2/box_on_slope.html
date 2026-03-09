@@ -938,7 +938,7 @@
 
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
+                ctx.lineTo(x2 - headlen * Math.cos(angle) * 0.8, y2 - headlen * Math.sin(angle) * 0.8);
                 ctx.stroke();
 
                 ctx.setLineDash([]);
