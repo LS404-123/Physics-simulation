@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太空船重返大氣層模擬 - 專業物理教學版</title>
+    <!-- MathJax 配置 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #050510;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --accent-blue: #00d2ff;
+            --accent-orange: #ff8c00;
+            --accent-red: #ff4500;
+            --accent-green: #00ff88;
+            --text-main: #f0f0f5;
+            --text-dim: #a0a0b0;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --bento-radius: 18px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* 網頁位移往上移 */
+            padding-top: 2vh;
+            /* 往上移的間距 */
+        }
+
+        /* 限制模擬大小 1100 * 700，左右置中 */
+        #main-container {
+            position: relative;
+            width: 1100px;
+            height: 700px;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #050510 100%);
+            border-radius: 24px;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Canvas 層層疊加 */
+        #simCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Bento Box 佈局 - 調整至角落以避開中央 */
+        .bento-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .bottom-row {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        /* Glassmorphism 基礎風格 */
+        .glass-box {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--bento-radius);
+            padding: 20px;
+            pointer-events: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 模塊標題 */
+        .box-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-blue);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .box-title::before {
+            content: '';
+            width: 4px;
+            height: 14px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+
+        /* 數據行 - 加入防重疊設計 */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+            min-height: 24px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .unit {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-left: 4px;
+        }
+
+        /* 能量條視覺優化 - 固定寬度 */
+        .energy-section {
+            width: 450px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .energy-bar-wrap {
+            position: relative;
+            height: 32px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            display: flex;
+        }
+
+        .energy-segment {
+            height: 100%;
+            width: 0%;
+            transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #000;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+        }
+
+        #ke-bar {
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+        }
+
+        #pe-bar {
+            background: linear-gradient(90deg, #8e2de2, #4a00e0);
+        }
+
+        #heat-bar {
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+        }
+
+        /* 按鈕設計 */
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-blue);
+            color: #001;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4);
+            filter: brightness(1.1);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* 原理彈窗 (Pop-out Modal) */
+        #modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        #principle-modal {
+            width: 700px;
+            max-height: 85%;
+            background: #111;
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        #modal-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            color: var(--accent-blue);
+            text-align: center;
+        }
+
+        .formula-box {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-size: 1.1rem;
+            border-left: 4px solid var(--accent-blue);
+            text-align: center;
+        }
+
+        .modal-text {
+            line-height: 1.7;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        .modal-text b {
+            color: var(--text-main);
+        }
+
+        /* 狀態警告 */
+        .status-badge {
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: 700;
+            font-size: 0.85rem;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alert-heat {
+            color: var(--accent-red);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="main-container">
+        <!-- 原理說明彈窗 -->
+        <div id="modal-overlay">
+            <div id="principle-modal">
+                <h1 class="modal-title">重返大氣層：物理原理探索</h1>
+
+                <div class="modal-text">
+                    太空船從軌道返回地球時，必須克服巨大的<b>機械能 (Mechanical Energy)</b>。這是一個極端的能量轉換過程。
+                </div>
+
+                <div class="modal-text">
+                    <b>1. 空氣阻力模型 (Air Resistance)</b><br>
+                    隨高度 $h$ 下降，大氣密度 $\rho$ 呈指數級增加。阻力 $D$ 計算公式為：
+                    <div class="formula-box">
+                        $$D = \frac{1}{2} \rho(h) v^2 C_d A$$
+                    </div>
+                    其中 $\rho(h) = \rho_0 e^{-h/H_{scale}}$，$H_{scale} \approx 8500\text{m}$ 為大氣標高。
+                </div>
+
+                <div class="modal-text">
+                    <b>2. 能量守恆與轉換 (Energy Conservation)</b><br>
+                    初始狀態具有極高的重力位能與動能。當阻力作負功時，機械能轉化為熱能：
+                    <div class="formula-box">
+                        $$E_{total} = K.E. + P.E. + W_{drag}$$
+                    </div>
+                </div>
+
+                <button id="closeModal">進入控制中心</button>
+            </div>
+        </div>
+
+        <canvas id="simCanvas"></canvas>
+
+        <div class="bento-grid">
+            <div class="top-row">
+                <!-- 左側控制模塊 -->
+                <div class="glass-box" style="width: 300px;">
+                    <div class="box-title">控制中心 Control</div>
+                    <div class="stat-row">
+                        <span class="stat-label">初始高度</span>
+                        <span class="stat-value">400,000 <span class="unit">m</span></span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">初始速度</span>
+                        <span class="stat-value">0 <span class="unit">m/s</span></span>
+                    </div>
+                    <!-- 重要的即時數據筆記 -->
+                    <div
+                        style="font-size: 0.75rem; color: var(--accent-orange); margin: 10px 0; background: rgba(255,140,0,0.1); padding: 8px; border-radius: 6px;">
+                        💡 <b>提示:</b> 從靜止下落時，所有能量最初都是位能。當它加速進入大氣層時，動能會迅速增加，直到阻力開始轉化熱能。
+                    </div>
+                    <button id="startBtn">啟動重返序列</button>
+                    <button id="resetBtn" style="display:none; background:#333; color:#fff;">系統重置</button>
+                    <div id="status-badge" class="status-badge" style="margin-top:10px;">系統待命</div>
+
+                    <!-- 數值顯示整合至此 (取代 Telemetry 防止遮擋) -->
+                    <div style="border-top: 1px solid var(--glass-border); margin-top: 15px; padding-top: 15px;">
+                        <div class="stat-row"><span class="stat-label">高度:</span><span id="txt-alt"
+                                class="stat-value">400,000</span></div>
+                        <div class="stat-row"><span class="stat-label">速度:</span><span id="txt-vel"
+                                class="stat-value">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bottom-row">
+                <!-- 底部能量分析 - 移至右下角 -->
+                <div class="energy-section">
+                    <div class="glass-box">
+                        <div class="box-title">能量守恆動態分析 Analysis</div>
+                        <div class="energy-bar-wrap">
+                            <div id="ke-bar" class="energy-segment">動能 KE</div>
+                            <div id="pe-bar" class="energy-segment">位能 GPE</div>
+                            <div id="heat-bar" class="energy-segment" style="color:#fff">熱能</div>
+                        </div>
+                        <div
+                            style="display:flex; justify-content: space-between; margin-top:10px; font-size:0.75rem; color:var(--text-dim);">
+                            <span id="txt-total-e">總能量: 0.00 GJ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('main-container');
+
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+
+        // 物理常數與配置
+        const G = 9.81;
+        const RHO_0 = 1.225;
+        const H_SCALE = 12000;       // 擴大大氣規模
+        const DRAG_COEF = 1.4;
+        const AREA = 4.5;
+        const MASS = 4200;
+        const DT = 0.04;
+        const SIM_SPEED = 6;         // 減慢模擬速度 (原 20)
+
+        const INITIAL_ALT = 400000;
+        const INITIAL_VEL = 0;       // 從靜止下落
+
+        let state = {
+            h: INITIAL_ALT,
+            v: INITIAL_VEL,
+            wDrag: 0,
+            running: false,
+            totalE: 0,
+            glow: 0
+        };
+
+        function getEnergy() {
+            const ke = 0.5 * MASS * state.v * state.v;
+            const pe = MASS * G * state.h;
+            return { ke, pe, heat: state.wDrag };
+        }
+
+        state.totalE = getEnergy().ke + getEnergy().pe;
+
+        // UI 引用
+        const el = {
+            alt: document.getElementById('txt-alt'),
+            vel: document.getElementById('txt-vel'),
+            total: document.getElementById('txt-total-e'),
+            keBar: document.getElementById('ke-bar'),
+            peBar: document.getElementById('pe-bar'),
+            heatBar: document.getElementById('heat-bar'),
+            status: document.getElementById('status-badge'),
+            modal: document.getElementById('modal-overlay'),
+            startBtn: document.getElementById('startBtn'),
+            resetBtn: document.getElementById('resetBtn')
+        };
+
+        function updateDisplay() {
+            const e = getEnergy();
+            const total = state.totalE;
+
+            el.alt.textContent = Math.max(0, state.h).toLocaleString(undefined, { maximumFractionDigits: 0 });
+            el.vel.textContent = state.v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+            const rho = RHO_0 * Math.exp(-state.h / H_SCALE);
+            const drag = 0.5 * rho * state.v * state.v * DRAG_COEF * AREA;
+            const hRate = (drag * state.v) / 1000;
+
+            // 能量條比例防止文字重疊
+            const keP = (e.ke / total * 100);
+            const peP = (e.pe / total * 100);
+            const heatP = (e.heat / total * 100);
+
+            el.keBar.style.width = keP + "%";
+            el.peBar.style.width = peP + "%";
+            el.heatBar.style.width = heatP + "%";
+
+            el.keBar.textContent = keP > 10 ? "動能" : "";
+            el.peBar.textContent = peP > 10 ? "位能" : "";
+            el.heatBar.textContent = heatP > 10 ? "熱能" : "";
+
+            el.total.textContent = `系統能量平衡: ${((e.ke + e.pe + e.heat) / 1e9).toFixed(3)} GJ`;
+
+            // 狀態更新
+            if (state.h <= 0) {
+                el.status.textContent = "降落成功落地";
+                el.status.style.color = "var(--accent-green)";
+                state.running = false;
+            } else if (hRate > 15000) {
+                el.status.innerHTML = `<span class="alert-heat">🔥 高溫再入警告 (MAX Q)</span>`;
+            } else if (state.running) {
+                el.status.textContent = "正在進行重返序列";
+                el.status.style.color = "var(--text-main)";
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 背景地球與大氣
+            ctx.beginPath();
+            const grad = ctx.createRadialGradient(canvas.width / 2, 1100, 200, canvas.width / 2, 1100, 950);
+            grad.addColorStop(0, '#001a33');
+            grad.addColorStop(0.4, '#004d99');
+            grad.addColorStop(0.8, '#00d2ff');
+            grad.addColorStop(1, 'rgba(0, 210, 255, 0)'); // 擴大大氣視覺效果
+            ctx.fillStyle = grad;
+            ctx.arc(canvas.width / 2, 1100, 1000, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 太空船位置映射
+            const drawY = 80 + (1 - state.h / INITIAL_ALT) * 450;
+            const centerX = canvas.width / 2;
+
+            // 視覺發光效果
+            if (state.glow > 0.05) {
+                ctx.shadowBlur = 30 * state.glow;
+                ctx.shadowColor = `rgba(255, 69, 0, ${state.glow})`;
+
+                // 震波氣體
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(255, 100, 0, ${state.glow * 0.4})`;
+                ctx.arc(centerX, drawY - 10, 40 * state.glow, Math.PI, 0);
+                ctx.fill();
+            } else {
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.save();
+            ctx.translate(centerX, drawY);
+
+            // 膠囊本體
+            ctx.beginPath();
+            ctx.moveTo(-20, 0);
+            ctx.lineTo(20, 0);
+            ctx.quadraticCurveTo(20, -30, 0, -45);
+            ctx.quadraticCurveTo(-20, -30, -20, 0);
+            ctx.fillStyle = '#bbb';
+            ctx.fill();
+
+            // 受熱變色
+            if (state.glow > 0) {
+                ctx.globalAlpha = state.glow;
+                ctx.fillStyle = `rgb(255, ${150 - state.glow * 100}, 0)`;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function loop() {
+            if (state.running) {
+                for (let i = 0; i < SIM_SPEED; i++) {
+                    const rho = RHO_0 * Math.exp(-state.h / H_SCALE);
+                    const drag = 0.5 * rho * state.v * state.v * DRAG_COEF * AREA;
+
+                    const accel = G - (drag / MASS);
+                    const ds = state.v * DT;
+
+                    state.h -= ds;
+                    state.v += accel * DT;
+                    state.wDrag += drag * ds;
+
+                    // 發光系數
+                    const targetGlow = Math.min(1.0, (drag * state.v) / 3e7);
+                    state.glow += (targetGlow - state.glow) * 0.05;
+
+                    if (state.h <= 0) {
+                        state.h = 0;
+                        state.v = 0;
+                        state.glow = 0;
+                        break;
+                    }
+                }
+            }
+
+            draw();
+            updateDisplay();
+            requestAnimationFrame(loop);
+        }
+
+        // 事件
+        document.getElementById('closeModal').onclick = () => {
+            el.modal.classList.add('hidden');
+        };
+
+        el.startBtn.onclick = () => {
+            state.running = true;
+            el.startBtn.style.display = 'none';
+            el.resetBtn.style.display = 'block';
+        };
+
+        el.resetBtn.onclick = () => {
+            state.h = INITIAL_ALT;
+            state.v = INITIAL_VEL;
+            state.wDrag = 0;
+            state.running = false;
+            state.glow = 0;
+            el.startBtn.style.display = 'block';
+            el.resetBtn.style.display = 'none';
+            el.status.textContent = "系統待命";
+            el.status.style.color = "var(--text-main)";
+        };
+
+        loop();
+    </script>
+
+</body>
+
+</html>

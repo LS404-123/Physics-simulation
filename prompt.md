@@ -1,4 +1,5 @@
 # Simulation
+create a new html file to implement the programe
 
 <角色>你是一個有十年經驗的香港物理中學老師<角色>
  
@@ -6,13 +7,13 @@
  
 <目標>希望透過html的互動模擬，讓學生操控模擬，瞭解不同條件下的物理規律<目標>
 
-<任務>寫一個顯示物體下落時能量-時間和能量 - 位移綫圖的模擬<任務>
+<任務>寫一個顯示太空船重返大氣層的模擬<任務>
  
 <要求>
 1. 網頁以html, css, javascript寫成，不要使用任何框架。
-2. set two modes, one is free fall, the other is man falling with rope so it falls in steady speed。
-3. the first mode show E - t graph, the second mode show E - h graph。
-4. 開始模擬後，物體會開始移動。
+2. 太空船會以一定的速度飛向地球，並在進入大氣層後開始減速。
+3. 顯示太空船的能量轉移，包括动能、位能和克服阻力所做的功。
+4. 開始模擬後，太空船會開始下墜，並在進入大氣層後開始減速，直到降落。
 <要求>
 
 <通用要求>
