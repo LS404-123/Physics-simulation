@@ -136,6 +136,15 @@
                             <input type="range" id="force-slider" min="-100" max="100" value="0" step="5"
                                 style="margin-bottom: 0;">
                         </div>
+
+                        <!-- 摩擦力開關 -->
+                        <div class="flex items-center space-x-2 pt-2 border-t border-slate-200">
+                            <input type="checkbox" id="friction-toggle" checked
+                                class="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500 cursor-pointer">
+                            <label for="friction-toggle"
+                                class="font-bold text-slate-700 text-sm cursor-pointer select-none">啟用摩擦力 (<span
+                                    class="math-font text-orange-600">f</span>)</label>
+                        </div>
                     </div>
 
                     <!-- 模擬控制按鈕 -->
@@ -343,6 +352,7 @@
             let state = {
                 angle: 30,           // 度
                 appliedForce: 0,     // N
+                frictionEnabled: true, // 摩擦力開關
                 showComponents: false,
                 focusWeight: false,
                 width: 0,
@@ -371,6 +381,7 @@
                 btnReset: document.getElementById('btn-reset'),
                 angleVal: document.getElementById('angle-val'),
                 forceVal: document.getElementById('force-val'),
+                frictionToggle: document.getElementById('friction-toggle'),
                 modal: document.getElementById('intro-modal'),
                 analysisModal: document.getElementById('analysis-modal'), // 新增引用
                 // 數值顯示
@@ -401,6 +412,11 @@
                 els.forceSlider.addEventListener('input', (e) => {
                     state.appliedForce = parseInt(e.target.value);
                     els.forceVal.textContent = (state.appliedForce > 0 ? '+' : '') + state.appliedForce + ' N';
+                    if (!state.isSimulating) draw();
+                });
+
+                els.frictionToggle.addEventListener('change', (e) => {
+                    state.frictionEnabled = e.target.checked;
                     if (!state.isSimulating) draw();
                 });
 
@@ -497,10 +513,12 @@
                 let friction = 0;
                 let netForce = 0;
 
+                const actualMu = state.frictionEnabled ? PHYSICS.mu : 0;
+
                 // 動摩擦 (Kinetic Friction)
                 if (Math.abs(state.velocity) > 0.001) {
                     // 有速度時，摩擦力與速度方向相反
-                    const f_k = PHYSICS.mu * normalForce;
+                    const f_k = actualMu * normalForce;
                     friction = (state.velocity > 0) ? -f_k : f_k;
                     netForce = f_app + f_gravity_x + friction;
                 }
@@ -508,16 +526,15 @@
                 else {
                     state.velocity = 0; // 強制歸零防止微小漂移
                     const drivingForce = f_app + f_gravity_x; // 沒有摩擦時的合力
-                    const maxStaticFriction = PHYSICS.mu * normalForce;
+                    const maxStaticFriction = actualMu * normalForce;
 
                     if (Math.abs(drivingForce) <= maxStaticFriction) {
-                        // 靜止，合力為0
+                        // 靜止，合力為0 (如果沒有摩擦這個條件就會跳過)
                         friction = -drivingForce;
                         netForce = 0;
                     } else {
-                        // 克服靜摩擦，開始移動
-                        // 這裡簡化：一旦動起來，立刻變動摩擦 (方向與 drivingForce 相反)
-                        const f_k = PHYSICS.mu * normalForce;
+                        // 克服靜摩擦，開始移動 (或無摩擦立刻移動)
+                        const f_k = actualMu * normalForce;
                         friction = (drivingForce > 0) ? -f_k : f_k;
                         netForce = drivingForce + friction;
                     }
@@ -567,14 +584,15 @@
                 const f_gravity_x = -downSlopeGravity;
                 const f_app = state.appliedForce;
 
+                const actualMu = state.frictionEnabled ? PHYSICS.mu : 0;
                 const drivingForce = f_app + f_gravity_x;
-                const maxStaticFriction = PHYSICS.mu * normalForce;
+                const maxStaticFriction = actualMu * normalForce;
 
                 if (Math.abs(drivingForce) <= maxStaticFriction) {
                     state.lastFriction = -drivingForce;
                     state.lastNetForce = 0;
                 } else {
-                    const f_k = PHYSICS.mu * normalForce;
+                    const f_k = actualMu * normalForce;
                     state.lastFriction = (drivingForce > 0) ? -f_k : f_k;
                     state.lastNetForce = drivingForce + state.lastFriction;
                 }
