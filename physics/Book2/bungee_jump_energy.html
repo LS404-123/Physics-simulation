@@ -183,7 +183,7 @@
             height: 100%;
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(5px);
-            display: none;
+            display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -319,18 +319,33 @@
     <div class="modal-overlay glass" id="introModal">
         <div class="modal-content glass">
             <button class="close-btn" onclick="closeModal()">✕</button>
-            <h2>原理：高空彈跳能量轉換</h2>
-            <p><strong>核心公式 (力學能守恆)：</strong><br>
+            <h2>📝 課前筆記：高空彈跳的物理原理</h2>
+            <p>在開始模擬前，讓我們先深入了解系統能量如何轉換。假設忽略空氣阻力，總力學能守恆：</p>
+            <p
+                style="text-align: center; font-size: 1.1rem; background: rgba(255,255,255,0.5); padding: 10px; border-radius: 8px;">
                 $$ E_{Total} = GPE + KE + EPE = \text{常數} $$
             </p>
-            <p><strong>三階段觀察重點：</strong></p>
-            <ul>
-                <li><strong>自由落體 ($y < L$)：</strong> 只有重力作功。GPE $\rightarrow$ KE。</li>
-                <li><strong>平衡加速 ($y > L$)：</strong> 繩子拉伸，但向上彈力仍小於重力，繼續加速。KE 到達最大值。</li>
-                <li><strong>減速至停：</strong> 彈力大於重力，減速至 0。所有能量轉為 EPE。</li>
+            <h3 style="color: #1565c0;">🔍 模擬中必看的「三個關鍵階段」</h3>
+            <ul style="line-height: 1.6;">
+                <li><strong>1. 自由落體階段 ($y < L$)：</strong><br>
+                            繩索尚未拉伸，只有重力作功。重力勢能 ($mgh$) 一路轉換為動能 (${\frac{1}{2}mv^2}$)。<br>
+                            <span style="color: #d32f2f;">👉 觀察：此時沒有彈性勢能 (EPE = 0)。</span></li>
+                <li><strong>2. 繼續加速階段 (從 $L$ 到 $Eq$)：</strong><br>
+                    繩索開始拉伸產生張力 $T$，但拉力仍小於重力 ($T < mg$)。跳躍者繼續加速！<br>
+                        <span style="color: #d32f2f;">👉 觀察：當到達平衡點 $Eq$ ($mg = kx$) 時，合力為零，動能 (KE) 會達到全場最大值！</span></li>
+                <li><strong>3. 減速煞車階段 (從 $Eq$ 到 $Max$)：</strong><br>
+                    張力大於重力 ($T > mg$)，開始向上減速。直到最低點時速度歸零。<br>
+                    <span style="color: #d32f2f;">👉 觀察：在最低點，所有的 GPE 和 KE 都轉化成了巨大的彈性勢能 (${\frac{1}{2}kx^2}$)。</span>
+                </li>
             </ul>
+            <div
+                style="background: rgba(250,200,50,0.2); padding: 12px; border-left: 4px solid #fbc02d; border-radius: 6px; margin-top: 15px;">
+                <strong>💡 老師進階考題：</strong><br>
+                進入模擬後，試著改變「質量 ($m$)」，看看平衡點 $Eq$ 與最低點 $Max$ 的位移幅度有什麼規律？
+            </div>
             <div style="text-align: right; margin-top: 20px;">
-                <button class="action-btn primary" style="width: 120px;" onclick="closeModal()">進入模擬</button>
+                <button class="action-btn primary" style="width: 130px; font-size: 1.05rem;"
+                    onclick="closeModal()">我準備好了！</button>
             </div>
         </div>
     </div>

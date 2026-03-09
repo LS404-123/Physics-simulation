@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif:ital,wght@1,700&display=swap');
-        
+
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #f0f4f8;
@@ -37,6 +38,7 @@
             width: 100%;
             background: transparent;
         }
+
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             height: 20px;
@@ -45,12 +47,14 @@
             background: #3b82f6;
             cursor: pointer;
             margin-top: -8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
             transition: transform 0.1s;
         }
+
         input[type=range]::-webkit-slider-thumb:hover {
             transform: scale(1.1);
         }
+
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 4px;
@@ -62,806 +66,906 @@
         /* Canvas 背景 */
         #canvas-container {
             position: relative;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
             background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
             background-size: 20px 20px;
         }
     </style>
 </head>
-<body class="text-slate-800 h-screen flex flex-col">
 
-    <!-- 頂部導航 -->
-    <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center shrink-0">
-        <div class="flex items-center space-x-3">
-            <span class="text-2xl">📐</span>
-            <h1 class="text-xl font-bold">高中物理：斜面力學系統分析</h1>
-        </div>
-        <button onclick="showModal()" class="bg-white text-blue-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-50 transition shadow">
-            📖 實驗原理與指引
-        </button>
-    </header>
-
-    <!-- 主內容區 -->
-    <main class="flex-grow flex flex-col lg:flex-row overflow-hidden">
-        
-        <!-- 左側：控制面板 -->
-        <aside class="w-full lg:w-1/3 bg-white p-6 shadow-lg z-10 flex flex-col overflow-y-auto border-r border-slate-200">
-            
-            <div class="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <h2 class="font-bold text-lg text-blue-800 mb-2">老師的筆記 (Teacher's Note)</h2>
-                <p class="text-sm text-slate-600 leading-relaxed">
-                    請調整斜面角度 <span class="math-font">θ</span> 與外力 <span class="math-font">F</span>。
-                    <br>
-                    點擊「開始模擬」觀察運動。注意當 <span class="math-font">v ≠ 0</span> 時，摩擦力 <span class="math-font">f</span> 恆與速度方向相反。
-                </p>
+<body class="text-slate-800 min-h-screen bg-gray-200 flex justify-center items-start pt-8">
+    <div class="flex flex-col bg-white shadow-2xl relative"
+        style="width: 1100px; max-width: 100%; height: 700px; max-height: 100vh;">
+        <!-- 頂部導航 -->
+        <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center shrink-0">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl">📐</span>
+                <h1 class="text-xl font-bold">高中物理：斜面力學系統分析</h1>
             </div>
-
-            <!-- 新增：力學分析按鈕 -->
-            <button onclick="showAnalysis()" class="w-full mb-6 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 py-3 px-4 rounded-lg shadow-sm text-sm font-bold flex items-center justify-center space-x-2 transition group">
-                <span class="text-xl">📝</span>
-                <span class="group-hover:translate-x-1 transition-transform">查看詳細力學分析公式</span>
+            <button onclick="showModal()"
+                class="bg-white text-blue-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-50 transition shadow">
+                📖 實驗原理與指引
             </button>
+        </header>
 
-            <div class="space-y-6">
-                <!-- 控制區 -->
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-5">
-                    <!-- 斜面角度 Slider -->
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="font-bold text-slate-700">斜面角度 (<span class="math-font">θ</span>)</label>
-                            <span id="angle-val" class="font-mono text-blue-600 font-bold">30°</span>
-                        </div>
-                        <input type="range" id="angle-slider" min="0" max="60" value="30" step="1">
-                    </div>
+        <!-- 主內容區 -->
+        <main class="flex-grow flex flex-col lg:flex-row overflow-hidden">
 
-                    <!-- 外力 Slider -->
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="font-bold text-slate-700">沿斜面外力 (<span class="math-font">F</span>)</label>
-                            <span id="force-val" class="font-mono text-purple-600 font-bold">0 N</span>
-                        </div>
-                        <input type="range" id="force-slider" min="-100" max="100" value="0" step="5">
-                    </div>
-                </div>
+            <!-- 左側：控制面板 -->
+            <aside
+                class="w-full lg:w-1/3 bg-white p-4 shadow-lg z-10 flex flex-col overflow-y-auto border-r border-slate-200">
 
-                <!-- 模擬控制按鈕 -->
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="btn-simulate" class="py-3 px-4 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 transition shadow flex justify-center items-center space-x-2">
-                        <span>▶ 開始模擬</span>
-                    </button>
-                    <button id="btn-reset" class="py-3 px-4 rounded-lg bg-slate-200 text-slate-700 font-bold hover:bg-slate-300 transition shadow flex justify-center items-center space-x-2">
-                        <span>⏹ 重置位置</span>
-                    </button>
-                </div>
-
-                <div class="pt-2">
-                    <button id="toggle-components" class="w-full py-3 px-4 rounded-lg border-2 border-indigo-500 text-indigo-600 font-bold hover:bg-indigo-50 transition flex items-center justify-center space-x-2">
-                        <span>🔄 分解重力分量 (<span class="math-font">mg</span>)</span>
-                    </button>
-                </div>
-
-                <!-- 實時數據顯示 -->
-                <div class="bg-slate-100 p-4 rounded-lg font-mono text-sm space-y-2 border border-slate-200 shadow-inner">
-                    <div class="flex justify-between">
-                        <span>重力 (<span class="math-font">mg</span>):</span>
-                        <span>98.0 N</span>
-                    </div>
-                    <div class="flex justify-between text-green-700">
-                        <span>正向力 (<span class="math-font">R</span>):</span>
-                        <span id="calc-normal">--</span>
-                    </div>
-                    <div class="flex justify-between text-indigo-700">
-                        <span>下滑分力 (<span class="math-font">mg</span> sin<span class="math-font">θ</span>):</span>
-                        <span id="calc-mgsin">--</span>
-                    </div>
-                    <div class="flex justify-between text-orange-600 font-bold">
-                        <span>摩擦力 (<span class="math-font">f</span>):</span>
-                        <span id="calc-friction">--</span>
-                    </div>
-                    <div class="border-t border-slate-300 my-2"></div>
-                    <div class="flex justify-between font-bold items-center" id="net-force-display">
-                        <span>合力 (<span class="math-font">F_net</span>):</span>
-                        <span id="calc-net">--</span>
-                    </div>
-                    <div class="flex justify-between text-blue-600 font-bold items-center pt-2">
-                        <span>速度 (<span class="math-font">v</span>):</span>
-                        <span id="calc-velocity">0.0 m/s</span>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- 右側：Canvas 區域 -->
-        <section class="flex-grow bg-white relative flex flex-col" id="canvas-container">
-            <canvas id="simCanvas" class="w-full h-full cursor-default"></canvas>
-            
-            <!-- 標註說明 -->
-            <div class="absolute bottom-4 right-4 bg-white/90 p-4 rounded-xl shadow-lg border border-slate-200 text-sm text-slate-700 pointer-events-none backdrop-blur-sm">
-                <div class="font-bold mb-2 border-b border-slate-200 pb-1">圖示說明 (Legend)</div>
-                <div class="grid grid-cols-2 gap-x-6 gap-y-2">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 bg-red-600 rounded-full inline-block"></span> <span class="math-font">mg</span> (重力)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 bg-green-600 rounded-full inline-block"></span> <span class="math-font">R</span> (正向力)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 bg-purple-600 rounded-full inline-block"></span> <span class="math-font">F</span> (外力)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> <span class="math-font">f</span> (摩擦力)</div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- 彈出視窗 1: 歡迎/指引 (Modal) -->
-    <div id="intro-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
-        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 p-8 transform transition-transform duration-300 scale-100 relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
-            
-            <h2 class="text-2xl font-bold text-blue-700 mb-4 border-b pb-2">👋 各位同學好！</h2>
-            
-            <div class="space-y-4 text-slate-700">
-                <p>我是你們的物理老師。這個互動程式是為了幫助你們理解<b>斜面上的受力與運動</b>。</p>
-                
-                <div class="bg-blue-50 p-5 rounded-lg border-l-4 border-blue-500">
-                    <h3 class="font-bold text-blue-800 mb-2">💡 操作指引：</h3>
-                    <ul class="list-disc list-inside space-y-2 ml-2 text-sm">
-                        <li>調整 <span class="math-font">θ</span> (角度) 和 <span class="math-font">F</span> (外力) 觀察受力圖變化。</li>
-                        <li>點擊 <span class="font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded">▶ 開始模擬</span> 讓物體根據牛頓第二定律 (<span class="math-font">F = ma</span>) 移動。</li>
-                    </ul>
-                </div>
-
-                <div class="text-sm bg-yellow-50 p-3 rounded text-yellow-800 border border-yellow-200 flex items-start gap-2">
-                    <span class="text-lg">⚠️</span>
-                    <div>
-                        <b>注意：</b> 如果合力不足以克服最大靜摩擦力，點擊模擬後物體仍會保持靜止。
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-8 flex justify-end">
-                <button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-lg transform hover:-translate-y-0.5 transition">
-                    開始實驗 🚀
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 彈出視窗 2: 力學分析詳解 (Analysis Modal) -->
-    <div id="analysis-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full mx-4 p-8 transform transition-transform duration-300 scale-100 relative max-h-[90vh] overflow-y-auto">
-            <button onclick="closeAnalysis()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
-            
-            <div class="flex items-center space-x-3 mb-6 border-b pb-4">
-                <span class="text-3xl">📝</span>
-                <h2 class="text-2xl font-bold text-slate-800">力學分析詳解 (Mechanical Analysis)</h2>
-            </div>
-            
-            <div class="space-y-6 text-slate-700">
-                
-                <!-- 垂直方向 -->
-                <section>
-                    <h3 class="font-bold text-lg text-blue-700 mb-2 border-l-4 border-blue-500 pl-2">1. 垂直於斜面方向 ⊥</h3>
-                    <p class="mb-2">物體在此方向沒有位移，因此處於力平衡狀態。受力包括正向力 <span class="math-font">R</span> 與重力的垂直分量。</p>
-                    <div class="formula-box">
-                        <span class="math-font">R</span> - <span class="math-font">mg</span> cos<span class="math-font">θ</span> = 0
+                <div class="mb-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <h2 class="font-bold text-base text-blue-800 mb-1">老師的筆記 (Teacher's Note)</h2>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        請調整斜面角度 <span class="math-font">θ</span> 與外力 <span class="math-font">F</span>。
                         <br>
-                        <span class="text-blue-600 font-bold">∴ <span class="math-font">R</span> = <span class="math-font">mg</span> cos<span class="math-font">θ</span></span>
-                    </div>
-                </section>
+                        點擊「開始模擬」觀察運動。注意當 <span class="math-font">v ≠ 0</span> 時，摩擦力 <span class="math-font">f</span>
+                        恆與速度方向相反。
+                    </p>
+                </div>
 
-                <!-- 平行方向 -->
-                <section>
-                    <h3 class="font-bold text-lg text-green-700 mb-2 border-l-4 border-green-500 pl-2">2. 沿斜面方向 ∥</h3>
-                    <p class="mb-2">這是物體運動的方向。根據牛頓第二定律，合力決定加速度。</p>
-                    <p class="text-sm text-slate-500 mb-2">*(如果物體受到的力 F 沿斜面向上,并且假設向上為正 +)*</p>
-                    <div class="formula-box">
-                        <span class="math-font">F</span> - <span class="math-font">mg</span> sin<span class="math-font">θ</span> - <span class="math-font">f</span> = <span class="math-font">ma</span>
-                    </div>
-                    <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
-                        <li><span class="math-font font-bold text-purple-600">F</span> : 施加的外力 (推力或拉力)</li>
-                        <li><span class="math-font font-bold text-red-600">mg sinθ</span> : 重力的下滑分量 (永遠向下)</li>
-                        <li><span class="math-font font-bold text-orange-600">f</span> : 摩擦力 (動摩擦 或 靜摩擦)</li>
-                    </ul>
-                </section>
-
-                <!-- 摩擦力討論 -->
-                <section>
-                    <h3 class="font-bold text-lg text-orange-700 mb-2 border-l-4 border-orange-500 pl-2">3. 關於摩擦力 (Friction)</h3>
-                    <div class="bg-orange-50 p-4 rounded-lg text-sm border border-orange-200">
-                        <p class="mb-2"><b>摩擦力方向：</b> 永遠與物體的相對運動方向（或運動趨勢）相反。</p>
-                    </div>
-                </section>
-
-            </div>
-
-            <div class="mt-8 flex justify-center">
-                <button onclick="closeAnalysis()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-8 py-2 rounded-full font-bold transition">
-                    關閉
+                <!-- 新增：力學分析按鈕 -->
+                <button onclick="showAnalysis()"
+                    class="w-full mb-4 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 py-2.5 px-4 rounded-lg shadow-sm text-sm font-bold flex items-center justify-center space-x-2 transition group">
+                    <span class="text-lg">📝</span>
+                    <span class="group-hover:translate-x-1 transition-transform">查看詳細力學分析公式</span>
                 </button>
+
+                <div class="space-y-4">
+                    <!-- 控制區 -->
+                    <div class="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 space-y-2">
+                        <!-- 斜面角度 Slider -->
+                        <div>
+                            <div class="flex justify-between mb-0.5">
+                                <label class="font-bold text-slate-700 text-sm">斜面角度 (<span
+                                        class="math-font">θ</span>)</label>
+                                <span id="angle-val" class="font-mono text-blue-600 font-bold text-sm">30°</span>
+                            </div>
+                            <input type="range" id="angle-slider" min="0" max="60" value="30" step="1"
+                                style="margin-bottom: 0;">
+                        </div>
+
+                        <!-- 外力 Slider -->
+                        <div>
+                            <div class="flex justify-between mb-0.5">
+                                <label class="font-bold text-slate-700 text-sm">沿斜面外力 (<span
+                                        class="math-font">F</span>)</label>
+                                <span id="force-val" class="font-mono text-purple-600 font-bold text-sm">0 N</span>
+                            </div>
+                            <input type="range" id="force-slider" min="-100" max="100" value="0" step="5"
+                                style="margin-bottom: 0;">
+                        </div>
+                    </div>
+
+                    <!-- 模擬控制按鈕 -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-simulate"
+                            class="py-2.5 px-4 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 transition shadow flex justify-center items-center space-x-2 text-sm">
+                            <span>▶ 開始模擬</span>
+                        </button>
+                        <button id="btn-reset"
+                            class="py-2.5 px-4 rounded-lg bg-slate-200 text-slate-700 font-bold hover:bg-slate-300 transition shadow flex justify-center items-center space-x-2 text-sm">
+                            <span>⏹ 重置位置</span>
+                        </button>
+                    </div>
+
+                    <div class="pt-1 flex gap-2">
+                        <button id="toggle-components"
+                            class="w-3/5 py-2.5 px-2 rounded-lg border-2 border-indigo-500 text-indigo-600 font-bold hover:bg-indigo-50 transition flex items-center justify-center space-x-1 shrink-0">
+                            <span class="text-[0.85rem] flex items-center">🔄 分解重力(<span
+                                    class="math-font text-xs">mg</span>)</span>
+                        </button>
+                        <button id="focus-weight"
+                            class="w-2/5 py-2.5 px-2 rounded-lg border-2 border-pink-500 text-pink-600 font-bold hover:bg-pink-50 transition flex items-center justify-center space-x-1 shrink-0">
+                            <span class="text-[0.85rem] flex items-center">🔍 放大重力</span>
+                        </button>
+                    </div>
+
+                    <!-- 實時數據顯示 -->
+                    <div
+                        class="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-1.5 border border-slate-200 shadow-inner">
+                        <div class="flex justify-between">
+                            <span>重力 (<span class="math-font">mg</span>):</span>
+                            <span>98.0 N</span>
+                        </div>
+                        <div class="flex justify-between text-green-700">
+                            <span>正向力 (<span class="math-font">R</span>):</span>
+                            <span id="calc-normal">--</span>
+                        </div>
+                        <div class="flex justify-between text-indigo-700">
+                            <span>下滑分力 (<span class="math-font">mg</span> sin<span class="math-font">θ</span>):</span>
+                            <span id="calc-mgsin">--</span>
+                        </div>
+                        <div class="flex justify-between text-orange-600 font-bold">
+                            <span>摩擦力 (<span class="math-font">f</span>):</span>
+                            <span id="calc-friction">--</span>
+                        </div>
+                        <div class="border-t border-slate-300 my-2"></div>
+                        <div class="flex justify-between font-bold items-center" id="net-force-display">
+                            <span>合力 (<span class="math-font">F_net</span>):</span>
+                            <span id="calc-net">--</span>
+                        </div>
+                        <div class="flex justify-between text-blue-600 font-bold items-center pt-2">
+                            <span>速度 (<span class="math-font">v</span>):</span>
+                            <span id="calc-velocity">0.0 m/s</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 右側：Canvas 區域 -->
+            <section class="flex-grow bg-white relative flex flex-col" id="canvas-container">
+                <canvas id="simCanvas" class="w-full h-full cursor-default"></canvas>
+
+                <!-- 標註說明 -->
+                <div class="absolute top-4 right-4 bg-white/90 p-4 rounded-xl shadow-lg border border-slate-200 text-sm text-slate-700 pointer-events-none backdrop-blur-sm z-10 transition-opacity duration-300"
+                    id="legend-box">
+                    <div class="font-bold mb-2 border-b border-slate-200 pb-1">圖示說明 (Legend)</div>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                        <div class="flex items-center gap-2"><span
+                                class="w-3 h-3 bg-red-600 rounded-full inline-block"></span> <span
+                                class="math-font">mg</span> (重力)</div>
+                        <div class="flex items-center gap-2" id="legend-R"><span
+                                class="w-3 h-3 bg-green-600 rounded-full inline-block"></span> <span
+                                class="math-font">R</span> (正向力)</div>
+                        <div class="flex items-center gap-2" id="legend-F"><span
+                                class="w-3 h-3 bg-purple-600 rounded-full inline-block"></span> <span
+                                class="math-font">F</span> (外力)</div>
+                        <div class="flex items-center gap-2" id="legend-f"><span
+                                class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> <span
+                                class="math-font">f</span> (摩擦力)</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 彈出視窗 1: 歡迎/指引 (Modal) -->
+        <div id="intro-modal"
+            class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+            <div
+                class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 p-8 transform transition-transform duration-300 scale-100 relative">
+                <button onclick="closeModal()"
+                    class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+
+                <h2 class="text-2xl font-bold text-blue-700 mb-4 border-b pb-2">👋 各位同學好！</h2>
+
+                <div class="space-y-4 text-slate-700">
+                    <p>我是你們的物理老師。這個互動程式是為了幫助你們理解<b>斜面上的受力與運動</b>。</p>
+
+                    <div class="bg-blue-50 p-5 rounded-lg border-l-4 border-blue-500">
+                        <h3 class="font-bold text-blue-800 mb-2">💡 操作指引：</h3>
+                        <ul class="list-disc list-inside space-y-2 ml-2 text-sm">
+                            <li>調整 <span class="math-font">θ</span> (角度) 和 <span class="math-font">F</span> (外力)
+                                觀察受力圖變化。</li>
+                            <li>點擊 <span class="font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded">▶ 開始模擬</span>
+                                讓物體根據牛頓第二定律 (<span class="math-font">F = ma</span>) 移動。</li>
+                        </ul>
+                    </div>
+
+                    <div
+                        class="text-sm bg-yellow-50 p-3 rounded text-yellow-800 border border-yellow-200 flex items-start gap-2">
+                        <span class="text-lg">⚠️</span>
+                        <div>
+                            <b>注意：</b> 如果合力不足以克服最大靜摩擦力，點擊模擬後物體仍會保持靜止。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end">
+                    <button onclick="closeModal()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-lg transform hover:-translate-y-0.5 transition">
+                        開始實驗 🚀
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        /**
-         * 物理參數設定
-         */
-        const PHYSICS = {
-            g: 9.8,
-            mass: 10,       // kg
-            mu: 0.3,        // 摩擦係數 (靜=動)
-            timeStep: 1/60  // 秒
-        };
-        
-        // 系統狀態
-        let state = {
-            angle: 30,           // 度
-            appliedForce: 0,     // N
-            showComponents: false,
-            width: 0,
-            height: 0,
-            
-            // 模擬相關
-            isSimulating: false,
-            simX: 0,             // 位移 (沿斜面，米)，0為初始中心
-            velocity: 0,         // m/s
-            
-            // UI 緩存 (用於顯示)
-            lastFriction: 0,
-            lastNetForce: 0,
-            motionState: 'static' // 'static', 'moving_up', 'moving_down'
-        };
+        <!-- 彈出視窗 2: 力學分析詳解 (Analysis Modal) -->
+        <div id="analysis-modal"
+            class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+            <div
+                class="bg-white rounded-xl shadow-2xl max-w-3xl w-full mx-4 p-8 transform transition-transform duration-300 scale-100 relative max-h-[90vh] overflow-y-auto">
+                <button onclick="closeAnalysis()"
+                    class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
 
-        // DOM 元素引用
-        const canvas = document.getElementById('simCanvas');
-        const ctx = canvas.getContext('2d');
-        const els = {
-            angleSlider: document.getElementById('angle-slider'),
-            forceSlider: document.getElementById('force-slider'),
-            btnComponents: document.getElementById('toggle-components'),
-            btnSimulate: document.getElementById('btn-simulate'),
-            btnReset: document.getElementById('btn-reset'),
-            angleVal: document.getElementById('angle-val'),
-            forceVal: document.getElementById('force-val'),
-            modal: document.getElementById('intro-modal'),
-            analysisModal: document.getElementById('analysis-modal'), // 新增引用
-            // 數值顯示
-            uiNormal: document.getElementById('calc-normal'),
-            uiMgSin: document.getElementById('calc-mgsin'),
-            uiFriction: document.getElementById('calc-friction'),
-            uiNet: document.getElementById('calc-net'),
-            uiVel: document.getElementById('calc-velocity'),
-            netDisplay: document.getElementById('net-force-display')
-        };
+                <div class="flex items-center space-x-3 mb-6 border-b pb-4">
+                    <span class="text-3xl">📝</span>
+                    <h2 class="text-2xl font-bold text-slate-800">力學分析詳解 (Mechanical Analysis)</h2>
+                </div>
 
-        // 動畫循環 ID
-        let animationFrameId;
+                <div class="space-y-6 text-slate-700">
 
-        /**
-         * 初始化
-         */
-        function init() {
-            window.addEventListener('resize', resizeCanvas);
-            
-            // Slider 事件
-            els.angleSlider.addEventListener('input', (e) => {
-                state.angle = parseInt(e.target.value);
-                els.angleVal.textContent = state.angle + '°';
-                if (!state.isSimulating) draw(); 
-            });
+                    <!-- 垂直方向 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-blue-700 mb-2 border-l-4 border-blue-500 pl-2">1. 垂直於斜面方向 ⊥
+                        </h3>
+                        <p class="mb-2">物體在此方向沒有位移，因此處於力平衡狀態。受力包括正向力 <span class="math-font">R</span> 與重力的垂直分量。</p>
+                        <div class="formula-box">
+                            <span class="math-font">R</span> - <span class="math-font">mg</span> cos<span
+                                class="math-font">θ</span> = 0
+                            <br>
+                            <span class="text-blue-600 font-bold">∴ <span class="math-font">R</span> = <span
+                                    class="math-font">mg</span> cos<span class="math-font">θ</span></span>
+                        </div>
+                    </section>
 
-            els.forceSlider.addEventListener('input', (e) => {
-                state.appliedForce = parseInt(e.target.value);
-                els.forceVal.textContent = (state.appliedForce > 0 ? '+' : '') + state.appliedForce + ' N';
-                if (!state.isSimulating) draw();
-            });
+                    <!-- 平行方向 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-green-700 mb-2 border-l-4 border-green-500 pl-2">2. 沿斜面方向 ∥
+                        </h3>
+                        <p class="mb-2">這是物體運動的方向。根據牛頓第二定律，合力決定加速度。</p>
+                        <p class="text-sm text-slate-500 mb-2">*(如果物體受到的力 F 沿斜面向上,并且假設向上為正 +)*</p>
+                        <div class="formula-box">
+                            <span class="math-font">F</span> - <span class="math-font">mg</span> sin<span
+                                class="math-font">θ</span> - <span class="math-font">f</span> = <span
+                                class="math-font">ma</span>
+                        </div>
+                        <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
+                            <li><span class="math-font font-bold text-purple-600">F</span> : 施加的外力 (推力或拉力)</li>
+                            <li><span class="math-font font-bold text-red-600">mg sinθ</span> : 重力的下滑分量 (永遠向下)</li>
+                            <li><span class="math-font font-bold text-orange-600">f</span> : 摩擦力 (動摩擦 或 靜摩擦)</li>
+                        </ul>
+                    </section>
 
-            // 按鈕事件
-            els.btnComponents.addEventListener('click', () => {
-                state.showComponents = !state.showComponents;
-                els.btnComponents.classList.toggle('bg-indigo-100');
-                els.btnComponents.classList.toggle('border-indigo-700');
-                draw();
-            });
+                    <!-- 摩擦力討論 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-orange-700 mb-2 border-l-4 border-orange-500 pl-2">3. 關於摩擦力
+                            (Friction)</h3>
+                        <div class="bg-orange-50 p-4 rounded-lg text-sm border border-orange-200">
+                            <p class="mb-2"><b>摩擦力方向：</b> 永遠與物體的相對運動方向（或運動趨勢）相反。</p>
+                        </div>
+                    </section>
 
-            els.btnSimulate.addEventListener('click', toggleSimulation);
-            els.btnReset.addEventListener('click', resetSimulation);
+                </div>
 
-            // 啟動
-            resizeCanvas();
-            animate(); // 啟動主循環
-        }
+                <div class="mt-8 flex justify-center">
+                    <button onclick="closeAnalysis()"
+                        class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-8 py-2 rounded-full font-bold transition">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        /**
-         * 模擬控制
-         */
-        function toggleSimulation() {
-            state.isSimulating = !state.isSimulating;
-            
-            if (state.isSimulating) {
-                els.btnSimulate.innerHTML = '<span>⏸ 暫停模擬</span>';
-                els.btnSimulate.classList.replace('bg-green-600', 'bg-yellow-500');
-                els.btnSimulate.classList.replace('hover:bg-green-700', 'hover:bg-yellow-600');
-                // 鎖定輸入
-                els.angleSlider.disabled = true;
-                els.forceSlider.disabled = true;
-                els.angleSlider.parentElement.classList.add('opacity-50');
-                els.forceSlider.parentElement.classList.add('opacity-50');
-            } else {
-                els.btnSimulate.innerHTML = '<span>▶ 繼續模擬</span>';
-                els.btnSimulate.classList.replace('bg-yellow-500', 'bg-green-600');
-                els.btnSimulate.classList.replace('hover:bg-yellow-600', 'hover:bg-green-700');
-                // 解鎖輸入
+        <script>
+            /**
+             * 物理參數設定
+             */
+            const PHYSICS = {
+                g: 9.8,
+                mass: 10,       // kg
+                mu: 0.3,        // 摩擦係數 (靜=動)
+                timeStep: 1 / 60  // 秒
+            };
+
+            // 系統狀態
+            let state = {
+                angle: 30,           // 度
+                appliedForce: 0,     // N
+                showComponents: false,
+                focusWeight: false,
+                width: 0,
+                height: 0,
+
+                // 模擬相關
+                isSimulating: false,
+                simX: 0,             // 位移 (沿斜面，米)，0為初始中心
+                velocity: 0,         // m/s
+
+                // UI 緩存 (用於顯示)
+                lastFriction: 0,
+                lastNetForce: 0,
+                motionState: 'static' // 'static', 'moving_up', 'moving_down'
+            };
+
+            // DOM 元素引用
+            const canvas = document.getElementById('simCanvas');
+            const ctx = canvas.getContext('2d');
+            const els = {
+                angleSlider: document.getElementById('angle-slider'),
+                forceSlider: document.getElementById('force-slider'),
+                btnComponents: document.getElementById('toggle-components'),
+                btnFocus: document.getElementById('focus-weight'),
+                btnSimulate: document.getElementById('btn-simulate'),
+                btnReset: document.getElementById('btn-reset'),
+                angleVal: document.getElementById('angle-val'),
+                forceVal: document.getElementById('force-val'),
+                modal: document.getElementById('intro-modal'),
+                analysisModal: document.getElementById('analysis-modal'), // 新增引用
+                // 數值顯示
+                uiNormal: document.getElementById('calc-normal'),
+                uiMgSin: document.getElementById('calc-mgsin'),
+                uiFriction: document.getElementById('calc-friction'),
+                uiNet: document.getElementById('calc-net'),
+                uiVel: document.getElementById('calc-velocity'),
+                netDisplay: document.getElementById('net-force-display')
+            };
+
+            // 動畫循環 ID
+            let animationFrameId;
+
+            /**
+             * 初始化
+             */
+            function init() {
+                window.addEventListener('resize', resizeCanvas);
+
+                // Slider 事件
+                els.angleSlider.addEventListener('input', (e) => {
+                    state.angle = parseInt(e.target.value);
+                    els.angleVal.textContent = state.angle + '°';
+                    if (!state.isSimulating) draw();
+                });
+
+                els.forceSlider.addEventListener('input', (e) => {
+                    state.appliedForce = parseInt(e.target.value);
+                    els.forceVal.textContent = (state.appliedForce > 0 ? '+' : '') + state.appliedForce + ' N';
+                    if (!state.isSimulating) draw();
+                });
+
+                // 按鈕事件
+                els.btnComponents.addEventListener('click', () => {
+                    state.showComponents = !state.showComponents;
+                    els.btnComponents.classList.toggle('bg-indigo-100');
+                    els.btnComponents.classList.toggle('border-indigo-700');
+                    draw();
+                });
+
+                els.btnFocus.addEventListener('click', () => {
+                    state.focusWeight = !state.focusWeight;
+                    els.btnFocus.classList.toggle('bg-pink-100');
+                    els.btnFocus.classList.toggle('border-pink-700');
+                    if (!state.isSimulating) draw();
+                });
+
+                els.btnSimulate.addEventListener('click', toggleSimulation);
+                els.btnReset.addEventListener('click', resetSimulation);
+
+                // 啟動
+                resizeCanvas();
+                animate(); // 啟動主循環
+            }
+
+            /**
+             * 模擬控制
+             */
+            function toggleSimulation() {
+                state.isSimulating = !state.isSimulating;
+
+                if (state.isSimulating) {
+                    els.btnSimulate.innerHTML = '<span>⏸ 暫停模擬</span>';
+                    els.btnSimulate.classList.replace('bg-green-600', 'bg-yellow-500');
+                    els.btnSimulate.classList.replace('hover:bg-green-700', 'hover:bg-yellow-600');
+                    // 鎖定輸入
+                    els.angleSlider.disabled = true;
+                    els.forceSlider.disabled = true;
+                    els.angleSlider.parentElement.classList.add('opacity-50');
+                    els.forceSlider.parentElement.classList.add('opacity-50');
+                } else {
+                    els.btnSimulate.innerHTML = '<span>▶ 繼續模擬</span>';
+                    els.btnSimulate.classList.replace('bg-yellow-500', 'bg-green-600');
+                    els.btnSimulate.classList.replace('hover:bg-yellow-600', 'hover:bg-green-700');
+                    // 解鎖輸入
+                    els.angleSlider.disabled = false;
+                    els.forceSlider.disabled = false;
+                    els.angleSlider.parentElement.classList.remove('opacity-50');
+                    els.forceSlider.parentElement.classList.remove('opacity-50');
+                }
+            }
+
+            function resetSimulation() {
+                state.isSimulating = false;
+                state.simX = 0;
+                state.velocity = 0;
+
+                // 重置 UI 按鈕狀態
+                els.btnSimulate.innerHTML = '<span>▶ 開始模擬</span>';
+                els.btnSimulate.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                els.btnSimulate.classList.add('bg-green-600', 'hover:bg-green-700');
+
                 els.angleSlider.disabled = false;
                 els.forceSlider.disabled = false;
                 els.angleSlider.parentElement.classList.remove('opacity-50');
                 els.forceSlider.parentElement.classList.remove('opacity-50');
-            }
-        }
 
-        function resetSimulation() {
-            state.isSimulating = false;
-            state.simX = 0;
-            state.velocity = 0;
-            
-            // 重置 UI 按鈕狀態
-            els.btnSimulate.innerHTML = '<span>▶ 開始模擬</span>';
-            els.btnSimulate.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
-            els.btnSimulate.classList.add('bg-green-600', 'hover:bg-green-700');
-            
-            els.angleSlider.disabled = false;
-            els.forceSlider.disabled = false;
-            els.angleSlider.parentElement.classList.remove('opacity-50');
-            els.forceSlider.parentElement.classList.remove('opacity-50');
-            
-            draw();
-        }
-
-        /**
-         * 物理引擎更新 (每一幀)
-         */
-        function updatePhysics() {
-            if (!state.isSimulating) {
-                // 如果是靜止狀態，仍然要計算靜摩擦力以供顯示
-                calculateStaticForces();
-                return;
+                draw();
             }
 
-            const rad = state.angle * Math.PI / 180;
-            const weight = PHYSICS.mass * PHYSICS.g;
-            const normalForce = weight * Math.cos(rad);
-            const downSlopeGravity = weight * Math.sin(rad); // 指向負方向(假設左下) 或 正方向?
-            // 定義：沿斜面向上為正 X (+)，向下為負 X (-)
-            // 重力分量永遠向下 -> -mg sin(theta)
-            const f_gravity_x = -downSlopeGravity; 
-            
-            // 外力 F (slider值: 正為上, 負為下)
-            const f_app = state.appliedForce;
+            /**
+             * 物理引擎更新 (每一幀)
+             */
+            function updatePhysics() {
+                if (!state.isSimulating) {
+                    // 如果是靜止狀態，仍然要計算靜摩擦力以供顯示
+                    calculateStaticForces();
+                    return;
+                }
 
-            // 摩擦力計算
-            let friction = 0;
-            let netForce = 0;
+                const rad = state.angle * Math.PI / 180;
+                const weight = PHYSICS.mass * PHYSICS.g;
+                const normalForce = weight * Math.cos(rad);
+                const downSlopeGravity = weight * Math.sin(rad); // 指向負方向(假設左下) 或 正方向?
+                // 定義：沿斜面向上為正 X (+)，向下為負 X (-)
+                // 重力分量永遠向下 -> -mg sin(theta)
+                const f_gravity_x = -downSlopeGravity;
 
-            // 動摩擦 (Kinetic Friction)
-            if (Math.abs(state.velocity) > 0.001) {
-                // 有速度時，摩擦力與速度方向相反
-                const f_k = PHYSICS.mu * normalForce;
-                friction = (state.velocity > 0) ? -f_k : f_k;
-                netForce = f_app + f_gravity_x + friction;
-            } 
-            // 靜摩擦判斷 (Static Friction) - 速度極小視為靜止
-            else {
-                state.velocity = 0; // 強制歸零防止微小漂移
-                const drivingForce = f_app + f_gravity_x; // 沒有摩擦時的合力
+                // 外力 F (slider值: 正為上, 負為下)
+                const f_app = state.appliedForce;
+
+                // 摩擦力計算
+                let friction = 0;
+                let netForce = 0;
+
+                // 動摩擦 (Kinetic Friction)
+                if (Math.abs(state.velocity) > 0.001) {
+                    // 有速度時，摩擦力與速度方向相反
+                    const f_k = PHYSICS.mu * normalForce;
+                    friction = (state.velocity > 0) ? -f_k : f_k;
+                    netForce = f_app + f_gravity_x + friction;
+                }
+                // 靜摩擦判斷 (Static Friction) - 速度極小視為靜止
+                else {
+                    state.velocity = 0; // 強制歸零防止微小漂移
+                    const drivingForce = f_app + f_gravity_x; // 沒有摩擦時的合力
+                    const maxStaticFriction = PHYSICS.mu * normalForce;
+
+                    if (Math.abs(drivingForce) <= maxStaticFriction) {
+                        // 靜止，合力為0
+                        friction = -drivingForce;
+                        netForce = 0;
+                    } else {
+                        // 克服靜摩擦，開始移動
+                        // 這裡簡化：一旦動起來，立刻變動摩擦 (方向與 drivingForce 相反)
+                        const f_k = PHYSICS.mu * normalForce;
+                        friction = (drivingForce > 0) ? -f_k : f_k;
+                        netForce = drivingForce + friction;
+                    }
+                }
+
+                // 更新運動狀態 (Euler Integration)
+                const acceleration = netForce / PHYSICS.mass;
+                state.velocity += acceleration * PHYSICS.timeStep;
+                // 將渲染速度調降 (原 50 -> 20) 讓模擬看起來更平滑和緩慢
+                state.simX += state.velocity * PHYSICS.timeStep * 20;
+
+                // 邊界檢查:
+                // 斜面總長 rampLength = Math.min(state.width * 0.8, 800)
+                // 物體從中間(baseDist = rampLength * 0.5)開始
+                // 當 simX 向負方向移動到 -baseDist 時，即到達地面 (origin)
+                const rampLength = Math.min(state.width * 0.7, 800);
+                const baseDist = rampLength * 0.5;
+
+                // 達到頂部
+                if (state.simX > baseDist) {
+                    state.simX = baseDist;
+                    state.velocity = 0;
+                    state.isSimulating = false; // 停止模擬
+                    toggleSimulation(); // 更新UI
+                }
+                // 碰到水平地面 (底部)
+                else if (state.simX < -baseDist) {
+                    state.simX = -baseDist;
+                    state.velocity = 0;
+                    state.isSimulating = false;
+                    toggleSimulation();
+                }
+
+                // 更新 UI 顯示用的緩存變數
+                state.lastFriction = friction;
+                state.lastNetForce = netForce;
+            }
+
+            /**
+             * 靜止狀態下的力計算 (僅供顯示)
+             */
+            function calculateStaticForces() {
+                const rad = state.angle * Math.PI / 180;
+                const weight = PHYSICS.mass * PHYSICS.g;
+                const normalForce = weight * Math.cos(rad);
+                const downSlopeGravity = weight * Math.sin(rad);
+                const f_gravity_x = -downSlopeGravity;
+                const f_app = state.appliedForce;
+
+                const drivingForce = f_app + f_gravity_x;
                 const maxStaticFriction = PHYSICS.mu * normalForce;
 
                 if (Math.abs(drivingForce) <= maxStaticFriction) {
-                    // 靜止，合力為0
-                    friction = -drivingForce;
-                    netForce = 0;
+                    state.lastFriction = -drivingForce;
+                    state.lastNetForce = 0;
                 } else {
-                    // 克服靜摩擦，開始移動
-                    // 這裡簡化：一旦動起來，立刻變動摩擦 (方向與 drivingForce 相反)
                     const f_k = PHYSICS.mu * normalForce;
-                    friction = (drivingForce > 0) ? -f_k : f_k;
-                    netForce = drivingForce + friction;
+                    state.lastFriction = (drivingForce > 0) ? -f_k : f_k;
+                    state.lastNetForce = drivingForce + state.lastFriction;
                 }
             }
 
-            // 更新運動狀態 (Euler Integration)
-            const acceleration = netForce / PHYSICS.mass;
-            state.velocity += acceleration * PHYSICS.timeStep;
-            state.simX += state.velocity * PHYSICS.timeStep * 50; // *50 是為了讓螢幕上的移動明顯一點 (像素/米 的比例)
-
-            // 邊界檢查 (簡單處理：碰到邊緣停止)
-            const limit = 350; // 像素限制
-            if (state.simX > limit) {
-                state.simX = limit;
-                state.velocity = 0;
-                state.isSimulating = false; // 停止模擬
-                toggleSimulation(); // 更新UI
-            } else if (state.simX < -limit) {
-                state.simX = -limit;
-                state.velocity = 0;
-                state.isSimulating = false;
-                toggleSimulation();
+            /**
+             * 主循環
+             */
+            function animate() {
+                updatePhysics();
+                draw();
+                updateUI();
+                animationFrameId = requestAnimationFrame(animate);
             }
 
-            // 更新 UI 顯示用的緩存變數
-            state.lastFriction = friction;
-            state.lastNetForce = netForce;
-        }
+            /**
+             * 更新數值面板
+             */
+            function updateUI() {
+                const rad = state.angle * Math.PI / 180;
+                const weight = PHYSICS.mass * PHYSICS.g;
+                const normal = weight * Math.cos(rad);
+                const mgsin = weight * Math.sin(rad);
 
-        /**
-         * 靜止狀態下的力計算 (僅供顯示)
-         */
-        function calculateStaticForces() {
-            const rad = state.angle * Math.PI / 180;
-            const weight = PHYSICS.mass * PHYSICS.g;
-            const normalForce = weight * Math.cos(rad);
-            const downSlopeGravity = weight * Math.sin(rad);
-            const f_gravity_x = -downSlopeGravity;
-            const f_app = state.appliedForce;
-            
-            const drivingForce = f_app + f_gravity_x;
-            const maxStaticFriction = PHYSICS.mu * normalForce;
+                els.uiNormal.textContent = normal.toFixed(1) + ' N';
+                els.uiMgSin.textContent = mgsin.toFixed(1) + ' N';
 
-            if (Math.abs(drivingForce) <= maxStaticFriction) {
-                state.lastFriction = -drivingForce;
-                state.lastNetForce = 0;
-            } else {
-                const f_k = PHYSICS.mu * normalForce;
-                state.lastFriction = (drivingForce > 0) ? -f_k : f_k;
-                state.lastNetForce = drivingForce + state.lastFriction;
-            }
-        }
+                // 摩擦力
+                const f = state.lastFriction;
+                let fText = Math.abs(f).toFixed(1) + ' N ';
+                if (Math.abs(f) > 0.1) fText += (f > 0 ? '(向上)' : '(向下)');
+                els.uiFriction.textContent = fText;
 
-        /**
-         * 主循環
-         */
-        function animate() {
-            updatePhysics();
-            draw();
-            updateUI();
-            animationFrameId = requestAnimationFrame(animate);
-        }
+                // 合力
+                const net = state.lastNetForce;
+                let netText = Math.abs(net).toFixed(1) + ' N';
+                let netColor = 'text-slate-600';
+                if (Math.abs(net) > 0.1) {
+                    netText += (net > 0 ? ' (加速向上)' : ' (加速向下)');
+                    netColor = net > 0 ? 'text-green-600' : 'text-red-600';
+                } else {
+                    netText += ' (平衡/靜止)';
+                }
+                els.uiNet.textContent = netText;
+                els.netDisplay.className = `flex justify-between font-bold items-center ${netColor}`;
 
-        /**
-         * 更新數值面板
-         */
-        function updateUI() {
-            const rad = state.angle * Math.PI / 180;
-            const weight = PHYSICS.mass * PHYSICS.g;
-            const normal = weight * Math.cos(rad);
-            const mgsin = weight * Math.sin(rad);
+                // 速度
+                // 把像素速度轉回物理速度顯示 (除以比例)
+                // 這裡顯示真實物理速度比較好
+                els.uiVel.textContent = state.velocity.toFixed(2) + ' m/s';
 
-            els.uiNormal.textContent = normal.toFixed(1) + ' N';
-            els.uiMgSin.textContent = mgsin.toFixed(1) + ' N';
-            
-            // 摩擦力
-            const f = state.lastFriction;
-            let fText = Math.abs(f).toFixed(1) + ' N ';
-            if (Math.abs(f) > 0.1) fText += (f > 0 ? '(向上)' : '(向下)');
-            els.uiFriction.textContent = fText;
-
-            // 合力
-            const net = state.lastNetForce;
-            let netText = Math.abs(net).toFixed(1) + ' N';
-            let netColor = 'text-slate-600';
-            if (Math.abs(net) > 0.1) {
-                netText += (net > 0 ? ' (加速向上)' : ' (加速向下)');
-                netColor = net > 0 ? 'text-green-600' : 'text-red-600';
-            } else {
-                netText += ' (平衡/靜止)';
-            }
-            els.uiNet.textContent = netText;
-            els.netDisplay.className = `flex justify-between font-bold items-center ${netColor}`;
-
-            // 速度
-            // 把像素速度轉回物理速度顯示 (除以比例)
-            // 這裡顯示真實物理速度比較好
-            els.uiVel.textContent = state.velocity.toFixed(2) + ' m/s';
-        }
-
-        function resizeCanvas() {
-            state.width = canvas.parentElement.clientWidth;
-            state.height = canvas.parentElement.clientHeight;
-            canvas.width = state.width;
-            canvas.height = state.height;
-            if(!state.isSimulating) draw();
-        }
-
-        // Modal Controls
-        window.showModal = () => {
-            els.modal.classList.remove('hidden');
-            setTimeout(() => els.modal.classList.remove('opacity-0'), 10);
-        };
-        window.closeModal = () => {
-            els.modal.classList.add('opacity-0');
-            setTimeout(() => els.modal.classList.add('hidden'), 300);
-        };
-        // Analysis Modal Controls
-        window.showAnalysis = () => {
-            els.analysisModal.classList.remove('hidden');
-            setTimeout(() => els.analysisModal.classList.remove('opacity-0'), 10);
-        };
-        window.closeAnalysis = () => {
-            els.analysisModal.classList.add('opacity-0');
-            setTimeout(() => els.analysisModal.classList.add('hidden'), 300);
-        };
-
-        /**
-         * 繪圖函數
-         */
-        function draw() {
-            // 清空
-            ctx.clearRect(0, 0, state.width, state.height);
-            
-            const rad = state.angle * Math.PI / 180;
-            
-            // 計算繪圖原點與斜面
-            const originX = state.width * 0.1;
-            const originY = state.height * 0.8;
-            const rampLength = Math.min(state.width * 0.8, 800);
-            
-            const rampEndX = originX + rampLength * Math.cos(rad);
-            const rampEndY = originY - rampLength * Math.sin(rad);
-
-            // 1. 畫斜面
-            ctx.fillStyle = '#e2e8f0';
-            ctx.strokeStyle = '#64748b';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(originX, originY);
-            ctx.lineTo(rampEndX, rampEndY);
-            ctx.lineTo(rampEndX, originY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            // 角度標記
-            ctx.beginPath();
-            ctx.arc(originX, originY, 40, 0, -rad, true);
-            ctx.stroke();
-            // 使用 LaTeX 風格字體
-            ctx.font = 'italic bold 18px "Times New Roman", serif';
-            ctx.fillStyle = '#475569';
-            ctx.fillText('θ', originX + 50, originY - 10);
-
-            // 2. 畫物體
-            const baseDist = rampLength * 0.5; // 初始在中間
-            // simX 是偏移量
-            const currentDist = baseDist + (state.simX / Math.cos(0)); // 簡單映射
-            
-            // 確保物體不會畫出斜面
-            // 這裡 simX 已經限制了，但視覺上再做一次保護
-            
-            const blockX = originX + currentDist * Math.cos(rad) - 25 * Math.sin(rad);
-            const blockY = originY - currentDist * Math.sin(rad) - 25 * Math.cos(rad);
-
-            ctx.save();
-            ctx.translate(blockX, blockY);
-            ctx.rotate(-rad);
-
-            const boxW = 80;
-            const boxH = 50;
-
-            // 物體本體
-            ctx.fillStyle = '#cbd5e1';
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 2;
-            // 稍微加點陰影增加立體感
-            ctx.shadowColor = "rgba(0,0,0,0.1)";
-            ctx.shadowBlur = 10;
-            ctx.fillRect(-boxW/2, -boxH/2, boxW, boxH);
-            ctx.shadowBlur = 0;
-            ctx.strokeRect(-boxW/2, -boxH/2, boxW, boxH);
-            
-            // 質心
-            ctx.fillStyle = 'black';
-            ctx.beginPath();
-            ctx.arc(0, 0, 3, 0, Math.PI*2);
-            ctx.fill();
-            // 標示質量 m
-            ctx.font = 'italic bold 16px "Times New Roman", serif';
-            ctx.fillStyle = '#64748b';
-            ctx.fillText('m', -boxW/2 + 5, -boxH/2 + 20);
-
-            // 3. 畫力向量 (在物體坐標系中)
-            // 準備數據
-            const weight = PHYSICS.mass * PHYSICS.g;
-            const normal = weight * Math.cos(rad);
-            const f_app = state.appliedForce;
-            const f_fric = state.lastFriction;
-            
-            const scale = 1.5; // 向量長度縮放
-            const lw = 3; // 線寬
-
-            // (A) 正向力 R
-            drawArrow(ctx, 0, -boxH/2, 0, -boxH/2 - normal * scale, '#16a34a', 'R', lw, 'right');
-
-            // (B) 外力 F
-            if (Math.abs(f_app) > 1) {
-                const startX = f_app > 0 ? boxW/2 : -boxW/2;
-                const len = f_app * scale;
-                drawArrow(ctx, startX, 0, startX + len, 0, '#9333ea', 'F', lw, 'top');
+                // Legend Opacity Update
+                const legendOpacity = state.focusWeight ? 0.3 : 1;
+                document.getElementById('legend-R').style.opacity = legendOpacity;
+                document.getElementById('legend-F').style.opacity = legendOpacity;
+                document.getElementById('legend-f').style.opacity = legendOpacity;
             }
 
-            // (C) 摩擦力 f (在接觸面)
-            if (Math.abs(f_fric) > 0.5) {
-                const contactY = boxH/2;
-                // 為了不被斜面線遮擋，稍微上移一點點
-                const drawY = contactY - 2; 
-                const len = f_fric * scale;
-                drawArrow(ctx, 0, drawY, len, drawY, '#f97316', 'f', lw, 'bottom');
+            function resizeCanvas() {
+                state.width = canvas.parentElement.clientWidth;
+                state.height = canvas.parentElement.clientHeight;
+                canvas.width = state.width;
+                canvas.height = state.height;
+                if (!state.isSimulating) draw();
             }
 
-            // (D) 重力
-            ctx.restore(); // 回到世界坐標
-            ctx.save();
-            ctx.translate(blockX, blockY); // 只移動不旋轉
+            // Modal Controls
+            window.showModal = () => {
+                els.modal.classList.remove('hidden');
+                setTimeout(() => els.modal.classList.remove('opacity-0'), 10);
+            };
+            window.closeModal = () => {
+                els.modal.classList.add('opacity-0');
+                setTimeout(() => els.modal.classList.add('hidden'), 300);
+            };
+            // Analysis Modal Controls
+            window.showAnalysis = () => {
+                els.analysisModal.classList.remove('hidden');
+                setTimeout(() => els.analysisModal.classList.remove('opacity-0'), 10);
+            };
+            window.closeAnalysis = () => {
+                els.analysisModal.classList.add('opacity-0');
+                setTimeout(() => els.analysisModal.classList.add('hidden'), 300);
+            };
 
-            if (state.showComponents) {
-                ctx.rotate(-rad); // 轉到斜面方向
-                
-                const mg_sin = weight * Math.sin(rad);
-                const mg_cos = weight * Math.cos(rad);
-                
-                const l_sin = mg_sin * scale;
-                const l_cos = mg_cos * scale;
+            /**
+             * 繪圖函數
+             */
+            function draw() {
+                // 清空
+                ctx.clearRect(0, 0, state.width, state.height);
 
-                ctx.strokeStyle = '#ef4444';
-                ctx.setLineDash([4, 2]);
-                ctx.lineWidth = 1;
+                const rad = state.angle * Math.PI / 180;
 
-                // mg cos theta
-                drawArrow(ctx, 0, 0, 0, l_cos, '#ef4444', '', 1, 'none', true);
-                // mg sin theta (向下坡)
-                drawArrow(ctx, 0, 0, -l_sin, 0, '#ef4444', '', 1, 'none', true);
+                // 計算繪圖原點與斜面
+                // 將斜面往右移 (0.1 -> 0.25) 並適當縮減一點長度確保不超出右邊界
+                const originX = state.width * 0.25;
+                const originY = state.height * 0.8;
+                const rampLength = Math.min(state.width * 0.7, 800);
 
-                // 矩形
+                const rampEndX = originX + rampLength * Math.cos(rad);
+                const rampEndY = originY - rampLength * Math.sin(rad);
+
+                // 取得物體位置，用以支援放大功能
+                const baseDist = rampLength * 0.5;
+                const currentDist = baseDist + (state.simX / Math.cos(0));
+                const blockX = originX + currentDist * Math.cos(rad) - 25 * Math.sin(rad);
+                const blockY = originY - currentDist * Math.sin(rad) - 25 * Math.cos(rad);
+
+                ctx.save();
+                if (state.focusWeight) {
+                    const centerX = state.width / 2;
+                    // 將視覺中心上移，保證長長的重力向量和下面的圖解不被切斷
+                    const centerY = (state.height / 2) - 100;
+                    const scaleFactor = 2.5;
+                    ctx.translate(centerX, centerY);
+                    ctx.scale(scaleFactor, scaleFactor);
+                    ctx.translate(-blockX, -blockY);
+                }
+
+                // 1. 畫斜面
+                ctx.fillStyle = '#e2e8f0';
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(0, l_cos);
-                ctx.lineTo(-l_sin, l_cos);
-                ctx.lineTo(-l_sin, 0);
+                ctx.moveTo(originX, originY);
+                ctx.lineTo(rampEndX, rampEndY);
+                ctx.lineTo(rampEndX, originY);
+                ctx.closePath();
+                ctx.fill();
                 ctx.stroke();
 
-                // 標籤
-                ctx.setLineDash([]);
-                ctx.fillStyle = '#b91c1c';
-                ctx.font = 'italic bold 14px "Times New Roman", serif';
-                ctx.textAlign = 'left';
-                ctx.fillText('mg cosθ', 5, l_cos/2);
-                ctx.textAlign = 'center';
-                ctx.fillText('mg sinθ', -l_sin/2, 15);
+                // 角度標記
+                ctx.beginPath();
+                ctx.arc(originX, originY, 40, 0, -rad, true);
+                ctx.stroke();
+                // 使用 LaTeX 風格字體
+                ctx.font = 'italic bold 18px "Times New Roman", serif';
+                ctx.fillStyle = '#475569';
+                ctx.fillText('θ', originX + 50, originY - 10);
 
-                ctx.rotate(rad);
-            }
+                // 2. 畫物體
+                ctx.save();
+                ctx.translate(blockX, blockY);
+                ctx.rotate(-rad);
 
-            // 總重力 mg
-            // 如果顯示分量，將原始重力變淡 (透明度 0.3)
-            const mgColor = state.showComponents ? 'rgba(220, 38, 38, 0.3)' : '#dc2626';
-            drawArrow(ctx, 0, 0, 0, weight * scale, mgColor, 'mg', lw, 'left');
+                const boxW = 80;
+                const boxH = 50;
 
-            ctx.restore();
+                // 物體本體
+                ctx.fillStyle = '#cbd5e1';
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 2;
+                // 稍微加點陰影增加立體感
+                ctx.shadowColor = "rgba(0,0,0,0.1)";
+                ctx.shadowBlur = 10;
+                ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
+                ctx.shadowBlur = 0;
+                ctx.strokeRect(-boxW / 2, -boxH / 2, boxW, boxH);
 
-            // [新增] 如果開啟分解模式，在左下角顯示公式
-            if (state.showComponents) {
-                drawComponentFormulas(ctx, state.height);
-            }
-        }
+                // 質心
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(0, 0, 3, 0, Math.PI * 2);
+                ctx.fill();
+                // 標示質量 m
+                ctx.font = 'italic bold 16px "Times New Roman", serif';
+                ctx.fillStyle = '#64748b';
+                ctx.fillText('m', -boxW / 2 + 5, -boxH / 2 + 20);
 
-        /**
-         * [新增] 繪製重力分量公式面板
-         */
-        function drawComponentFormulas(ctx, canvasHeight) {
-            ctx.save();
-            
-            const padding = 15;
-            const boxWidth = 220;
-            const boxHeight = 85;
-            const x = 20;
-            const y = canvasHeight - boxHeight - 20; // 定位在左下角
+                // 3. 畫力向量 (在物體坐標系中)
+                // 準備數據
+                const weight = PHYSICS.mass * PHYSICS.g;
+                const normal = weight * Math.cos(rad);
+                const f_app = state.appliedForce;
+                const f_fric = state.lastFriction;
 
-            // 背景框 (圓角矩形)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.strokeStyle = '#cbd5e1';
-            ctx.lineWidth = 1;
-            ctx.shadowColor = "rgba(0,0,0,0.1)";
-            ctx.shadowBlur = 10;
-            
-            ctx.beginPath();
-            // 兼容性處理：如果瀏覽器支援 roundRect 就用，否則用 rect
-            if (ctx.roundRect) {
-                ctx.roundRect(x, y, boxWidth, boxHeight, 12);
-            } else {
-                ctx.rect(x, y, boxWidth, boxHeight);
-            }
-            ctx.fill();
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+                const scale = 1.5; // 向量長度縮放
+                const lw = 3; // 線寬
 
-            // 標題
-            ctx.font = 'bold 14px "Noto Sans TC", sans-serif';
-            ctx.fillStyle = '#475569';
-            ctx.textAlign = 'left';
-            ctx.fillText("重力分量 (Components)：", x + padding, y + 25);
+                // 決定非重力的力向量透明度
+                const opacity = state.focusWeight ? '0.2' : '1.0';
 
-            // 公式顯示
-            ctx.font = 'italic bold 18px "Times New Roman", serif'; // LaTeX 風格
-            ctx.fillStyle = '#ef4444'; // 與分量箭頭顏色一致 (紅色)
-            
-            // 沿斜面 (Parallel)
-            // 使用 F_parallel 符號或直接寫 mg sin
-            ctx.fillText("F∥ = mg sinθ", x + padding, y + 50);
-            
-            // 垂直斜面 (Perpendicular)
-            ctx.fillText("F⊥ = mg cosθ", x + padding, y + 75);
+                // (A) 正向力 R
+                drawArrow(ctx, 0, -boxH / 2, 0, -boxH / 2 - normal * scale, `rgba(22, 163, 74, ${opacity})`, 'R', lw, 'right');
 
-            // 中文註解 (淡色)
-            ctx.font = '12px "Noto Sans TC", sans-serif';
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText("(沿斜面)", x + padding + 120, y + 50);
-            ctx.fillText("(垂直斜面)", x + padding + 120, y + 75);
-
-            ctx.restore();
-        }
-
-        /**
-         * 繪製箭頭工具
-         */
-        function drawArrow(ctx, x1, y1, x2, y2, color, label, width, labelPos = 'auto', isDashed = false) {
-            const headlen = 10;
-            const angle = Math.atan2(y2 - y1, x2 - x1);
-
-            ctx.save();
-            ctx.strokeStyle = color;
-            ctx.fillStyle = color;
-            ctx.lineWidth = width;
-            if(isDashed) ctx.setLineDash([4, 2]);
-
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-
-            ctx.setLineDash([]);
-            ctx.beginPath();
-            ctx.moveTo(x2, y2);
-            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
-            ctx.closePath();
-            ctx.fill();
-
-            if (label && labelPos !== 'none') {
-                ctx.font = 'italic bold 18px "Times New Roman", serif'; // LaTeX style
-                
-                let textX = x2;
-                let textY = y2;
-                const offset = 22;
-
-                if (labelPos === 'auto') {
-                    textX = x2 + offset * Math.cos(angle);
-                    textY = y2 + offset * Math.sin(angle);
-                } else if (labelPos === 'top') {
-                    textY -= offset;
-                } else if (labelPos === 'bottom') {
-                    textY += offset;
-                } else if (labelPos === 'left') {
-                    textX -= offset;
-                } else if (labelPos === 'right') {
-                    textX += offset;
+                // (B) 外力 F
+                if (Math.abs(f_app) > 1) {
+                    const startX = f_app > 0 ? boxW / 2 : -boxW / 2;
+                    const len = f_app * scale;
+                    drawArrow(ctx, startX, 0, startX + len, 0, `rgba(147, 51, 234, ${opacity})`, 'F', lw, 'top');
                 }
 
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // 描邊確保可讀性
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.strokeText(label, textX, textY);
-                ctx.fillText(label, textX, textY);
-            }
-            ctx.restore();
-        }
+                // (C) 摩擦力 f (在接觸面)
+                if (Math.abs(f_fric) > 0.5) {
+                    const contactY = boxH / 2;
+                    // 為了不被斜面線遮擋，稍微上移一點點
+                    const drawY = contactY - 2;
+                    const len = f_fric * scale;
+                    drawArrow(ctx, 0, drawY, len, drawY, `rgba(249, 115, 22, ${opacity})`, 'f', lw, 'bottom');
+                }
 
-        window.onload = init;
-    </script>
+                // (D) 重力
+                ctx.restore(); // 回到世界坐標
+                ctx.save();
+                ctx.translate(blockX, blockY); // 只移動不旋轉
+
+                if (state.showComponents) {
+                    ctx.rotate(-rad); // 轉到斜面方向
+
+                    const mg_sin = weight * Math.sin(rad);
+                    const mg_cos = weight * Math.cos(rad);
+
+                    const l_sin = mg_sin * scale;
+                    const l_cos = mg_cos * scale;
+
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.setLineDash([4, 2]);
+                    ctx.lineWidth = 1;
+
+                    // mg cos theta
+                    drawArrow(ctx, 0, 0, 0, l_cos, '#ef4444', '', 1, 'none', true);
+                    // mg sin theta (向下坡)
+                    drawArrow(ctx, 0, 0, -l_sin, 0, '#ef4444', '', 1, 'none', true);
+
+                    // 矩形
+                    ctx.beginPath();
+                    ctx.moveTo(0, l_cos);
+                    ctx.lineTo(-l_sin, l_cos);
+                    ctx.lineTo(-l_sin, 0);
+                    ctx.stroke();
+
+                    // 標籤
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#b91c1c';
+                    ctx.font = 'italic bold 14px "Times New Roman", serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('mg cosθ', 5, l_cos / 2);
+                    ctx.textAlign = 'center';
+                    ctx.fillText('mg sinθ', -l_sin / 2, 15);
+
+                    // 在物體處畫出 θ (重力與法線的夾角)
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 40, Math.PI / 2, Math.PI / 2 + rad, false);
+                    ctx.strokeStyle = '#475569';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#475569';
+                    ctx.font = 'italic bold 16px "Times New Roman", serif';
+                    const textAngle = Math.PI / 2 + rad / 2;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('θ', 50 * Math.cos(textAngle), 50 * Math.sin(textAngle));
+
+                    ctx.rotate(rad);
+                }
+
+                // 總重力 mg
+                // 如果顯示分量，將原始重力變淡 (透明度 0.3)
+                const mgColor = state.showComponents ? 'rgba(220, 38, 38, 0.3)' : '#dc2626';
+                drawArrow(ctx, 0, 0, 0, weight * scale, mgColor, 'mg', lw, 'left');
+
+                ctx.restore();
+
+                // 結束全局鏡頭縮放
+                ctx.restore();
+
+                // [新增] 如果開啟分解模式，在左下角顯示公式 (保持在屏幕上不受縮放影響)
+                if (state.showComponents) {
+                    drawComponentFormulas(ctx, state.height);
+                }
+            }
+
+            /**
+             * [新增] 繪製重力分量公式面板
+             */
+            function drawComponentFormulas(ctx, canvasHeight) {
+                ctx.save();
+
+                const padding = 15;
+                const boxWidth = 220;
+                const boxHeight = 85;
+                const x = 20;
+                const y = canvasHeight - boxHeight - 20; // 定位在左下角
+
+                // 背景框 (圓角矩形)
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 1;
+                ctx.shadowColor = "rgba(0,0,0,0.1)";
+                ctx.shadowBlur = 10;
+
+                ctx.beginPath();
+                // 兼容性處理：如果瀏覽器支援 roundRect 就用，否則用 rect
+                if (ctx.roundRect) {
+                    ctx.roundRect(x, y, boxWidth, boxHeight, 12);
+                } else {
+                    ctx.rect(x, y, boxWidth, boxHeight);
+                }
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // 標題
+                ctx.font = 'bold 14px "Noto Sans TC", sans-serif';
+                ctx.fillStyle = '#475569';
+                ctx.textAlign = 'left';
+                ctx.fillText("重力分量 (Components)：", x + padding, y + 25);
+
+                // 公式顯示
+                ctx.font = 'italic bold 18px "Times New Roman", serif'; // LaTeX 風格
+                ctx.fillStyle = '#ef4444'; // 與分量箭頭顏色一致 (紅色)
+
+                // 沿斜面 (Parallel)
+                // 使用 F_parallel 符號或直接寫 mg sin
+                ctx.fillText("F∥ = mg sinθ", x + padding, y + 50);
+
+                // 垂直斜面 (Perpendicular)
+                ctx.fillText("F⊥ = mg cosθ", x + padding, y + 75);
+
+                // 中文註解 (淡色)
+                ctx.font = '12px "Noto Sans TC", sans-serif';
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText("(沿斜面)", x + padding + 120, y + 50);
+                ctx.fillText("(垂直斜面)", x + padding + 120, y + 75);
+
+                ctx.restore();
+            }
+
+            /**
+             * 繪製箭頭工具
+             */
+            function drawArrow(ctx, x1, y1, x2, y2, color, label, width, labelPos = 'auto', isDashed = false) {
+                const headlen = 10;
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = width;
+                if (isDashed) ctx.setLineDash([4, 2]);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+
+                if (label && labelPos !== 'none') {
+                    ctx.font = 'italic bold 18px "Times New Roman", serif'; // LaTeX style
+
+                    let textX = x2;
+                    let textY = y2;
+                    const offset = 22;
+
+                    if (labelPos === 'auto') {
+                        textX = x2 + offset * Math.cos(angle);
+                        textY = y2 + offset * Math.sin(angle);
+                    } else if (labelPos === 'top') {
+                        textY -= offset;
+                    } else if (labelPos === 'bottom') {
+                        textY += offset;
+                    } else if (labelPos === 'left') {
+                        textX -= offset;
+                    } else if (labelPos === 'right') {
+                        textX += offset;
+                    }
+
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // 描邊確保可讀性
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.strokeText(label, textX, textY);
+                    ctx.fillText(label, textX, textY);
+                }
+                ctx.restore();
+            }
+
+            window.onload = init;
+        </script>
+    </div>
 </body>
+
 </html>

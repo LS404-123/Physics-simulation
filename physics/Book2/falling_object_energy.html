@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>能量圖線模擬 - 自由下落與勻速下落</title>
+
+    <!-- 引入 MathJax 處理 LaTeX 公式 -->
+    <!-- 優化 MathJax 載入，僅在需要時渲染且延遲執行 -->
+    <script>
+        window.MathJax = {
+            startup: {
+                typeset: false // 關閉自動在首頁加載時掃描整個 DOM
+            },
+            tex: { inlineMath: [['\\(', '\\)']] }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6" defer></script>
+    <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+
+    <style>
+        :root {
+            --ke-color: #ff4757;
+            --pe-color: #1e90ff;
+            --me-color: #2ed573;
+            --text-color: #2f3542;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            /* 柔和的背景，突顯 Glassmorphism 效果 */
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        /* iPad Air 大小限制與置中 */
+        .app-wrapper {
+            width: 1100px;
+            height: 700px;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        /* Bento Box Grid Layout */
+        .bento-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            grid-template-rows: 80px 1fr;
+            gap: 20px;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Glassmorphism 核心樣式 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Header 區域 */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        select,
+        button {
+            padding: 10px 16px;
+            font-size: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            color: #2d3436;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+            backdrop-filter: blur(5px);
+            font-weight: 600;
+        }
+
+        select:hover,
+        button:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        button.primary {
+            background: rgba(83, 82, 237, 0.8);
+            color: white;
+            border: 1px solid rgba(83, 82, 237, 0.5);
+        }
+
+        button.primary:hover {
+            background: rgba(83, 82, 237, 1);
+        }
+
+        /* 圖表區 */
+        .graph-area {
+            grid-column: 2;
+            grid-row: 2;
+            /* 以前是 1 */
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .color-box {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+        }
+
+        canvas {
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* 模擬區 */
+        .simulation-area {
+            grid-column: 1;
+            grid-row: 2;
+            /* 以前是 2 */
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ruler {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            bottom: 50px;
+            width: 30px;
+            border-right: 2px solid rgba(45, 52, 54, 0.3);
+        }
+
+        .tick {
+            position: absolute;
+            right: 0;
+            width: 12px;
+            border-top: 2px solid rgba(45, 52, 54, 0.5);
+        }
+
+        .tick-text {
+            position: absolute;
+            right: 18px;
+            top: -9px;
+            font-size: 13px;
+            color: #2d3436;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background: repeating-linear-gradient(45deg,
+                    rgba(99, 110, 114, 0.8),
+                    rgba(99, 110, 114, 0.8) 10px,
+                    rgba(45, 52, 54, 0.8) 10px,
+                    rgba(45, 52, 54, 0.8) 20px);
+            border-top: 2px solid #2d3436;
+        }
+
+        #object {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #ffc312, #f39c12);
+            left: calc(50% - 20px);
+            top: 20px;
+            /* Offset */
+            border-radius: 50%;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            transition: border-radius 0.3s, background 0.3s;
+            z-index: 2;
+            cursor: grab;
+            /* 新增指標提示可拖曳 */
+        }
+
+        #object:active {
+            cursor: grabbing;
+        }
+
+        #rope {
+            position: absolute;
+            width: 3px;
+            background: linear-gradient(to bottom, #dcdde1, #7f8fa6);
+            left: calc(50% - 1.5px);
+            top: 0;
+            display: none;
+            z-index: 1;
+            box-shadow: inset 1px 0 2px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Pop Out Screen (Modal) */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            border-radius: 20px;
+            opacity: 1;
+            transition: opacity 0.4s ease;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 30px 40px;
+            border-radius: 16px;
+            max-width: 600px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            line-height: 1.6;
+            color: #2c3e50;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #1e272e;
+            border-bottom: 2px solid #5352ed;
+            padding-bottom: 10px;
+        }
+
+        .modal-content ul {
+            padding-left: 20px;
+        }
+
+        .modal-content li {
+            margin-bottom: 15px;
+        }
+
+        .close-modal-btn {
+            display: block;
+            width: 100%;
+            margin-top: 25px;
+            padding: 12px;
+            background: #5352ed;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .close-modal-btn:hover {
+            background: #3742fa;
+        }
+
+        .hidden {
+            pointer-events: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-wrapper">
+        <!-- Pop Out Screen -->
+        <div id="infoModal" class="modal-overlay">
+            <div class="modal-content">
+                <h2>📊 模擬原理說明</h2>
+                <p>本模擬展示物體在<strong>兩種不同下落情況下</strong>的能量轉換：</p>
+                <ul>
+                    <li>
+                        <strong>自由下落 (Free Fall) ➔ E-t 圖</strong>：<br>
+                        僅有重力作功，機械能守恆，即 \( ME = KE + PE = \text{常數} \)。<br>
+                        由於 \( v = gt \)，動能 \( KE = \frac{1}{2}m(gt)^2 \propto t^2
+                        \)，因此動能與時間的圖線呈<strong>向上彎曲的拋物線</strong>。
+                    </li>
+                    <li>
+                        <strong>自由下落 (Free Fall) ➔ E-h 圖</strong>：<br>
+                        同樣是自由空氣下落，沒有其他阻力作用，機械能守恆 (\( ME = \text{常數} \))。<br>
+                        如果我們從<strong>下落距離 \( h \) (位移) 的角度觀察</strong>：重力勢能 \( PE = mgh \)
+                        隨下落距離增加而減少，呈現<strong>線性下降的直綫</strong>。而動能，因此也是一條<strong>線性上升的直綫</strong>。這突顯了勢能與動能隨下落距離發生線性轉化的規律。
+                    </li>
+                </ul>
+                <button id="closeModalBtn" class="close-modal-btn">明白！開始探索</button>
+            </div>
+        </div>
+
+        <div class="bento-container">
+            <!-- Header -->
+            <div class="glass-panel header">
+                <h2>能量線圖</h2>
+                <div class="controls">
+                    <button id="infoBtn">📖 原理</button>
+                    <select id="mode">
+                        <option value="freefall_t">1. 自由下落 ➔ 能量-時間圖</option>
+                        <option value="freefall_h">2. 自由下落 ➔ 能量-位移圖 (下落距離)</option>
+                    </select>
+                    <div style="display:flex; align-items:center; gap:5px; margin-left: 5px;">
+                        <span style="font-size: 14px; font-weight: bold; color: var(--text-color);">密度:</span>
+                        <input type="range" id="stepSlider" min="2" max="25" value="10"
+                            style="width: 80px; cursor: pointer;">
+                    </div>
+                    <button id="startBtn" class="primary">▶ 開始模擬</button>
+                    <button id="resetBtn">↺ 重置</button>
+                </div>
+            </div>
+
+            <!-- Graph Area -->
+            <div class="glass-panel graph-area">
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="color-box" style="background: var(--pe-color);"></div> 重力勢能 (PE)
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: var(--ke-color);"></div> 動能 (KE)
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: var(--me-color);"></div> 機械能 (ME)
+                    </div>
+                </div>
+                <canvas id="graphCanvas"></canvas>
+            </div>
+
+            <!-- Simulation Area -->
+            <div class="glass-panel simulation-area">
+                <div class="ruler" id="ruler"></div>
+                <div id="rope"></div>
+                <div id="object"></div>
+                <div id="ground"></div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const object = document.getElementById('object');
+        const rope = document.getElementById('rope');
+        const modeSelect = document.getElementById('mode');
+        const ruler = document.getElementById('ruler');
+        const startBtn = document.getElementById('startBtn');
+
+        // Modal controls
+        const modal = document.getElementById('infoModal');
+        document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('infoBtn').addEventListener('click', () => {
+            modal.classList.remove('hidden');
+            // 當點擊顯示原理時，才命令 MathJax 渲染指定的 Modal
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([modal]);
+            }
+        });
+
+        // 首次加載就渲染一次彈出視窗
+        window.addEventListener('load', () => {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([modal]);
+            }
+        });
+
+        // 物理常數
+        const m = 1;      // 質量 (kg)
+        const g = 10;     // 計算簡化，採用 g=10 m/s^2 以免數字過於瑣碎
+        const H = 50;     // 初始高度 (m)
+        const MAX_E = 600; // 固定 Y 軸最大能量 (J)
+
+        // 預留空間參數
+        const offsetTop = 20;
+        const offsetBottom = 50; // ground height
+        const simHeight = 620 - offsetBottom - offsetTop; // 可用作模擬的高度區間 (模擬區總高度約為 620-80 = 540)
+        let pxPerM = 1; // 將在 initSize 中計算
+
+        let isRunning = false;
+        let animationId;
+
+        let t = 0;
+        let currentY = H;
+        let currentV = 0;
+        let dataE = [];
+
+        function initSize() {
+            const simPanel = document.querySelector('.simulation-area');
+            const h = simPanel.clientHeight;
+            pxPerM = (h - offsetTop - offsetBottom) / H;
+
+            // 建立高度標尺
+            ruler.innerHTML = '';
+            for (let h_val = 0; h_val <= H; h_val += 10) {
+                let tick = document.createElement('div');
+                tick.className = 'tick';
+                tick.style.bottom = (h_val * pxPerM + offsetBottom) + 'px';
+                let label = document.createElement('div');
+                label.className = 'tick-text';
+                label.innerText = h_val + 'm';
+                tick.appendChild(label);
+                ruler.appendChild(tick);
+            }
+
+            // 初始化畫布大小
+            const graphPanel = document.querySelector('.graph-area');
+            canvas.width = graphPanel.clientWidth - 40;
+            canvas.height = graphPanel.clientHeight - 60; // 減去 legend 和 padding
+        }
+
+        function reset() {
+            cancelAnimationFrame(animationId);
+            isRunning = false;
+            t = 0;
+            currentY = H;
+            currentV = 0;
+            dataE = [];
+
+            object.style.top = offsetTop + 'px';
+            rope.style.display = "none";
+
+            // 自由落體用圓球
+            object.style.borderRadius = "50%";
+            object.style.background = "radial-gradient(circle at 30% 30%, #ffc312, #f39c12)";
+
+            startBtn.innerText = "▶ 開始模擬";
+            startBtn.classList.add('primary');
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const padL = 60, padB = 50, padT = 30, padR = 30;
+            const gW = w - padL - padR, gH = h - padT - padB;
+
+            // 背景網格 (只畫橫線以免雜亂)
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(0,0,0,0.05)";
+            for (let e = 0; e <= MAX_E; e += 100) {
+                let y = h - padB - (e / MAX_E) * gH;
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(w - padR, y);
+                ctx.stroke();
+            }
+
+            // 軸線
+            ctx.beginPath();
+            ctx.strokeStyle = "#2d3436";
+            ctx.lineWidth = 2;
+            // Y軸
+            ctx.moveTo(padL, padT - 10);
+            ctx.lineTo(padL, h - padB);
+            // X軸
+            ctx.lineTo(w - padR + 10, h - padB);
+            ctx.stroke();
+
+            ctx.font = "14px 'Segoe UI', Arial, sans-serif";
+            ctx.fillStyle = "#2d3436";
+
+            // Y 軸標籤與刻度數值
+            ctx.save();
+            ctx.translate(15, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = "center";
+            ctx.font = "bold 15px sans-serif";
+            ctx.fillText("能量 (焦耳)", 0, 0);
+            ctx.restore();
+
+            ctx.textAlign = "right";
+            for (let e = 0; e <= MAX_E; e += 100) {
+                let y = h - padB - (e / MAX_E) * gH;
+                // 避免數字重疊，微調位置
+                ctx.fillText(e, padL - 10, y + 5);
+            }
+
+            // X 軸標籤與刻度數值 (固定數值)
+            ctx.textAlign = "center";
+            let mode = modeSelect.value;
+            let maxX;
+
+            if (mode === 'freefall_t') {
+                // E-t圖：固定 0 到 4s
+                maxX = 4;
+                ctx.font = "bold 15px sans-serif";
+                ctx.fillText("時間 (秒)", padL + gW / 2, h - 10);
+                ctx.font = "14px sans-serif";
+                for (let timeVal = 0; timeVal <= maxX; timeVal += 1) {
+                    let x = padL + (timeVal / maxX) * gW;
+                    ctx.fillText(timeVal, x, h - padB + 20);
+                    // 畫小刻度
+                    ctx.beginPath();
+                    ctx.moveTo(x, h - padB);
+                    ctx.lineTo(x, h - padB + 5);
+                    ctx.stroke();
+                }
+            } else {
+                // E-h圖：固定 0 到 50m
+                maxX = 50;
+                ctx.font = "bold 15px sans-serif";
+                ctx.fillText("下落距離 (米)", padL + gW / 2, h - 10);
+                ctx.font = "14px sans-serif";
+                for (let heightVal = 0; heightVal <= maxX; heightVal += 10) {
+                    let x = padL + (heightVal / maxX) * gW;
+                    ctx.fillText(heightVal, x, h - padB + 20);
+                    // 畫小刻度
+                    ctx.beginPath();
+                    ctx.moveTo(x, h - padB);
+                    ctx.lineTo(x, h - padB + 5);
+                    ctx.stroke();
+                }
+            }
+
+            // 找出各個區間的 X 座標來畫背景和步驟標示
+            let numSteps = parseInt(document.getElementById('stepSlider').value);
+            let stepX = [];
+            let stepSizeX;
+
+            if (mode === 'freefall_h') {
+                stepSizeX = H / numSteps;
+                for (let i = 0; i <= numSteps; i++) stepX.push(i * stepSizeX);
+            } else if (mode === 'freefall_t') {
+                let totalT = Math.sqrt(2 * H / g);
+                stepSizeX = totalT / numSteps;
+                for (let i = 0; i <= numSteps; i++) stepX.push(i * stepSizeX);
+            }
+
+            // 畫垂直區塊背景與虛線來區別每個 Step
+            for (let i = 0; i < stepX.length; i++) {
+                let rx = padL + (stepX[i] / maxX) * gW;
+                if (rx <= padL || rx > padL + gW) continue;
+
+                if (i < stepX.length - 1) {
+                    let rxNext = padL + (stepX[i + 1] / maxX) * gW;
+                    if (rxNext > padL + gW) rxNext = padL + gW;
+                    ctx.fillStyle = i % 2 === 0 ? "rgba(0,0,0,0.02)" : "rgba(0,0,0,0.06)";
+                    ctx.fillRect(rx, padT, rxNext - rx, h - padB - padT);
+                }
+
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = "rgba(0,0,0,0.15)";
+                ctx.lineWidth = 1;
+                ctx.moveTo(rx, padT);
+                ctx.lineTo(rx, h - padB);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]); // 恢復實線
+
+            // 繪畫數據線段與漸層端點
+            function plotLine(key, colorOdd, colorEven) {
+                if (dataE.length === 0) return;
+
+                // 用 alternating colors 畫線段
+                ctx.lineWidth = 4;
+                ctx.lineJoin = "round";
+                for (let i = 0; i < dataE.length - 1; i++) {
+                    let pt1 = dataE[i];
+                    let pt2 = dataE[i + 1];
+
+                    let stepIndex = Math.floor((pt1.x + 0.0001) / stepSizeX); // 加上微小容差以防浮點誤差
+                    ctx.strokeStyle = (stepIndex % 2 === 0) ? colorEven : colorOdd;
+
+                    let px1 = padL + (pt1.x / maxX) * gW;
+                    let py1 = (h - padB) - (pt1[key] / MAX_E) * gH;
+                    let px2 = padL + (pt2.x / maxX) * gW;
+                    let py2 = (h - padB) - (pt2[key] / MAX_E) * gH;
+
+                    ctx.beginPath();
+                    ctx.moveTo(px1, py1);
+                    ctx.lineTo(px2, py2);
+                    ctx.stroke();
+                }
+            }
+
+            plotLine('KE', "rgba(255, 71, 87, 0.9)", "rgba(180, 20, 30, 0.9)");
+            plotLine('PE', "rgba(30, 144, 255, 0.9)", "rgba(10, 80, 180, 0.9)");
+            plotLine('ME', "rgba(46, 213, 115, 0.9)", "rgba(46, 213, 115, 0.9)");
+        }
+
+        let lastFrameTime = 0;
+        function update(timeParam) {
+            if (!isRunning) return;
+            if (lastFrameTime === 0) lastFrameTime = timeParam;
+            const dt = Math.min((timeParam - lastFrameTime) / 1000, 0.03); // 限制 dt 避免卡頓產生過大躍進
+            lastFrameTime = timeParam;
+
+            let mode = modeSelect.value;
+            let KE = 0;
+            let PE = 0;
+
+            if (mode === 'freefall_t') {
+                currentV += g * dt;
+                currentY -= currentV * dt;
+                t += dt;
+
+                if (currentY <= 0) { currentY = 0; isRunning = false; startBtn.innerText = "↺ 已到達地面"; startBtn.classList.remove('primary'); }
+
+                KE = 0.5 * m * currentV * currentV;
+                PE = m * g * currentY;
+                dataE.push({ x: t, KE: KE, PE: PE, ME: KE + PE });
+
+            } else {
+                // freefall_h (E-h圖，變成位移，從0到50)
+                currentV += g * dt;
+                currentY -= currentV * dt;
+                t += dt;
+
+                if (currentY <= 0) { currentY = 0; isRunning = false; startBtn.innerText = "↺ 已到達地面"; startBtn.classList.remove('primary'); }
+
+                KE = 0.5 * m * currentV * currentV;
+                PE = m * g * currentY;
+                let displacement = H - currentY;
+                // x 軸繪製下降位移 (由 0 至 50)
+                dataE.push({ x: displacement, KE: KE, PE: PE, ME: KE + PE });
+            }
+
+            // 更新視覺
+            let visualTop = offsetTop + (H - currentY) * pxPerM;
+            object.style.top = visualTop + 'px';
+            // rope is no longer used
+
+            drawGraph();
+
+            if (isRunning) animationId = requestAnimationFrame(update);
+        }
+
+        modeSelect.addEventListener('change', reset);
+        document.getElementById('stepSlider').addEventListener('input', () => {
+            if (!isRunning) reset();
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                // 若已經到達地面，自動幫用戶重置再開始
+                if (currentY <= 0) reset();
+
+                // 寫入場景初始的第一點
+                if (dataE.length === 0) {
+                    let initKE = 0;
+                    let initPE = m * g * H;
+                    let initX = 0; // E-h (位移) 與 E-t 的起點都是 0
+                    dataE.push({ x: initX, KE: initKE, PE: initPE, ME: initKE + initPE });
+                }
+                isRunning = true;
+                startBtn.innerText = "⏸ 暫停";
+                startBtn.classList.remove('primary');
+                lastFrameTime = 0;
+                requestAnimationFrame(update);
+            } else {
+                isRunning = false;
+                startBtn.innerText = "▶ 繼續";
+                startBtn.classList.add('primary');
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', reset);
+
+        // 新增：拖曳功能 (Drag and Drop)
+        let isDragging = false;
+
+        function startDrag(e) {
+            if (isRunning) return; // 模擬進行中不可拖曳
+            isDragging = true;
+            object.style.transition = "none"; // 拖曳時關閉過渡動畫以保證流暢
+            e.preventDefault();
+        }
+
+        function doDrag(e) {
+            if (!isDragging || isRunning) return;
+
+            // 取得游標或觸控點位置
+            let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            // 計算在 simulation-area 內的相對 Y 座標
+            let simAreaRect = document.querySelector('.simulation-area').getBoundingClientRect();
+            let relativeY = clientY - simAreaRect.top;
+
+            // 限制拖曳範圍在 offsetTop 到地面的位置
+            let minTop = offsetTop;
+            let maxTop = simAreaRect.height - offsetBottom; // 即 height 0 的位置
+
+            let newTop = relativeY - 20; // 減去球半徑 20 讓滑鼠在球中心
+            if (newTop < minTop) newTop = minTop;
+            if (newTop > maxTop) newTop = maxTop;
+
+            // 反向計算 raw 高度
+            let rawY = H - (newTop - offsetTop) / pxPerM;
+            if (rawY < 0) rawY = 0;
+            if (rawY > H) rawY = H;
+
+            let numSteps = parseInt(document.getElementById('stepSlider').value);
+
+            // 根據模式進行不同的吸附 (Snapping)
+            if (modeSelect.value === 'freefall_h') {
+                // 等高度 (位移) 吸附
+                let stepSizeY = H / numSteps;
+                currentY = Math.round(rawY / stepSizeY) * stepSizeY;
+            } else {
+                // 等時間吸附
+                let totalT = Math.sqrt(2 * H / g);
+                let stepSizeT = totalT / numSteps;
+                let rawT = Math.sqrt(2 * (H - rawY) / g);
+                let snapT = Math.round(rawT / stepSizeT) * stepSizeT;
+                currentY = H - 0.5 * g * snapT * snapT;
+            }
+            if (currentY < 0) currentY = 0;
+            if (currentY > H) currentY = H;
+
+            // 重新計算 newTop 以確實符合 snap 後的高度
+            newTop = offsetTop + (H - currentY) * pxPerM;
+            object.style.top = newTop + 'px';
+
+            // 更新能量數據 (拖曳時速度視為 0)
+            currentV = 0;
+            let KE = 0;
+            let PE = m * g * currentY;
+
+            // 清空舊數據，重繪對應拉動位置的圖線
+            dataE = [];
+
+            if (modeSelect.value === 'freefall_h') {
+                // E-h圖：x 軸對應位移 (下落距離)，從 0 開始到當前的拉動位移 (H - currentY)
+                let currentDisplacement = H - currentY;
+                for (let d = 0; d <= currentDisplacement; d += 0.5) {
+                    // 當位移為 d 時，實際高度為 H - d
+                    let calcPE = m * g * (H - d);
+                    let totalE = m * g * H;
+                    let calcKE = totalE - calcPE;
+                    dataE.push({ x: d, KE: calcKE, PE: calcPE, ME: totalE });
+                }
+            } else if (modeSelect.value === 'freefall_t') {
+                // E-t圖：需要知道現在拉動的高度對應了多少時間
+                // 根據位移公式 H - currentY = 1/2 * g * t^2 
+                let dragTime = Math.sqrt(2 * (H - currentY) / g);
+
+                // 從 0 到拉動對應的時間，畫出拋物線
+                for (let timeStep = 0; timeStep <= dragTime; timeStep += 0.05) {
+                    let v = g * timeStep;
+                    let y = H - 0.5 * g * timeStep * timeStep;
+                    let calcKE = 0.5 * m * v * v;
+                    let calcPE = m * g * y;
+                    dataE.push({ x: timeStep, KE: calcKE, PE: calcPE, ME: calcKE + calcPE });
+                }
+                // 確保包含精確的最後一點
+                if (dataE.length === 0 || dataE[dataE.length - 1].x < dragTime) {
+                    let v = g * dragTime;
+                    let calcKE = 0.5 * m * v * v;
+                    let calcPE = m * g * currentY;
+                    dataE.push({ x: dragTime, KE: calcKE, PE: calcPE, ME: calcKE + calcPE });
+                }
+                t = dragTime; // 更新系統時間參數
+            }
+
+            drawGraph();
+        }
+
+        function stopDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            object.style.transition = "border-radius 0.3s, background 0.3s"; // 恢復原本的 transition
+        }
+
+        // 綁定滑鼠與觸控事件至 object 以及 document
+        object.addEventListener('mousedown', startDrag);
+        object.addEventListener('touchstart', startDrag, { passive: false });
+
+        document.addEventListener('mousemove', doDrag);
+        document.addEventListener('touchmove', doDrag, { passive: false });
+
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+
+        // 初始化
+        setTimeout(() => {
+            initSize();
+            reset();
+        }, 100);
+    </script>
+</body>
+
+</html>

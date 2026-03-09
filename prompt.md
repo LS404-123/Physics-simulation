@@ -6,14 +6,13 @@
  
 <目標>希望透過html的互動模擬，讓學生操控模擬，瞭解不同條件下的物理規律<目標>
 
-<任務>寫一個顯示兩個物體的牛頓第二定律<任務>
+<任務>寫一個顯示物體下落時能量-時間和能量 - 位移綫圖的模擬<任務>
  
 <要求>
 1. 網頁以html, css, javascript寫成，不要使用任何框架。
-2. 兩個物體的質量和施加在物體上的力可以變化。
-3. 顯示物體的加速度和移動方向在物體的上方。
-4. 將兩個物體的運動分別上下放在兩個不同的視窗。
-5. 開始模擬後，物體會按照給定的恆力移動。
+2. set two modes, one is free fall, the other is man falling with rope so it falls in steady speed。
+3. the first mode show E - t graph, the second mode show E - h graph。
+4. 開始模擬後，物體會開始移動。
 <要求>
 
 <通用要求>
