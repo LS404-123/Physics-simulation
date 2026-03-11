@@ -90,12 +90,14 @@
 
         .top-row {
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
         }
 
         .bottom-row {
             display: flex;
-            justify-content: flex-end;
+            justify-content: flex-start;
         }
 
         /* Glassmorphism 基礎風格 */
@@ -178,7 +180,6 @@
         .energy-segment {
             height: 100%;
             width: 0%;
-            transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -187,6 +188,7 @@
             color: #000;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
             white-space: nowrap;
+            overflow: hidden;
         }
 
         #ke-bar {
@@ -331,23 +333,23 @@
                 <h1 class="modal-title">重返大氣層：物理原理探索</h1>
 
                 <div class="modal-text">
-                    太空船從軌道返回地球時，必須克服巨大的<b>機械能 (Mechanical Energy)</b>。這是一個極端的能量轉換過程。
+                    太空船從軌道返回地球時，必須克服巨大的<b>機械能</b>。這是一個極端的能量轉換過程。
                 </div>
 
                 <div class="modal-text">
-                    <b>1. 空氣阻力模型 (Air Resistance)</b><br>
-                    隨高度 $h$ 下降，大氣密度 $\rho$ 呈指數級增加。阻力 $D$ 計算公式為：
+                    <b>1. 恆定大氣摩擦力模型</b><br>
+                    為了簡化物理模型且強調 $W = f \cdot s$ 的概念，我們假設太空船進入大氣層邊界（100km 以下）後，受到一恆定的大氣摩擦阻力 $f$。
                     <div class="formula-box">
-                        $$D = \frac{1}{2} \rho(h) v^2 C_d A$$
+                        $$W_{f} = f \cdot s$$
                     </div>
-                    其中 $\rho(h) = \rho_0 e^{-h/H_{scale}}$，$H_{scale} \approx 8500\text{m}$ 為大氣標高。
+                    其中 $s$ 為在大氣層中經過的距離，摩擦力所作的負功會持續且穩定地轉化為熱能。
                 </div>
 
                 <div class="modal-text">
-                    <b>2. 能量守恆與轉換 (Energy Conservation)</b><br>
+                    <b>2. 能量守恆與轉換</b><br>
                     初始狀態具有極高的重力位能與動能。當阻力作負功時，機械能轉化為熱能：
                     <div class="formula-box">
-                        $$E_{total} = K.E. + P.E. + W_{drag}$$
+                        $$E_{總} = K.E. + P.E. + W_{阻力}$$
                     </div>
                 </div>
 
@@ -360,8 +362,8 @@
         <div class="bento-grid">
             <div class="top-row">
                 <!-- 左側控制模塊 -->
-                <div class="glass-box" style="width: 300px;">
-                    <div class="box-title">控制中心 Control</div>
+                <div class="glass-box" style="width: 260px;">
+                    <div class="box-title">控制中心</div>
                     <div class="stat-row">
                         <span class="stat-label">初始高度</span>
                         <span class="stat-value">400,000 <span class="unit">m</span></span>
@@ -378,33 +380,26 @@
                     <button id="startBtn">啟動重返序列</button>
                     <button id="resetBtn" style="display:none; background:#333; color:#fff;">系統重置</button>
                     <div id="status-badge" class="status-badge" style="margin-top:10px;">系統待命</div>
+                </div>
 
-                    <!-- 數值顯示整合至此 (取代 Telemetry 防止遮擋) -->
-                    <div style="border-top: 1px solid var(--glass-border); margin-top: 15px; padding-top: 15px;">
-                        <div class="stat-row"><span class="stat-label">高度:</span><span id="txt-alt"
-                                class="stat-value">400,000</span></div>
-                        <div class="stat-row"><span class="stat-label">速度:</span><span id="txt-vel"
-                                class="stat-value">0</span></div>
+                <!-- 頂部能量分析 - 移至右下角 -->
+                <div class="energy-section">
+                    <div class="glass-box">
+                        <div class="box-title">能量守恆動態分析</div>
+                        <div class="energy-bar-wrap">
+                            <div id="ke-bar" class="energy-segment">動能</div>
+                            <div id="pe-bar" class="energy-segment">位能</div>
+                            <div id="heat-bar" class="energy-segment" style="color:#fff">熱能</div>
+                        </div>
+                        <div
+                            style="display:flex; justify-content: space-between; margin-top:10px; font-size:0.75rem; color:var(--text-dim);">
+                            <span id="txt-total-e">系統能量平衡: 0.00 GJ</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="bottom-row">
-                <!-- 底部能量分析 - 移至右下角 -->
-                <div class="energy-section">
-                    <div class="glass-box">
-                        <div class="box-title">能量守恆動態分析 Analysis</div>
-                        <div class="energy-bar-wrap">
-                            <div id="ke-bar" class="energy-segment">動能 KE</div>
-                            <div id="pe-bar" class="energy-segment">位能 GPE</div>
-                            <div id="heat-bar" class="energy-segment" style="color:#fff">熱能</div>
-                        </div>
-                        <div
-                            style="display:flex; justify-content: space-between; margin-top:10px; font-size:0.75rem; color:var(--text-dim);">
-                            <span id="txt-total-e">總能量: 0.00 GJ</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -419,13 +414,11 @@
 
         // 物理常數與配置
         const G = 9.81;
-        const RHO_0 = 1.225;
-        const H_SCALE = 12000;       // 擴大大氣規模
-        const DRAG_COEF = 1.4;
-        const AREA = 4.5;
         const MASS = 4200;
         const DT = 0.04;
         const SIM_SPEED = 6;         // 減慢模擬速度 (原 20)
+        const CONSTANT_FRICTION = 164000; // 恆定空氣摩擦力 (N)，足以在抵達地面前消耗多數動能
+        const ATMOSPHERE_BOUNDARY = 100000; // 大氣層邊界高度 (m)
 
         const INITIAL_ALT = 400000;
         const INITIAL_VEL = 0;       // 從靜止下落
@@ -433,24 +426,31 @@
         let state = {
             h: INITIAL_ALT,
             v: INITIAL_VEL,
-            wDrag: 0,
             running: false,
             totalE: 0,
             glow: 0
         };
 
         function getEnergy() {
-            const ke = 0.5 * MASS * state.v * state.v;
             const pe = MASS * G * state.h;
-            return { ke, pe, heat: state.wDrag };
+
+            // 1. 先算熱能: W = f * s
+            let heat = 0;
+            if (state.h < ATMOSPHERE_BOUNDARY) {
+                heat = CONSTANT_FRICTION * (ATMOSPHERE_BOUNDARY - state.h);
+            }
+
+            // 2. 算動能: 利用能量守恆餘額 KE = Total - PE - Heat
+            // 這樣可以保證能量條永遠是滿的，不會有計算誤差產生的縫隙
+            const ke = state.totalE - pe - heat;
+
+            return { ke, pe, heat };
         }
 
-        state.totalE = getEnergy().ke + getEnergy().pe;
+        state.totalE = (0.5 * MASS * state.v * state.v) + (MASS * G * state.h);
 
         // UI 引用
         const el = {
-            alt: document.getElementById('txt-alt'),
-            vel: document.getElementById('txt-vel'),
             total: document.getElementById('txt-total-e'),
             keBar: document.getElementById('ke-bar'),
             peBar: document.getElementById('pe-bar'),
@@ -465,11 +465,7 @@
             const e = getEnergy();
             const total = state.totalE;
 
-            el.alt.textContent = Math.max(0, state.h).toLocaleString(undefined, { maximumFractionDigits: 0 });
-            el.vel.textContent = state.v.toLocaleString(undefined, { maximumFractionDigits: 1 });
-
-            const rho = RHO_0 * Math.exp(-state.h / H_SCALE);
-            const drag = 0.5 * rho * state.v * state.v * DRAG_COEF * AREA;
+            const drag = (state.h <= ATMOSPHERE_BOUNDARY) ? CONSTANT_FRICTION : 0;
             const hRate = (drag * state.v) / 1000;
 
             // 能量條比例防止文字重疊
@@ -481,9 +477,14 @@
             el.peBar.style.width = peP + "%";
             el.heatBar.style.width = heatP + "%";
 
-            el.keBar.textContent = keP > 10 ? "動能" : "";
-            el.peBar.textContent = peP > 10 ? "位能" : "";
-            el.heatBar.textContent = heatP > 10 ? "熱能" : "";
+            // 文字漸進式淡入，防止突然的文字跳出
+            el.keBar.textContent = "動能";
+            el.peBar.textContent = "位能";
+            el.heatBar.textContent = "熱能";
+
+            el.keBar.style.color = `rgba(0, 0, 0, ${Math.max(0, Math.min(1, (keP - 5) / 5))})`;
+            el.peBar.style.color = `rgba(0, 0, 0, ${Math.max(0, Math.min(1, (peP - 5) / 5))})`;
+            el.heatBar.style.color = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, (heatP - 5) / 5))})`;
 
             el.total.textContent = `系統能量平衡: ${((e.ke + e.pe + e.heat) / 1e9).toFixed(3)} GJ`;
 
@@ -503,16 +504,46 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 背景地球與大氣
+            const groundY = 80 + 450;
+            const atmY = 80 + (1 - 100000 / INITIAL_ALT) * 450;
+
+            // 大氣層漸層區塊
+            const atmGrad = ctx.createLinearGradient(0, atmY, 0, groundY);
+            atmGrad.addColorStop(0, 'rgba(0, 150, 255, 0.02)');
+            atmGrad.addColorStop(0.5, 'rgba(0, 150, 255, 0.1)');
+            atmGrad.addColorStop(1, 'rgba(0, 150, 255, 0.25)');
+            ctx.fillStyle = atmGrad;
+            ctx.fillRect(0, atmY, canvas.width, groundY - atmY);
+
+            // 大氣層邊界線
             ctx.beginPath();
-            const grad = ctx.createRadialGradient(canvas.width / 2, 1100, 200, canvas.width / 2, 1100, 950);
-            grad.addColorStop(0, '#001a33');
-            grad.addColorStop(0.4, '#004d99');
-            grad.addColorStop(0.8, '#00d2ff');
-            grad.addColorStop(1, 'rgba(0, 210, 255, 0)'); // 擴大大氣視覺效果
-            ctx.fillStyle = grad;
-            ctx.arc(canvas.width / 2, 1100, 1000, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.setLineDash([8, 8]);
+            ctx.moveTo(0, atmY);
+            ctx.lineTo(canvas.width, atmY);
+            ctx.strokeStyle = 'rgba(0, 210, 255, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 邊界線文字標籤
+            ctx.fillStyle = 'rgba(0, 210, 255, 0.9)';
+            ctx.font = '13px var(--font-main)';
+            ctx.textAlign = 'left';
+            ctx.fillText('太空與大氣層邊界 (100km)', canvas.width / 2 + 50, atmY - 12);
+
+            // 畫地面
+            ctx.fillStyle = '#151515';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 地面文字標籤
+            ctx.fillStyle = '#888';
+            ctx.fillText('地表 (0km)', canvas.width / 2 + 50, groundY + 22);
 
             // 太空船位置映射
             const drawY = 80 + (1 - state.h / INITIAL_ALT) * 450;
@@ -562,15 +593,21 @@
         function loop() {
             if (state.running) {
                 for (let i = 0; i < SIM_SPEED; i++) {
-                    const rho = RHO_0 * Math.exp(-state.h / H_SCALE);
-                    const drag = 0.5 * rho * state.v * state.v * DRAG_COEF * AREA;
+                    let drag = 0;
+                    if (state.h <= ATMOSPHERE_BOUNDARY && state.v > 0) {
+                        drag = CONSTANT_FRICTION;
+                        // 若摩擦力造成的減速會使得速度反向(小於0)，則限制阻力
+                        let possibleNewV = state.v + (G - drag / MASS) * DT;
+                        if (possibleNewV < 0) {
+                            drag = MASS * (G + state.v / DT);
+                        }
+                    }
 
                     const accel = G - (drag / MASS);
                     const ds = state.v * DT;
 
                     state.h -= ds;
                     state.v += accel * DT;
-                    state.wDrag += drag * ds;
 
                     // 發光系數
                     const targetGlow = Math.min(1.0, (drag * state.v) / 3e7);
@@ -604,7 +641,6 @@
         el.resetBtn.onclick = () => {
             state.h = INITIAL_ALT;
             state.v = INITIAL_VEL;
-            state.wDrag = 0;
             state.running = false;
             state.glow = 0;
             el.startBtn.style.display = 'block';

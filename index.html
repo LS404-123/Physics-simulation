@@ -9,6 +9,7 @@
         :root {
             --primary-color: #2c3e50;
             --accent-color: #3498db;
+            --sub-accent: #85c1e9;
             --bg-color: #f4f7f6;
             --card-bg: #ffffff;
             --text-color: #333333;
@@ -22,7 +23,6 @@
             color: var(--text-color);
             line-height: 1.6;
             display: flex;
-            /* 讓 Footer 保持在底部 */
             flex-direction: column;
             min-height: 100vh;
         }
@@ -48,26 +48,117 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
             flex: 1;
-            /* 撐開內容區域 */
             width: 100%;
             box-sizing: border-box;
         }
 
-        .book-section {
-            margin-bottom: 3rem;
+        /* Collapsible book sections */
+        .book-details {
+            background: var(--card-bg);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
             animation: fadeIn 0.5s ease-in;
         }
 
-        .book-title {
-            border-bottom: 3px solid var(--accent-color);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+        .book-details[open] {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .book-summary {
+            background: white;
+            padding: 15px 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
             color: var(--primary-color);
-            font-size: 1.8rem;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid var(--accent-color);
+            transition: background-color 0.2s;
+        }
+
+        .book-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .book-summary:hover {
+            background: #f8fbfc;
+        }
+
+        .book-summary::after {
+            content: "▼";
+            font-size: 1rem;
+            color: var(--accent-color);
+            transition: transform 0.3s ease;
+        }
+
+        .book-details[open]>.book-summary::after {
+            transform: rotate(180deg);
+        }
+
+        .book-details[open]>.book-summary {
+            border-bottom: 1px solid #eee;
+        }
+
+        .book-content {
+            padding: 20px;
+            background: #fafcfd;
+        }
+
+        /* Subtopic sections */
+        .subtopic-details {
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background: white;
+            overflow: hidden;
+        }
+
+        .subtopic-summary {
+            font-size: 1.2rem;
+            padding: 10px 15px;
+            border-left: 4px solid var(--sub-accent);
+            color: var(--primary-color);
+            background: white;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .subtopic-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .subtopic-summary:hover {
+            background: #fdfefe;
+        }
+
+        .subtopic-summary::after {
+            content: "▼";
+            font-size: 0.9rem;
+            color: var(--sub-accent);
+            transition: transform 0.3s ease;
+        }
+
+        .subtopic-details[open]>.subtopic-summary::after {
+            transform: rotate(180deg);
+        }
+
+        .subtopic-content {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
         }
 
         .simulation-grid {
@@ -84,7 +175,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
             display: flex;
             flex-direction: column;
-            border-left: 5px solid var(--accent-color);
+            border: 1px solid #eee;
         }
 
         .sim-card:hover {
@@ -93,7 +184,7 @@
         }
 
         .card-image {
-            height: 200px;
+            height: 180px;
             width: 100%;
             background-color: #e0e6ed;
             overflow: hidden;
@@ -121,11 +212,11 @@
             margin-top: 0;
             margin-bottom: 10px;
             color: var(--primary-color);
-            font-size: 1.3rem;
+            font-size: 1.15rem;
         }
 
         .card-content p {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #666;
             margin: 0;
             line-height: 1.5;
@@ -146,11 +237,34 @@
             text-decoration: none;
             border-radius: 4px;
             font-weight: bold;
+            font-size: 0.9rem;
             transition: background-color 0.2s;
         }
 
         .btn:hover {
             background-color: #2980b9;
+        }
+
+        .expand-controls {
+            margin-bottom: 15px;
+            text-align: right;
+        }
+
+        .expand-controls button {
+            background: none;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .expand-controls button:hover {
+            background: var(--accent-color);
+            color: white;
         }
 
         footer {
@@ -183,7 +297,13 @@
     </header>
 
     <div class="container" id="app-container">
-        <p style="text-align:center; color:#666;">載入中...</p>
+        <div class="expand-controls">
+            <button onclick="toggleAll(true)">展開全部</button>
+            <button onclick="toggleAll(false)">折疊全部</button>
+        </div>
+        <div id="library-content">
+            <p style="text-align:center; color:#666;">載入中...</p>
+        </div>
     </div>
 
     <footer>
@@ -191,209 +311,137 @@
     </footer>
 
     <script>
-        // 1. 設定預設圖片 (當找不到圖片時顯示)
         const DEFAULT_IMAGE = "https://placehold.co/600x400/e0e6ed/2c3e50?text=Physics+Sim";
 
-        // 2. 資料庫
         const libraryData = [
             {
                 category: "第一冊：熱與氣體",
-                items: [
+                subtopics: [
                     {
-                        title: "布朗運動",
-                        desc: "花粉粒子在水中被其他隨機運動的粒子碰撞",
-                        link: "physics/Book1/Brownian_motion.html",
-                        image: "screenshot/book1/brownian_motion.png"
-                    },
-                    {
-                        title: "氣體模擬",
-                        desc: "模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。",
-                        link: "physics/Book1/kinetic_theory.html",
-                        image: "screenshot/book1/gas_simulation.png"
+                        name: "1.1 熱學與氣體動力論",
+                        items: [
+                            { title: "布朗運動", desc: "花粉粒子在水中被其他隨機運動的粒子碰撞", link: "physics/Book1/Brownian_motion.html", image: "screenshot/book1/brownian_motion.png" },
+                            { title: "氣體模擬", desc: "模擬展示了氣體在一個固定體積的容器内的壓强和溫度的關係。", link: "physics/Book1/kinetic_theory.html", image: "screenshot/book1/gas_simulation.png" }
+                        ]
                     }
                 ]
             },
             {
                 category: "第二冊：力與運動",
-                items: [
+                subtopics: [
                     {
-                        title: "位移和平均速率",
-                        desc: "物體的位移只會被物體的開始位置和最後位置決定。",
-                        link: "physics/Book2/displacement_avg_velocity.html",
-                        image: "screenshot/book2/velocity_displacement.png"
+                        name: "2.1 運動學",
+                        items: [
+                            { title: "位移和平均速率", desc: "物體的位移只會被物體的開始位置和最後位置決定。", link: "physics/Book2/displacement_avg_velocity.html", image: "screenshot/book2/velocity_displacement.png" },
+                            { title: "運動線圖", desc: "在不同運動下，運動線圖會怎樣記錄物體的運動？", link: "physics/Book2/motion_graph.html", image: "screenshot/book2/motion_graph.png" },
+                            { title: "勻加速度下降", desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。", link: "physics/Book2/free_falling.html", image: "screenshot/book2/free_falling.png" }
+                        ]
                     },
                     {
-                        title: "運動線圖",
-                        desc: "在不同運動下，運動線圖會怎樣記錄物體的運動？",
-                        link: "physics/Book2/motion_graph.html",
-                        image: "screenshot/book2/motion_graph.png"
+                        name: "2.2 牛頓三大運動定律",
+                        items: [
+                            { title: "伽利略慣性思想實驗", desc: "當我們將一個物體從斜坡向下釋放到平面，他會一直走下去嗎？", link: "physics/Book2/galileo_interia.html", image: "screenshot/book2/galileo_interia.png" },
+                            { title: "牛頓第二定律", desc: "當我們施加力到物體上，物體的運動會受什麽改變？", link: "physics/Book2/Newton_2nd_law.html", image: "screenshot/book2/Newton_2nd_law.png" },
+                            { title: "彈簧秤的讀數", desc: "彈簧秤到底是怎樣量度物體的重量？", link: "physics/Book2/spring_balance.html", image: "screenshot/book2/spring_balance.png" },
+                            { title: "在電梯内的表觀重量", desc: "我們可以在電梯内體驗無重力狀態嗎？", link: "physics/Book2/apparent_weight.html", image: "screenshot/book2/apparent_weight.png" },
+                            { title: "摩擦力", desc: "就摩擦力的體現", link: "physics/Book2/friction.html", image: "screenshot/book2/friction.png" },
+                            { title: "合力計算", desc: "我們會將一個物體所受的力分解為垂直和平行，然後找出合力", link: "physics/Book2/planar_net_force.html", image: "screenshot/book2/planar_net_force.png" },
+                            { title: "斜坡上的力分解", desc: "當物體在斜坡上的時候，物體的淨力應該怎麽找出？", link: "physics/Book2/box_on_slope.html", image: "screenshot/book2/box_on_slope.png" },
+                            { title: "力學分析", desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。", link: "physics/Book2/two_box_force_analysis.html", image: "screenshot/book2/two_body_force_simulation.png" }
+                        ]
                     },
                     {
-                        title: "勻加速度下降",
-                        desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。",
-                        link: "physics/Book2/free_falling.html",
-                        image: "screenshot/book2/free_falling.png"
+                        name: "2.3 力矩與平衡",
+                        items: [
+                            { title: "門的力矩", desc: "你懂開門嗎？", link: "physics/Book2/door_torque.html", image: "screenshot/book2/door_torque.png" },
+                            { title: "力臂", desc: "簡單的力臂", link: "physics/Book2/moment_arm.html", image: "screenshot/book2/moment_arm.png" },
+                            { title: "力矩分析", desc: "模擬一個受到多個力旋轉的木棍。", link: "physics/Book2/torque.html", image: "screenshot/book2/torque.png" }
+                        ]
                     },
                     {
-                        title: "伽利略慣性思想實驗",
-                        desc: "當我們將一個物體從斜坡向下釋放到平面，他會一直走下去嗎？",
-                        link: "physics/Book2/galileo_interia.html",
-                        image: "screenshot/book2/galileo_interia.png"
-                    },
-                    {
-                        title: "牛頓第二定律",
-                        desc: "當我們施加力到物體上，物體的運動會受什麽改變？",
-                        link: "physics/Book2/Newton_2nd_law.html",
-                        image: "screenshot/book2/Newton_2nd_law.png"
-                    },
-                    {
-                        title: "彈簧秤的讀數",
-                        desc: "彈簧秤到底是怎樣量度物體的重量？",
-                        link: "physics/Book2/spring_balance.html",
-                        image: "screenshot/book2/spring_balance.png"
-                    },
-                    {
-                        title: "在電梯内的表觀重量",
-                        desc: "我們可以在電梯内體驗無重力狀態嗎？",
-                        link: "physics/Book2/apparent_weight.html",
-                        image: "screenshot/book2/apparent_weight.png"
-                    },
-                    {
-                        title: "摩擦力",
-                        desc: "就摩擦力的體現",
-                        link: "physics/Book2/friction.html",
-                        image: "screenshot/book2/friction.png"
-                    },
-                    {
-                        title: "合力計算",
-                        desc: "我們會將一個物體所受的力分解為垂直和平行，然後找出合力",
-                        link: "physics/Book2/planar_net_force.html",
-                        image: "screenshot/book2/planar_net_force.png"
-                    },
-                    {
-                        title: "斜坡上的力分解",
-                        desc: "當物體在斜坡上的時候，物體的淨力應該怎麽找出？",
-                        link: "physics/Book2/box_on_slope.html",
-                        image: "screenshot/book2/box_on_slope.png"
-                    },
-                    {
-                        title: "力學分析",
-                        desc: "我們會將兩個相連的物體簡化為一整個，將内力消去。",
-                        link: "physics/Book2/two_box_force_analysis.html",
-                        image: "screenshot/book2/two_body_force_simulation.png"
-                    },
-                    {
-                        title: "門的力矩",
-                        desc: "你懂開門嗎？",
-                        link: "physics/Book2/door_torque.html",
-                        image: "screenshot/book2/door_torque.png"
-                    },
-                    {
-                        title: "力臂",
-                        desc: "簡單的力臂",
-                        link: "physics/Book2/moment_arm.html",
-                        image: "screenshot/book2/moment_arm.png"
-                    },
-                    {
-                        title: "力矩分析",
-                        desc: "模擬一個受到多個力旋轉的木棍。",
-                        link: "physics/Book2/torque.html",
-                        image: "screenshot/book2/torque.png"
-                    },
-                    {
-                        title: "重力勢能的改變",
-                        desc: "無窮的能量？",
-                        link: "physics/Book2/change_of_GPE.html",
-                        image: "screenshot/book2/change_of_GPE.png"
-                    },
-                    {
-                        title: "單擺能量守恆",
-                        desc: "小心睡著",
-                        link: "physics/Book2/pendulum_enegry.html",
-                        image: "screenshot/book2/pendulum_enegry.png"
-                    },
-                    {
-                        title: "過山車能量守恆",
-                        desc: "衝啊！",
-                        link: "physics/Book2/roller_coaster.html",
-                        image: "screenshot/book2/roller_coaster.png"
-                    },
-                    {
-                        title: "彈跳能量守恆",
-                        desc: "You Jump, I Jump",
-                        link: "physics/Book2/bungee_jump_energy.html",
-                        image: "screenshot/book2/bungee_jump_energy.png"
-                    },
-                    {
-                        title: "自由落體能量線圖",
-                        desc: "自由落體能量線圖",
-                        link: "physics/Book2/falling_object_energy.html",
-                        image: "screenshot/book2/falling_object_energy.png"
-                    },
+                        name: "2.4 功與能量",
+                        items: [
+                            { title: "重力勢能的改變", desc: "無窮的能量？", link: "physics/Book2/change_of_GPE.html", image: "screenshot/book2/change_of_GPE.png" },
+                            { title: "單擺能量守恆", desc: "小心睡著", link: "physics/Book2/pendulum_enegry.html", image: "screenshot/book2/pendulum_enegry.png" },
+                            { title: "過山車能量守恆", desc: "衝啊！", link: "physics/Book2/roller_coaster.html", image: "screenshot/book2/roller_coaster.png" },
+                            { title: "彈跳能量守恆", desc: "You Jump, I Jump", link: "physics/Book2/bungee_jump_energy.html", image: "screenshot/book2/bungee_jump_energy.png" },
+                            { title: "自由落體能量線圖", desc: "自由落體能量線圖", link: "physics/Book2/falling_object_energy.html", image: "screenshot/book2/falling_object_energy.png" },
+                            { title: "太空船重返大氣層", desc: "Houston, We Have A Problem.", link: "physics/Book2/spacecraft_reentry.html", image: "screenshot/book2/spacecraft_reentry.png" }
+                        ]
+                    }
                 ]
             },
             {
                 category: "困難問題模擬",
-                items: [
+                subtopics: [
                     {
-                        title: "維持平衡",
-                        desc: "數和繩子",
-                        link: "physics/advanced_Q_simulation/torque_Q.html",
-                        image: "screenshot/advanced_Q_simulation/torque_Q.png"
-                    },
-                    {
-                        title: "能量守恆",
-                        desc: "能量變變變～",
-                        link: "physics/advanced_Q_simulation/energy_conservation_Q1.html",
-                        image: "screenshot/advanced_Q_simulation/energy_conservation_Q1.png"
+                        name: "進階題型",
+                        items: [
+                            { title: "維持平衡", desc: "數和繩子", link: "physics/advanced_Q_simulation/torque_Q.html", image: "screenshot/advanced_Q_simulation/torque_Q.png" },
+                            { title: "能量守恆", desc: "能量變變變～", link: "physics/advanced_Q_simulation/energy_conservation_Q1.html", image: "screenshot/advanced_Q_simulation/energy_conservation_Q1.png" }
+                        ]
                     }
                 ]
             }
         ];
 
-        // 3. 渲染功能
+        function toggleAll(expand) {
+            document.querySelectorAll('details').forEach(details => {
+                if (expand) {
+                    details.setAttribute('open', '');
+                } else {
+                    details.removeAttribute('open');
+                }
+            });
+        }
+
         function renderLibrary() {
             try {
-                const container = document.getElementById('app-container');
+                const container = document.getElementById('library-content');
                 if (!container) return;
 
-                // 使用 map 來產生 HTML，確保使用反引號 `
-                container.innerHTML = libraryData.map(section => `
-                    <div class="book-section">
-                        <h2 class="book-title">${section.category}</h2>
-                        <div class="simulation-grid">
-                            ${section.items.map(item => {
+                container.innerHTML = libraryData.map((section, bIndex) => `
+                    <details class="book-details" ${bIndex === 0 ? 'open' : ''}>
+                        <summary class="book-summary">${section.category}</summary>
+                        <div class="book-content">
+                            ${section.subtopics.map((sub, sIndex) => `
+                                <details class="subtopic-details" open>
+                                    <summary class="subtopic-summary">${sub.name}</summary>
+                                    <div class="subtopic-content">
+                                        <div class="simulation-grid">
+                                            ${sub.items.map(item => {
                     const imageUrl = item.image ? item.image : DEFAULT_IMAGE;
                     return `
-                                    <div class="sim-card">
-                                        <div class="card-image">
-                                            <img src="${imageUrl}" 
-                                                 alt="${item.title}" 
-                                                 loading="lazy"
-                                                 onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}'">
-                                        </div>
-                                        <div class="card-content">
-                                            <h3>${item.title}</h3>
-                                            <p>${item.desc}</p>
-                                        </div>
-                                        <div class="card-action">
-                                            <a href="${item.link}" class="btn">進入模擬</a>
+                                                    <div class="sim-card">
+                                                        <div class="card-image">
+                                                            <img src="${imageUrl}" 
+                                                                 alt="${item.title}" 
+                                                                 loading="lazy"
+                                                                 onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}'">
+                                                        </div>
+                                                        <div class="card-content">
+                                                            <h3>${item.title}</h3>
+                                                            <p>${item.desc}</p>
+                                                        </div>
+                                                        <div class="card-action">
+                                                            <a href="${item.link}" class="btn">進入模擬</a>
+                                                        </div>
+                                                    </div>
+                                                `;
+                }).join('')}
                                         </div>
                                     </div>
-                                `;
-                }).join('')}
+                                </details>
+                            `).join('')}
                         </div>
-                    </div>
+                    </details>
                 `).join('');
-
-                console.log("Render successful");
             } catch (err) {
                 console.error("Rendering Error:", err);
-                document.getElementById('app-container').innerHTML = "<p style='color:red; text-align:center;'>程式執行錯誤，請查看 Console。</p>";
+                document.getElementById('library-content').innerHTML = "<p style='color:red; text-align:center;'>程式執行錯誤，請查看 Console。</p>";
             }
         }
 
-        // 4. 啟動
         document.addEventListener('DOMContentLoaded', renderLibrary);
     </script>
 </body>
