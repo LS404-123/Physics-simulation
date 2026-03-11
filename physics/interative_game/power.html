@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P=Fv 爬坡變速挑戰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-3px) rotate(-1deg);
+            }
+
+            75% {
+                transform: translateX(3px) rotate(1deg);
+            }
+        }
+
+        .shake-active {
+            animation: shake 0.2s ease-in-out infinite;
+        }
+
+        @keyframes screen-shake {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            20% {
+                transform: translate(-4px, 4px) rotate(-0.5deg);
+            }
+
+            40% {
+                transform: translate(-4px, -4px) rotate(0.5deg);
+            }
+
+            60% {
+                transform: translate(4px, 4px) rotate(0deg);
+            }
+
+            80% {
+                transform: translate(4px, -4px) rotate(-0.5deg);
+            }
+
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+        }
+
+        .screen-shake-active {
+            animation: screen-shake 0.15s infinite;
+        }
+
+        .bg-grid {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .gear-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .gear-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .gear-btn.active {
+            background-color: #10b981;
+            color: white;
+            transform: translateY(2px);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+            border-color: #34d399;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-1 bg-grid relative font-sans overflow-hidden">
+
+    <!-- 背景光暈 (絕對定位不影響排版) -->
+    <div
+        class="fixed top-0 left-1/4 w-[30vw] h-[30vw] min-w-[300px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none">
+    </div>
+    <div
+        class="fixed bottom-0 right-1/4 w-[30vw] h-[30vw] min-w-[300px] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none">
+    </div>
+
+    <div class="w-[1100px] h-[680px] max-w-full flex justify-center items-start mt-2 relative z-10">
+        <div class="w-full grid grid-cols-1 lg:grid-cols-3 gap-2">
+
+            <!-- Header -->
+            <div
+                class="col-span-1 lg:col-span-3 bg-slate-800/80 backdrop-blur-xl p-3 rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1
+                        class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">
+                        ⛰️ $P = Fv$ 變速爬坡挑戰</h1>
+                    <p class="text-slate-300 text-sm mt-1.5 opacity-80">
+                        引擎全油門 (最大功率 48000 W)。切換檔位改變力量 $F$ 與極速 $v$ 的比例，攻克不同坡度！
+                    </p>
+                </div>
+                <div class="flex gap-3 w-full sm:w-auto">
+                    <button id="start-btn"
+                        class="flex-grow sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                        啟動引擎
+                    </button>
+                    <button id="reset-btn"
+                        class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-6 rounded-xl transition-all active:scale-95 border border-slate-600">
+                        🔄 重設
+                    </button>
+                </div>
+            </div>
+
+            <!-- 視覺化畫布 -->
+            <div
+                class="col-span-1 lg:col-span-3 bg-slate-800/80 backdrop-blur-xl p-3 rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden relative">
+                <!-- 大型挑戰結果 Overlay -->
+                <div id="result-overlay"
+                    class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-red-600/20 backdrop-blur-sm hidden">
+                    <div id="result-text"
+                        class="text-white text-6xl font-black italic tracking-tighter drop-shadow-[0_0_30px_rgba(220,38,38,0.8)] animate-bounce">
+                        ❌ 挑戰失敗 ❌
+                    </div>
+                    <div id="result-reason"
+                        class="text-white text-2xl font-bold mt-4 opacity-90 drop-shadow-md text-center">
+                        超過時間限制
+                    </div>
+                    <!-- 姓名輸入區域 -->
+                    <div id="name-input-area" class="mt-8 flex flex-col items-center gap-4 hidden pointer-events-auto">
+                        <p class="text-white text-sm font-bold opacity-80">恭喜登榜！請輸入你的大名：</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="player-name" maxlength="10" placeholder="你的名稱..."
+                                class="bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold px-4 py-2 rounded-lg outline-none focus:border-emerald-400 transition-all">
+                            <button id="save-score-btn"
+                                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-lg transition-all active:scale-95 shadow-lg">
+                                儲存成績
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 內部解析度 1600x400 (更緊湊高度) -->
+                <canvas id="gameCanvas" width="1600" height="400"
+                    class="w-full h-auto aspect-[16/4] bg-slate-900 rounded-xl border border-slate-700/50 shadow-inner transition-transform duration-75"></canvas>
+            </div>
+
+            <!-- 變速箱控制區 -->
+            <div
+                class="col-span-1 bg-slate-800/80 backdrop-blur-xl p-3 rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col">
+                <h2 class="text-[11px] font-bold text-slate-100 mb-1.5 flex items-center gap-2">🕹️ 變速箱</h2>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <button
+                        class="gear-btn border border-slate-600 bg-slate-700 text-slate-200 font-bold py-2 rounded-xl text-lg"
+                        data-gear="1">1</button>
+                    <button
+                        class="gear-btn border border-slate-600 bg-slate-700 text-slate-200 font-bold py-2 rounded-xl text-lg"
+                        data-gear="2">2</button>
+                    <button
+                        class="gear-btn border border-slate-600 bg-slate-700 text-slate-200 font-bold py-2 rounded-xl text-lg"
+                        data-gear="3">3</button>
+                </div>
+                <div
+                    class="text-xs text-slate-300 bg-slate-900/80 p-3 rounded-xl border border-slate-700/50 shadow-inner min-h-[80px]">
+                    <div id="gear-desc-1" class="hidden"><span
+                            class="text-emerald-400 font-bold block mb-1 text-[11px]">【1檔】陡坡</span>最大扭力 6000 N<br>限速 8
+                        m/s</div>
+                    <div id="gear-desc-2" class="hidden"><span
+                            class="text-blue-400 font-bold block mb-1 text-[11px]">【2檔】加速</span>中等扭力 2500 N<br>限速 20 m/s
+                    </div>
+                    <div id="gear-desc-3" class="hidden"><span
+                            class="text-purple-400 font-bold block mb-1 text-[11px]">【3檔】巡航</span>最低扭力 1200 N<br>限速 40
+                        m/s</div>
+                </div>
+
+                <!-- 龍虎榜 -->
+                <div class="mt-2 border-t border-slate-700/50 pt-2 overflow-y-auto max-h-[100px]">
+                    <h2 class="text-[10px] font-bold text-slate-100 mb-1 flex items-center gap-2">🏆 挑戰龍虎榜 (Best 5)</h2>
+                    <div id="leaderboard-list" class="space-y-1">
+                        <div class="text-slate-500 text-[9px] italic text-center py-1">目前尚無紀錄</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 遙測數據區 -->
+            <div
+                class="col-span-1 lg:col-span-2 bg-slate-800/80 backdrop-blur-xl p-3 rounded-2xl border border-slate-700/50 shadow-2xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                <!-- 受力分析與能量 -->
+                <div class="flex flex-col justify-start">
+                    <h2 class="text-[11px] font-bold text-slate-100 mb-1.5">⚖️ 受力與能量</h2>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-slate-400">總阻力 <span class="text-yellow-500/80"></span></span>
+                                <span class="font-mono text-yellow-400" id="f-req-val">0 N</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 shadow-inner">
+                                <div id="f-req-bar"
+                                    class="bg-gradient-to-r from-yellow-600 to-yellow-400 h-1.5 rounded-full w-0 transition-all duration-100">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-slate-400">引擎推力</span>
+                                <span class="font-mono text-blue-400" id="f-eng-val">0 N</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 shadow-inner">
+                                <div id="f-eng-bar"
+                                    class="bg-gradient-to-r from-blue-600 to-blue-400 h-1.5 rounded-full w-0 transition-all duration-100">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="status-msg"
+                        class="my-3 text-center text-[10px] font-bold text-slate-400 bg-slate-900/50 py-1.5 rounded-lg border border-slate-700/30">
+                        引擎怠速中...</div>
+
+                    <div class="mt-1 pt-3 border-t border-slate-700/50 space-y-3">
+                        <div>
+                            <div class="flex justify-between text-[10px] mb-1">
+                                <span class="text-slate-400">位能 $E_p$</span>
+                                <span class="font-mono text-emerald-400" id="ep-val">0 J</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 shadow-inner">
+                                <div id="ep-bar"
+                                    class="bg-emerald-500 h-1.5 rounded-full w-0 transition-all duration-100"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] mb-1">
+                                <span class="text-slate-400">動能 $E_k$</span>
+                                <span class="font-mono text-blue-400" id="ek-val">0 J</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 shadow-inner">
+                                <div id="ek-bar" class="bg-blue-500 h-1.5 rounded-full w-0 transition-all duration-100">
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            class="flex justify-between items-center text-[9px] bg-slate-900/30 p-1.5 rounded border border-slate-700/20">
+                            <span class="text-slate-500">總機械能</span>
+                            <span class="font-mono text-slate-300" id="etotal-val">0 J</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 功率與速度 -->
+                <div class="flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-[11px] font-bold text-slate-100 mb-1.5">🚀 功率監控</h2>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between items-baseline mb-1">
+                                    <span class="text-[11px] text-slate-400 font-medium">速度 $v$</span>
+                                    <span class="font-mono text-emerald-400 text-lg font-bold"><span
+                                            id="v-val">0.0</span> <span
+                                            class="text-[11px] font-normal">m/s</span></span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2 shadow-inner">
+                                    <div id="v-bar"
+                                        class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2 rounded-full w-0 transition-all duration-100">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1">
+                                    <span class="text-slate-400">功率 $P$</span>
+                                    <span class="font-mono text-purple-400 text-[11px]"><span id="p-val">0</span> /
+                                        48000 W</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2 shadow-inner">
+                                    <div id="p-bar"
+                                        class="bg-gradient-to-r from-purple-600 to-purple-400 h-2 rounded-full w-0 transition-all duration-100">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pt-2">
+                                <div class="flex justify-between text-[10px] mb-1 italic">
+                                    <span class="text-slate-500">剩餘時間 (45s)</span>
+                                    <span class="font-mono text-emerald-400" id="remain-val">45.0s</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-1 shadow-inner">
+                                    <div id="timer-bar"
+                                        class="bg-gradient-to-r from-emerald-500 to-red-500 h-1 rounded-full w-full transition-all duration-100">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="mt-4 flex flex-col gap-1.5 bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/30">
+                        <div class="flex justify-between items-center text-xs text-slate-400 font-medium">
+                            <span>累積時間</span>
+                            <div class="text-lg font-mono text-white font-black"><span id="time-val">0.0</span><span
+                                    class="text-[11px] text-slate-400 font-normal ml-0.5">s</span></div>
+                        </div>
+                        <div
+                            class="flex justify-between items-center text-[10px] text-slate-500 font-medium pt-1 border-t border-slate-700/50">
+                            <span>理論極限時間</span>
+                            <div class="font-mono text-emerald-500/80"><span id="best-time-val">31.5</span>s</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const P_MAX = 48000;
+        const MASS = 1000;
+        const G = 9.81;
+        const TIME_LIMIT = 45.0;
+        const LEADERBOARD_KEY = 'carSim_leaderboard';
+
+        const gears = {
+            1: { f_max: 6000, v_max: 8 },
+            2: { f_max: 2500, v_max: 20 },
+            3: { f_max: 1200, v_max: 40 }
+        };
+
+        const trackSegments = [
+            { len: 70, angle: 0, label: "平路 0°" },
+            { len: 110, angle: 25, label: "魔鬼陡坡 25° (必須降至 1 檔!)" },
+            { len: 150, angle: 5, label: "緩坡 5°" },
+            { len: 100, angle: 0, label: "終點" }
+        ];
+
+        let currentGear = 1;
+        let v = 0, d = 0, time = 0;
+        let isRunning = false, lastTime = 0, animationFrameId;
+
+        // 畫布座標預算
+        const trackPoints = [{ d: 0, x: 100, y: 400, angle: 0, h: 0, label: "起點" }];
+        let curX = 100, curY = 400, cumD = 0, cumH = 0;
+        const pxPerMeter = 2.8;
+
+        trackSegments.forEach(seg => {
+            let rad = seg.angle * Math.PI / 180;
+            let dh = seg.len * Math.sin(rad);
+            cumD += seg.len;
+            cumH += dh;
+            curX += seg.len * Math.cos(rad) * pxPerMeter;
+            curY -= seg.len * Math.sin(rad) * pxPerMeter;
+            trackPoints.push({ d: cumD, x: curX, y: curY, angle: rad, h: cumH, label: seg.label });
+        });
+        const TOTAL_DIST = cumD;
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gearBtns = document.querySelectorAll('.gear-btn');
+        const el = {
+            vVal: document.getElementById('v-val'), vBar: document.getElementById('v-bar'),
+            pVal: document.getElementById('p-val'), pBar: document.getElementById('p-bar'),
+            freqVal: document.getElementById('f-req-val'), freqBar: document.getElementById('f-req-bar'),
+            fengVal: document.getElementById('f-eng-val'), fengBar: document.getElementById('f-eng-bar'),
+            timeVal: document.getElementById('time-val'),
+            remainVal: document.getElementById('remain-val'), timerBar: document.getElementById('timer-bar'),
+            statusMsg: document.getElementById('status-msg'),
+            epVal: document.getElementById('ep-val'), epBar: document.getElementById('ep-bar'),
+            ekVal: document.getElementById('ek-val'), ekBar: document.getElementById('ek-bar'),
+            etotalVal: document.getElementById('etotal-val'),
+            startBtn: document.getElementById('start-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            resultOverlay: document.getElementById('result-overlay'),
+            resultText: document.getElementById('result-text'),
+            resultReason: document.getElementById('result-reason'),
+            nameInputArea: document.getElementById('name-input-area'),
+            playerNameInput: document.getElementById('player-name'),
+            saveScoreBtn: document.getElementById('save-score-btn'),
+            canvas: document.getElementById('gameCanvas')
+        };
+
+        function setGear(g) {
+            currentGear = g;
+            gearBtns.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-gear="${g}"]`).classList.add('active');
+            [1, 2, 3].forEach(i => {
+                const desc = document.getElementById(`gear-desc-${i}`);
+                if (desc) desc.classList.add('hidden');
+            });
+            const activeDesc = document.getElementById(`gear-desc-${g}`);
+            if (activeDesc) activeDesc.classList.remove('hidden');
+        }
+
+        // --- 龍虎榜邏輯 ---
+        function getLeaderboard() {
+            try {
+                return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
+            } catch (e) { return []; }
+        }
+
+        function saveScore(newTime, name) {
+            let board = getLeaderboard();
+            board.push({
+                name: name || '無名車神',
+                time: parseFloat(newTime),
+                date: new Date().toLocaleDateString()
+            });
+            board.sort((a, b) => a.time - b.time);
+            board = board.slice(0, 5);
+            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(board));
+            localStorage.setItem('carSim_lastName', name); // 紀錄上次使用的名稱
+            updateLeaderboardUI();
+        }
+
+        function updateLeaderboardUI() {
+            const board = getLeaderboard();
+            const container = document.getElementById('leaderboard-list');
+            if (!container) return;
+            if (board.length === 0) {
+                container.innerHTML = '<div class="text-slate-500 text-[10px] italic text-center py-2">目前尚無紀錄</div>';
+                return;
+            }
+            container.innerHTML = board.map((entry, i) => `
+                <div class="flex justify-between items-center bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700/30">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold ${i === 0 ? 'text-yellow-400' : 'text-slate-500'}">#${i + 1}</span>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-100">${entry.name}</span>
+                            <span class="text-[9px] font-mono text-emerald-400/80">${entry.time.toFixed(2)}s</span>
+                        </div>
+                    </div>
+                    <span class="text-[8px] text-slate-600">${entry.date}</span>
+                </div>
+            `).join('');
+        }
+
+        el.saveScoreBtn.addEventListener('click', () => {
+            const name = el.playerNameInput.value.trim();
+            saveScore(time, name);
+            el.nameInputArea.classList.add('hidden');
+        });
+        // ----------------
+
+        gearBtns.forEach(btn => btn.addEventListener('click', () => setGear(parseInt(btn.dataset.gear))));
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') setGear(Math.min(3, currentGear + 1));
+            if (e.key === 'ArrowDown') setGear(Math.max(1, currentGear - 1));
+        });
+
+        el.startBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            if (d >= TOTAL_DIST || time >= TIME_LIMIT) resetSim();
+
+            isRunning = true;
+            el.startBtn.innerText = '賽車行駛中...';
+            el.startBtn.disabled = true;
+            el.startBtn.classList.replace('bg-emerald-600', 'bg-slate-600');
+            lastTime = performance.now();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        });
+
+        function resetSim() {
+            cancelAnimationFrame(animationFrameId);
+            isRunning = false;
+            v = 0; d = 0; time = 0;
+            setGear(1);
+
+            el.startBtn.innerText = '啟動引擎';
+            el.startBtn.disabled = false;
+            el.startBtn.classList.remove('bg-slate-600');
+            el.startBtn.classList.add('bg-emerald-600');
+
+            el.statusMsg.innerText = "引擎怠速中...";
+            el.statusMsg.classList.remove('shake-active');
+            el.resultOverlay.classList.add('hidden');
+            el.nameInputArea.classList.add('hidden');
+            el.canvas.classList.remove('screen-shake-active');
+
+            updateUI(0, 0, 0, "引擎怠速中...", "text-slate-400");
+            drawCanvas(trackPoints[0].x, trackPoints[0].y, 0);
+        }
+
+        el.resetBtn.addEventListener('click', resetSim);
+
+        function getTerrainAt(dist) {
+            if (dist <= 0) return { angle: 0, h: 0, ...trackPoints[0] };
+            if (dist >= TOTAL_DIST) return { angle: 0, h: trackPoints[trackPoints.length - 1].h, ...trackPoints[trackPoints.length - 1] };
+
+            let h = 0;
+            for (let i = 0; i < trackPoints.length - 1; i++) {
+                let p1 = trackPoints[i], p2 = trackPoints[i + 1];
+                if (dist >= p1.d && dist < p2.d) {
+                    let segmentDist = dist - p1.d;
+                    let t = segmentDist / (p2.d - p1.d);
+                    let currentRad = p2.angle;
+                    h = p1.h + segmentDist * Math.sin(currentRad);
+                    return {
+                        x: p1.x + t * (p2.x - p1.x),
+                        y: p1.y + t * (p2.y - p1.y),
+                        angle: currentRad,
+                        h: h,
+                        label: p2.label
+                    };
+                }
+            }
+            const last = trackPoints[trackPoints.length - 1];
+            return { ...last, angle: 0, h: last.h };
+        }
+
+        function gameLoop(now) {
+            if (!isRunning) return;
+            let dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            let terrain = getTerrainAt(d);
+            let gearSpec = gears[currentGear];
+
+            let f_gravity = MASS * G * Math.sin(terrain.angle);
+            let f_drag = 200 + 10 * v;
+            let f_req = f_gravity + f_drag;
+
+            let f_eng = 0;
+            let statusText = "全油門加速中";
+            let statusColor = "text-emerald-400";
+
+            if (v >= gearSpec.v_max - 0.01) {
+                v = gearSpec.v_max;
+                f_eng = f_req;
+                statusText = "✅ 達到檔位極速 (巡航中)";
+                statusColor = "text-blue-400";
+            } else {
+                let theoretical_f = P_MAX / Math.max(v, 0.5);
+                f_eng = Math.min(gearSpec.f_max, theoretical_f);
+
+                if (f_eng < f_req && v > 0.1) {
+                    statusText = "⚠️ 扭力不足！車輛正在減速，請降檔！";
+                    statusColor = "text-yellow-500";
+                    el.statusMsg.classList.add('shake-active');
+                } else {
+                    el.statusMsg.classList.remove('shake-active');
+                }
+            }
+
+            let a = (f_eng - f_req) / MASS;
+            v += a * dt;
+            if (v < -2) v = -2;
+            if (d <= 0 && v < 0) v = 0;
+
+            d += v * dt;
+            time += dt;
+
+            let current_p = Math.max(0, f_eng * v);
+            updateUI(f_req, f_eng, current_p, statusText, statusColor, terrain.h);
+            drawCanvas(terrain.x, terrain.y, terrain.angle, terrain.label);
+
+            if (time >= TIME_LIMIT) {
+                isRunning = false;
+                el.resultText.innerText = "❌ 挑戰失敗 ❌";
+                el.resultReason.innerText = "超過時間限制 (45秒)";
+                el.resultOverlay.classList.remove('hidden');
+                el.canvas.classList.add('screen-shake-active');
+                el.startBtn.innerText = '重新挑戰';
+                el.startBtn.disabled = false;
+                el.startBtn.classList.replace('bg-slate-600', 'bg-emerald-600');
+                return;
+            }
+
+            if (d >= TOTAL_DIST) {
+                isRunning = false;
+                el.resultText.innerText = "🏁 挑戰成功！ 🏁";
+                el.resultReason.innerText = `完成時間：${time.toFixed(2)} 秒`;
+                el.resultOverlay.classList.remove('hidden');
+
+                // 顯示姓名輸入框
+                el.nameInputArea.classList.remove('hidden');
+                const lastUsedName = localStorage.getItem('carSim_lastName');
+                if (lastUsedName) el.playerNameInput.value = lastUsedName;
+
+                el.startBtn.innerText = '再試一次';
+                el.startBtn.disabled = false;
+                el.startBtn.classList.replace('bg-slate-600', 'bg-emerald-600');
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI(f_req, f_eng, p, statusText, statusColor, currentH) {
+            el.vVal.innerText = Math.max(0, v).toFixed(1);
+            el.vBar.style.width = `${Math.min((Math.max(0, v) / 40) * 100, 100)}%`;
+
+            el.freqVal.innerText = `${f_req.toFixed(0)} N`;
+            el.freqBar.style.width = `${Math.min((f_req / 8000) * 100, 100)}%`;
+
+            el.fengVal.innerText = `${f_eng.toFixed(0)} N`;
+            el.fengBar.style.width = `${Math.min((f_eng / 8000) * 100, 100)}%`;
+
+            el.pVal.innerText = p.toFixed(0);
+            el.pBar.style.width = `${Math.min((p / P_MAX) * 100, 100)}%`;
+
+            // 能量計算
+            const ek = 0.5 * MASS * v * v;
+            const ep = MASS * G * currentH;
+            const etotal = ek + ep;
+
+            el.ekVal.innerText = `${ek.toFixed(0)} J`;
+            el.ekBar.style.width = `${Math.min((ek / 800000) * 100, 100)}%`;
+            el.epVal.innerText = `${ep.toFixed(0)} J`;
+            el.epBar.style.width = `${Math.min((ep / 800000) * 100, 100)}%`;
+            el.etotalVal.innerText = `${etotal.toFixed(0)} J`;
+
+            let remain = Math.max(0, TIME_LIMIT - time);
+            el.remainVal.innerText = `${remain.toFixed(1)}秒`;
+            el.timerBar.style.width = `${(remain / TIME_LIMIT) * 100}%`;
+
+            if (remain < 10) {
+                el.remainVal.className = "font-mono text-red-500 animate-pulse";
+            } else {
+                el.remainVal.className = "font-mono text-emerald-400";
+            }
+
+            el.timeVal.innerText = time.toFixed(1);
+            el.statusMsg.innerText = statusText;
+            el.statusMsg.className = `mt-4 text-center text-sm font-bold ${statusColor} min-h-[1.25rem] bg-slate-900/50 py-2 rounded-lg border border-slate-700/30`;
+        }
+
+        function drawCanvas(carX, carY, carAngle) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const lastP = trackPoints[trackPoints.length - 1];
+
+            // 1. 背景與賽道線
+            ctx.beginPath();
+            ctx.moveTo(0, trackPoints[0].y);
+            ctx.lineTo(trackPoints[0].x, trackPoints[0].y);
+            for (let i = 1; i < trackPoints.length; i++) ctx.lineTo(trackPoints[i].x, trackPoints[i].y);
+            ctx.lineTo(canvas.width, lastP.y);
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.fillStyle = "#1e293b";
+            ctx.fill();
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = "#34d399";
+            ctx.beginPath();
+            ctx.moveTo(0, trackPoints[0].y);
+            ctx.lineTo(trackPoints[0].x, trackPoints[0].y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(lastP.x, lastP.y);
+            ctx.lineTo(canvas.width, lastP.y);
+            ctx.stroke();
+
+            // 2. 分隔線與標籤
+            trackPoints.forEach((p, i) => {
+                ctx.setLineDash([10, 10]);
+                ctx.beginPath();
+                ctx.moveTo(p.x, 0); ctx.lineTo(p.x, canvas.height);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                if (i < trackPoints.length - 1) {
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+                    ctx.font = "bold 20px sans-serif";
+                    ctx.textAlign = "left";
+                    ctx.fillText(trackPoints[i + 1].label, p.x + 15, 40);
+                }
+            });
+
+            // 3. 賽道路線
+            ctx.beginPath();
+            ctx.moveTo(trackPoints[0].x, trackPoints[0].y);
+            for (let i = 1; i < trackPoints.length; i++) ctx.lineTo(trackPoints[i].x, trackPoints[i].y);
+            ctx.strokeStyle = "#34d399";
+            ctx.lineWidth = 8;
+            ctx.lineJoin = "round";
+            ctx.stroke();
+
+            // 拱門
+            ctx.save();
+            ctx.translate(lastP.x, lastP.y);
+            ctx.fillStyle = "#64748b";
+            ctx.fillRect(-2, -100, 4, 100);
+            ctx.translate(0, -100);
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 4; col++) {
+                    ctx.fillStyle = (row + col) % 2 === 0 ? "#fff" : "#000";
+                    ctx.fillRect(col * 10, row * 8, 10, 8);
+                }
+            }
+            ctx.restore();
+
+            // 4. 車子
+            ctx.save();
+            ctx.translate(carX, carY);
+            ctx.rotate(-carAngle);
+            const wheelR = 12;
+            const bodyY = -wheelR - 10;
+            ctx.fillStyle = "#3b82f6";
+            ctx.beginPath(); ctx.roundRect(-40, bodyY - 20, 80, 32, 8); ctx.fill();
+            ctx.fillStyle = "#93c5fd";
+            ctx.beginPath(); ctx.roundRect(-10, bodyY - 16, 30, 12, 4); ctx.fill();
+            ctx.fillStyle = "#1d4ed8";
+            ctx.fillRect(-38, bodyY - 28, 12, 8);
+            ctx.fillStyle = "#0f172a";
+            ctx.beginPath(); ctx.arc(-24, -wheelR, wheelR, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(24, -wheelR, wheelR, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#cbd5e1";
+            ctx.beginPath(); ctx.arc(-24, -wheelR, wheelR / 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(24, -wheelR, wheelR / 3, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        setGear(1);
+        updateLeaderboardUI();
+        drawCanvas(trackPoints[0].x, trackPoints[0].y, 0);
+    </script>
+</body>
+
+</html>
