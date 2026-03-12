@@ -235,7 +235,7 @@
                         <div>
                             <div class="flex justify-between text-[10px] mb-1">
                                 <span class="text-slate-400">位能 $E_p$</span>
-                                <span class="font-mono text-emerald-400" id="ep-val">0 J</span>
+                                <span class="font-mono text-emerald-400" id="ep-val">0.0 kJ</span>
                             </div>
                             <div class="w-full bg-slate-900 rounded-full h-1.5 shadow-inner">
                                 <div id="ep-bar"
@@ -245,7 +245,7 @@
                         <div>
                             <div class="flex justify-between text-[10px] mb-1">
                                 <span class="text-slate-400">動能 $E_k$</span>
-                                <span class="font-mono text-blue-400" id="ek-val">0 J</span>
+                                <span class="font-mono text-blue-400" id="ek-val">0.0 kJ</span>
                             </div>
                             <div class="w-full bg-slate-900 rounded-full h-1.5 shadow-inner">
                                 <div id="ek-bar" class="bg-blue-500 h-1.5 rounded-full w-0 transition-all duration-100">
@@ -255,7 +255,7 @@
                         <div
                             class="flex justify-between items-center text-[9px] bg-slate-900/30 p-1.5 rounded border border-slate-700/20">
                             <span class="text-slate-500">總機械能</span>
-                            <span class="font-mono text-slate-300" id="etotal-val">0 J</span>
+                            <span class="font-mono text-slate-300" id="etotal-val">0.0 kJ</span>
                         </div>
                     </div>
                 </div>
@@ -612,11 +612,11 @@
             const ep = MASS * G * currentH;
             const etotal = ek + ep;
 
-            el.ekVal.innerText = `${ek.toFixed(0)} J`;
+            el.ekVal.innerText = `${(ek / 1000).toFixed(1)} kJ`;
             el.ekBar.style.width = `${Math.min((ek / 800000) * 100, 100)}%`;
-            el.epVal.innerText = `${ep.toFixed(0)} J`;
+            el.epVal.innerText = `${(ep / 1000).toFixed(1)} kJ`;
             el.epBar.style.width = `${Math.min((ep / 800000) * 100, 100)}%`;
-            el.etotalVal.innerText = `${etotal.toFixed(0)} J`;
+            el.etotalVal.innerText = `${(etotal / 1000).toFixed(1)} kJ`;
 
             let remain = Math.max(0, TIME_LIMIT - time);
             el.remainVal.innerText = `${remain.toFixed(1)}秒`;
