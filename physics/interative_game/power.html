@@ -119,6 +119,10 @@
                         class="flex-grow sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                         啟動引擎
                     </button>
+                    <button id="pause-btn"
+                        class="hidden bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-lg">
+                        ⏸️ 暫停
+                    </button>
                     <button id="reset-btn"
                         class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-6 rounded-xl transition-all active:scale-95 border border-slate-600">
                         🔄 重設
@@ -345,7 +349,7 @@
 
         let currentGear = 1;
         let v = 0, d = 0, time = 0;
-        let isRunning = false, lastTime = 0, animationFrameId;
+        let isRunning = false, isPaused = false, lastTime = 0, animationFrameId;
 
         // 畫布座標預算
         const trackPoints = [{ d: 0, x: 100, y: 400, angle: 0, h: 0, label: "起點" }];
@@ -385,7 +389,8 @@
             nameInputArea: document.getElementById('name-input-area'),
             playerNameInput: document.getElementById('player-name'),
             saveScoreBtn: document.getElementById('save-score-btn'),
-            canvas: document.getElementById('gameCanvas')
+            canvas: document.getElementById('gameCanvas'),
+            pauseBtn: document.getElementById('pause-btn')
         };
 
         function setGear(g) {
@@ -448,6 +453,23 @@
             saveScore(time, name);
             el.nameInputArea.classList.add('hidden');
         });
+
+        function togglePause() {
+            if (!isRunning) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                el.pauseBtn.innerHTML = '▶️ 繼續';
+                el.pauseBtn.classList.replace('bg-amber-600', 'bg-emerald-600');
+                el.statusMsg.innerText = "⏸️ 模擬已暫停";
+                el.statusMsg.classList.remove('shake-active');
+            } else {
+                el.pauseBtn.innerHTML = '⏸️ 暫停';
+                el.pauseBtn.classList.replace('bg-emerald-600', 'bg-amber-600');
+                lastTime = performance.now();
+            }
+        }
+
+        el.pauseBtn.addEventListener('click', togglePause);
         // ----------------
 
         gearBtns.forEach(btn => btn.addEventListener('click', () => setGear(parseInt(btn.dataset.gear))));
@@ -461,9 +483,11 @@
             if (d >= TOTAL_DIST || time >= TIME_LIMIT) resetSim();
 
             isRunning = true;
+            isPaused = false;
             el.startBtn.innerText = '賽車行駛中...';
             el.startBtn.disabled = true;
             el.startBtn.classList.replace('bg-emerald-600', 'bg-slate-600');
+            el.pauseBtn.classList.remove('hidden');
             lastTime = performance.now();
             animationFrameId = requestAnimationFrame(gameLoop);
         });
@@ -483,6 +507,9 @@
             el.statusMsg.classList.remove('shake-active');
             el.resultOverlay.classList.add('hidden');
             el.nameInputArea.classList.add('hidden');
+            el.pauseBtn.classList.add('hidden');
+            el.pauseBtn.innerHTML = '⏸️ 暫停';
+            el.pauseBtn.classList.replace('bg-emerald-600', 'bg-amber-600');
             el.canvas.classList.remove('screen-shake-active');
 
             updateUI(0, 0, 0, "引擎怠速中...", "text-slate-400");
@@ -518,6 +545,10 @@
 
         function gameLoop(now) {
             if (!isRunning) return;
+            if (isPaused) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+                return;
+            }
             let dt = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
 
@@ -567,6 +598,7 @@
                 el.resultText.innerText = "❌ 挑戰失敗 ❌";
                 el.resultReason.innerText = "超過時間限制 (45秒)";
                 el.resultOverlay.classList.remove('hidden');
+                el.pauseBtn.classList.add('hidden');
                 el.canvas.classList.add('screen-shake-active');
                 el.startBtn.innerText = '重新挑戰';
                 el.startBtn.disabled = false;
@@ -579,6 +611,7 @@
                 el.resultText.innerText = "🏁 挑戰成功！ 🏁";
                 el.resultReason.innerText = `完成時間：${time.toFixed(2)} 秒`;
                 el.resultOverlay.classList.remove('hidden');
+                el.pauseBtn.classList.add('hidden');
 
                 // 顯示姓名輸入框
                 el.nameInputArea.classList.remove('hidden');
