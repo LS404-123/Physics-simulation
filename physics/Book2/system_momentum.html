@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統結界：動量保衛戰</title>
+    <!-- MathJax for LaTeX support -->
+
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-deep: #0f172a;
+            --bg-canvas: #1e293b;
+            --glass-card: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --accent-cyan: #22d3ee;
+            --accent-amber: #fbbf24;
+            --accent-rose: #f43f5e;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --grid-color: rgba(34, 211, 238, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            padding: 5px 0;
+        }
+
+        #game-container {
+            width: 960px;
+            height: 750px;
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            grid-template-rows: auto 1fr;
+            gap: 0.8rem;
+            position: relative;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            padding: 1.2rem 1.5rem;
+            background: var(--glass-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), #818cf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        main {
+            position: relative;
+            background: var(--bg-canvas);
+            border-radius: 1.5rem;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        aside {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .bento-card {
+            background: var(--glass-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .momentum-meter {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meter-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .p-val {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .progress-outer {
+            height: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .progress-inner {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-cyan), #0ea5e9);
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
+            transition: width 0.1s linear, background 0.3s;
+        }
+
+        .progress-inner.leaking {
+            background: linear-gradient(90deg, var(--accent-rose), #e11d48);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
+        }
+
+        .status-pill {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 100;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+        }
+
+        .pill-closed {
+            background: rgba(34, 211, 238, 0.1);
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .pill-leak {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--accent-rose);
+            border-color: var(--accent-rose);
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 0.8rem;
+            border-radius: 1rem;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .control-btn.active {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            background: rgba(34, 211, 238, 0.15);
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            color: var(--text-dim);
+            padding: 1rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .btn.active {
+            background: var(--accent-cyan);
+            color: var(--bg-deep);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 4px 15px rgba(34, 211, 238, 0.3);
+        }
+
+        .vector-display-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+            margin: 1rem 0;
+            border: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        .vector-label {
+            position: absolute;
+            bottom: 8px;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <header>
+            <h1>系統結界：動量保衛戰</h1>
+            <div id="cur-scene-name" style="color: var(--accent-amber); font-weight: 800; font-size: 1.1rem;"></div>
+        </header>
+
+        <main id="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div id="status" class="status-pill pill-closed" style="display: none;">暫停中</div>
+        </main>
+
+        <aside>
+            <div class="bento-card momentum-meter">
+                <div class="meter-info">
+                    <span style="font-weight: 600;">系統總動量</span>
+                    <span id="p-val" class="p-val">0.00</span>
+                </div>
+                <div class="progress-outer">
+                    <div id="p-bar" class="progress-inner"></div>
+                </div>
+
+
+
+                <div class="vector-display-container">
+                    <canvas id="vector-canvas" width="160" height="160"></canvas>
+                    <div class="vector-label">系統動量</div>
+                </div>
+
+                <div class="controls">
+                    <button id="playBtn" class="control-btn" onclick="togglePlay()"><span>▶</span> 播放</button>
+                    <button id="pauseBtn" class="control-btn active" onclick="togglePause()"><span>⏸</span> 暫停</button>
+                    <button class="control-btn" onclick="resetSim()"><span>↺</span> 重置</button>
+                </div>
+
+                <p
+                    style="font-size: 0.75rem; color: var(--accent-amber); margin-top: 1.25rem; opacity: 0.8; line-height: 1.4;">
+                    💡 <b>點擊物件</b> 定義子系統。結界矩形隨物體動態伸縮。
+                </p>
+            </div>
+
+            <div class="bento-card">
+                <div class="scenario-grid">
+                    <button class="btn active" onclick="switchScene(0)">純粹碰撞</button>
+                    <button class="btn" onclick="switchScene(1)">自由落體</button>
+                    <button class="btn" onclick="switchScene(2)">小船力學</button>
+                    <button class="btn" onclick="switchScene(3)">滑板傳球</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        /**
+         * 系統結界：動量保衛戰 - 物理引擎與視覺優化版
+         */
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const pBar = document.getElementById('p-bar');
+        const pVal = document.getElementById('p-val');
+        const statusPill = document.getElementById('status');
+        const sceneNameEl = document.getElementById('cur-scene-name');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const vCanvas = document.getElementById('vector-canvas');
+        const vCtx = vCanvas.getContext('2d');
+
+
+        let width, height, objects = [], curScene = -1, gravity = 0, lastP = 0, leakTimer = 0;
+        let isRunning = false;
+        const P_SCALE_PHYS = 100;
+        const TIME_SCALE = 0.4;
+
+        const scenes = [
+            {
+                name: "純粹碰撞",
+                intro: "兩個質量不同的球相向運動。系統封閉時總動量守恆。當球移出畫面後自動停止。",
+                eqn: "\\( m_1\\vec{v}_1 + m_2\\vec{v}_2 = m_1\\vec{v}_1' + m_2\\vec{v}_2' \\)",
+                vScale: 10
+            },
+            {
+                name: "自由落體",
+                intro: "系統只包含單球。重力為外力，產生衝量導致系統總動量向量持續增加。",
+                eqn: "\\( \\Delta \\vec{P} = \\int \\vec{F}_{ext} dt \\)",
+                vScale: 10
+            },
+            {
+                name: "小船反衝",
+                intro: "在此封閉系統中，人行走產生的反作用力推動小船，系統總向量和始終為 0。",
+                eqn: "\\( \\vec{P}_{man} = -\\vec{P}_{boat} \\)",
+                vScale: 1
+            },
+            {
+                name: "滑板傳球",
+                intro: "兩人各踩一個滑板互傳球。投球與接球過程中的動量交換導致各自滑板的反衝，但系統總動量始終守恆。",
+                eqn: "\\( \\sum m_i\\vec{v}_i = const \\)",
+                vScale: 2
+            }
+        ];
+
+        // ==========================================
+        // 核心物理物件類別
+        // ==========================================
+        class PhysicsObject {
+            constructor(x, y, vx, vy, m, r, color, label, type = 'circle') {
+                // 基本屬性
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.m = m; // 質量 (kg)
+                this.r = r; // 視覺半徑
+                this.color = color;
+                this.label = label;
+                this.type = type; // 'circle', 'person', 'boat', 'rect'
+
+                // 受力快取 (F = ma)
+                this.fx = 0;
+                this.fy = 0;
+
+                this.isSelected = false;
+
+                // 初始狀態記錄 (供重置使用)
+                this.initX = x;
+                this.initY = y;
+                this.initVx = vx;
+                this.initVy = vy;
+
+                // 矩形/船體尺寸
+                this.w = r * 4;
+                this.h = r * 1.5;
+            }
+
+            /**
+             * 重置物件回初始狀態
+             */
+            reset() {
+                this.x = this.initX;
+                this.y = this.initY;
+                this.vx = this.initVx;
+                this.vy = this.initVy;
+                this.fx = 0;
+                this.fy = 0;
+            }
+
+            /**
+             * 套用力到物件上 (累加至下一偵處理)
+             */
+            applyForce(fx, fy) {
+                this.fx += fx;
+                this.fy += fy;
+            }
+
+            /**
+             * 物理數值更新 (數值積分)
+             */
+            update(dt) {
+                if (!isRunning) return;
+
+                // 計算加速度 a = F / m
+                const ax = this.fx / this.m;
+                const ay = this.fy / this.m + gravity;
+
+                // 更新速度 v = v + a*dt
+                this.vx += ax * dt;
+                this.vy += ay * dt;
+
+                // 更新位移 s = s + v*dt (縮放以符合畫布解析度)
+                this.x += this.vx * dt * P_SCALE_PHYS;
+                this.y += this.vy * dt * P_SCALE_PHYS;
+
+                // 重置本偵受力，準備下一偵
+                this.fx = 0;
+                this.fy = 0;
+
+                // 邊界檢查與場格行為
+                if (curScene === 0) {
+                    if (this.x < -100 || this.x > width + 100) {
+                        togglePause();
+                    }
+                } else if (curScene !== 2) {
+                    // 一般邊界彈回邏輯
+                    if (this.x < this.r && this.type === 'circle') {
+                        this.x = this.r;
+                        this.vx *= -1;
+                    }
+                    if (this.x > width - this.r && this.type === 'circle') {
+                        this.x = width - this.r;
+                        this.vx *= -1;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                if (this.type === 'circle') {
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color; ctx.fill();
+                } else if (this.type === 'person') {
+                    // 繪製簡約小人
+                    const headR = this.r * 0.35;
+                    const bodyW = this.r * 0.7;
+                    const bodyH = this.r * 1.0;
+                    const legH = this.r * 0.6;
+
+                    // 身體
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - bodyW / 2, this.y - bodyH / 2, bodyW, bodyH, 5);
+                    ctx.fillStyle = this.color; ctx.fill();
+
+                    // 腿 (兩條)
+                    ctx.fillRect(this.x - bodyW / 2, this.y + bodyH / 2 - 2, bodyW / 2.5, legH);
+                    ctx.fillRect(this.x + bodyW / 2 - bodyW / 2.5, this.y + bodyH / 2 - 2, bodyW / 2.5, legH);
+
+                    // 滑板 (如果對象標籤包含 '人'，自動在其腳下繪製滑板，除非是特定場景)
+                    // 在此我們根據 label 是否包含 '人' 且場景為 3 來決定
+                    const isSkiScene = (typeof curScene !== 'undefined' && curScene === 3);
+                    if (isSkiScene) {
+                        const boardH = 6;
+                        const wheelR = 5;
+                        const boardY = this.y + bodyH / 2 + legH; // 腳底即板頂
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.fillRect(this.x - 45, boardY, 90, boardH);
+                        // 輪子精密接地
+                        ctx.fillStyle = '#334155';
+                        ctx.beginPath();
+                        ctx.arc(this.x - 25, boardY + boardH + wheelR - 2, wheelR, 0, Math.PI * 2);
+                        ctx.arc(this.x + 25, boardY + boardH + wheelR - 2, wheelR, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // 頭部
+                    ctx.beginPath();
+                    ctx.fillStyle = this.color;
+                    ctx.arc(this.x, this.y - bodyH / 2 - headR + 2, headR, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'boat') {
+                    // 繪製具象小船 (上寬下窄)
+                    const w = this.w;
+                    const h = this.h;
+
+                    ctx.beginPath();
+                    ctx.moveTo(this.x - w / 2 - 40, this.y - h / 2); // 左上 (船頭尖端)
+                    ctx.lineTo(this.x + w / 2, this.y - h / 2);      // 右上 (船尾)
+                    ctx.lineTo(this.x + w / 2 - 20, this.y + h / 2); // 右下
+                    ctx.lineTo(this.x - w / 2, this.y + h / 2);      // 左下
+                    ctx.closePath();
+
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+
+                    // 船邊裝飾 (船舷)
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x - w / 2 - 42, this.y - h / 2);
+                    ctx.lineTo(this.x + w / 2, this.y - h / 2);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.rect(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
+                    ctx.fillStyle = this.color; ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
+                }
+                ctx.restore();
+
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 13px Inter";
+                ctx.textAlign = "center";
+                // 繪製標籤 (如果是小人則跳過標籤繪製)
+                if (this.type !== 'person') {
+                    const labelX = this.type === 'boat' ? this.x - 20 : this.x;
+                    ctx.fillText(this.label, labelX, this.y - (this.type === 'circle' ? this.r : this.h / 2) - 28);
+                }
+            }
+
+            contains(mx, my) {
+                if (this.type === 'circle' || this.type === 'person') return Math.hypot(this.x - mx, this.y - my) < this.r + 20;
+                if (this.type === 'boat') {
+                    // 包含船頭的判定區域 (視覺中心在 x-20, 寬 w+40)
+                    return mx > this.x - this.w / 2 - 40 - 20 && mx < this.x + this.w / 2 + 20 &&
+                        my > this.y - this.h / 2 - 20 && my < this.y + this.h / 2 + 20;
+                }
+                return mx > this.x - this.w / 2 - 20 && mx < this.x + this.w / 2 + 20 &&
+                    my > this.y - this.h / 2 - 20 && my < this.y + this.h / 2 + 20;
+            }
+        }
+
+        // ==========================================
+        // 繪圖輔助函式 (畫布背景與環境)
+        // ==========================================
+
+        /**
+         * 繪製背景網格與地平線/海洋
+         */
+        function drawGrid() {
+            ctx.save();
+            // 繪製背景背景交叉線
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.08)';
+            ctx.lineWidth = 1;
+            const step = 40;
+            for (let x = 0; x < width; x += step) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+            }
+            for (let y = 0; y < height; y += step) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+            }
+            ctx.stroke();
+
+            const groundY = height * 0.7;
+
+            if (curScene === 2) {
+                // 場景 2 特色：繪製海洋
+                const gradient = ctx.createLinearGradient(0, groundY, 0, height);
+                gradient.addColorStop(0, '#1e3a8a');
+                gradient.addColorStop(1, '#0f172a');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, groundY, width, height - groundY);
+
+                // 繪製動態波紋
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 5; i++) {
+                    const y = groundY + 15 + i * 25;
+                    const offset = Math.sin(Date.now() * 0.001 + i) * 20;
+                    ctx.beginPath();
+                    for (let x = 0; x < width; x += 40) {
+                        ctx.quadraticCurveTo(x + 20 + offset, y - 5, x + 40, y);
+                    }
+                    ctx.stroke();
+                }
+
+                // 繪製碼頭
+                const pierWidth = 120;
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(0, groundY - 10, pierWidth, 20);
+                // 碼頭支柱
+                ctx.fillStyle = '#1e293b';
+                for (let x = 20; x < pierWidth; x += 40) {
+                    ctx.fillRect(x, groundY + 10, 15, height - groundY);
+                }
+            } else {
+                // 其他場景：繪製標準地平線
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.moveTo(0, groundY);
+                ctx.lineTo(width, groundY);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                ctx.fillRect(0, groundY, width, height - groundY);
+            }
+            ctx.restore();
+        }
+
+        /**
+         * 繪製被選取物件的視覺結界框 (Bounding Box)
+         */
+        function drawSystemVFX() {
+            const selected = objects.filter(o => o.isSelected);
+            if (selected.length === 0) return;
+
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+
+            selected.forEach(o => {
+                let bx, by, ox = o.x;
+
+                if (o.type === 'circle') {
+                    bx = o.r + 15;
+                    by = o.r + 15;
+                } else if (o.type === 'person') {
+                    bx = (o.r * 0.7) / 2 + 15;
+                    by = (o.r * 1.0 + o.r * 0.6) / 2 + 15;
+                } else if (o.type === 'boat') {
+                    ox = o.x - 20;
+                    bx = (o.w + 40) / 2 + 25;
+                    by = o.h / 2 + 15;
+                } else {
+                    bx = o.w / 2 + 15;
+                    by = o.h / 2 + 15;
+                }
+
+                minX = Math.min(minX, ox - bx);
+                maxX = Math.max(maxX, ox + bx);
+                minY = Math.min(minY, o.y - by);
+                maxY = Math.max(maxY, o.y + by);
+            });
+
+            const boxW = maxX - minX;
+            const boxH = maxY - minY;
+
+            // 繪製系統結界 (細實線琥珀金)
+            ctx.save();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#fbbf24';
+            ctx.strokeRect(minX, minY, boxW, boxH);
+
+            // 內框發光裝飾
+            ctx.strokeStyle = 'rgba(250, 191, 36, 0.3)';
+            ctx.strokeRect(minX - 4, minY - 4, boxW + 8, boxH + 8);
+
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.06)';
+            ctx.fillRect(minX, minY, boxW, boxH);
+            ctx.restore();
+        }
+
+        /**
+         * 更新右側向量顯示畫布 (動量向量)
+         */
+        function updateVectorDisplay(pX, pY) {
+            vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+            const cx = vCanvas.width / 2;
+            const cy = vCanvas.height / 2;
+
+            // 繪製座標輔助線
+            vCtx.beginPath();
+            vCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            vCtx.moveTo(0, cy);
+            vCtx.lineTo(vCanvas.width, cy);
+            vCtx.moveTo(cx, 0);
+            vCtx.lineTo(cx, vCanvas.height);
+            vCtx.stroke();
+
+            const mag = Math.hypot(pX, pY);
+            const scale = scenes[curScene]?.vScale || 10;
+
+            if (mag > 0.01) {
+                drawArrowOnCtx(vCtx, cx, cy, cx + pX * scale, cy + pY * scale, '#fbbf24');
+            } else {
+                // 動量為 0 時顯示小點
+                vCtx.beginPath();
+                vCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+                vCtx.fillStyle = '#64748b';
+                vCtx.fill();
+            }
+        }
+
+        function drawArrowOnCtx(targetCtx, x1, y1, x2, y2, color) {
+            const mag = Math.hypot(x2 - x1, y2 - y1);
+            const headLength = 12;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+
+            targetCtx.save();
+            targetCtx.strokeStyle = color; targetCtx.fillStyle = color; targetCtx.lineWidth = 3;
+            targetCtx.shadowBlur = 10; targetCtx.shadowColor = color;
+            if (mag < 2) {
+                targetCtx.beginPath();
+                targetCtx.moveTo(x1, y1);
+                targetCtx.lineTo(x2 - headLength * Math.cos(angle) * 0.8, y2 - headLength * Math.sin(angle) * 0.8);
+                targetCtx.stroke();
+            } else {
+                targetCtx.beginPath();
+                targetCtx.moveTo(x1, y1);
+                targetCtx.lineTo(x2 - headLength * Math.cos(angle) * 0.8, y2 - headLength * Math.sin(angle) * 0.8);
+                targetCtx.stroke();
+
+                targetCtx.beginPath();
+                targetCtx.moveTo(x2, y2);
+                targetCtx.lineTo(x2 - headLength * Math.cos(angle - Math.PI / 6), y2 - headLength * Math.sin(angle - Math.PI / 6));
+                targetCtx.lineTo(x2 - headLength * Math.cos(angle + Math.PI / 6), y2 - headLength * Math.sin(angle + Math.PI / 6));
+                targetCtx.closePath(); targetCtx.fill();
+            }
+            targetCtx.restore();
+        }
+
+
+
+        // ==========================================
+        // 模擬控制與生命週期
+        // ==========================================
+
+        /**
+         * 播放/暫停控制
+         */
+        function togglePlay() {
+            isRunning = true;
+            playBtn.classList.add('active');
+            pauseBtn.classList.remove('active');
+        }
+
+        function togglePause() {
+            isRunning = false;
+            pauseBtn.classList.add('active');
+            playBtn.classList.remove('active');
+        }
+
+        /**
+         * 重置模擬至場景初始狀態
+         */
+        function resetSim() {
+            leakTimer = 0;
+            switchScene(curScene);
+        }
+
+        /**
+         * 場景切換初始化
+         */
+        function switchScene(id) {
+            curScene = id;
+            objects = [];
+            gravity = 0;
+            isRunning = false;
+
+            // UI 狀態更新
+            playBtn.classList.remove('active');
+            pauseBtn.classList.add('active');
+            sceneNameEl.textContent = scenes[id].name;
+
+            document.querySelectorAll('.btn').forEach((b, i) => {
+                b.classList.toggle('active', i === id);
+            });
+
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+
+            const gY = (canvas.height || height) * 0.7;
+
+            // 根據 ID 初始化物件
+            leakTimer = 0;
+            if (id === 0) {
+                // 不同質量水平對撞
+                objects.push(new PhysicsObject(width * 0.2, gY - 28, 2.0, 0, 3, 28, '#22d3ee', '球 A (3kg)'));
+                objects.push(new PhysicsObject(width * 0.8, gY - 28, -2.0, 0, 1, 28, '#f43f5e', '球 B (1kg)'));
+            } else if (id === 1) {
+                // 自由落體 (內部引力模擬)
+                gravity = 0;
+                objects.push(new PhysicsObject(width * 0.5, 100, 0, 0, 1.2, 30, '#fbbf24', '落體'));
+                const ground = new PhysicsObject(width * 0.5, gY + 300, 0, 0, 1e12, width / 2, 'rgba(255, 255, 255, 0.05)', '地面 (地球)', 'rect');
+                ground.h = 600;
+                objects.push(ground);
+            } else if (id === 2) {
+                // 小船反衝
+                const boat = new PhysicsObject(351, gY - 15, 0, 0, 100, 120, '#475569', '船', 'boat');
+                boat.w = 240;
+                boat.h = 30;
+                const man = new PhysicsObject(boat.x - boat.w / 2 + 25, gY - 62, 0, 0, 60, 30, '#f8fafc', '人', 'person');
+                objects.push(boat, man);
+            } else if (id === 3) {
+                // 滑板傳球 (修正接地高度)
+                // 地面在 gY
+                // 小人 y 到輪底總高：bodyH/2(15) + legH(18) + boardH(6) + wheelR*2(10) - 修正(2) = 47
+                const manY = gY - 47;
+                const manL = new PhysicsObject(width * 0.35, manY, 0, 0, 90, 30, '#f8fafc', '人 A', 'person');
+                const manR = new PhysicsObject(width * 0.65, manY, 0, 0, 90, 30, '#f8fafc', '人 B', 'person');
+
+                // 傳遞用球 (初始在人 A 右側)
+                const ball = new PhysicsObject(manL.x + 25, manY - 15, 0, 0, 5, 12, '#fbbf24', '球');
+                ball.state = 'hold_left';
+
+                objects.push(manL, manR, ball);
+            }
+        }
+
+        /**
+         * 處理物件間的碰撞與動量交換
+         */
+        function resolveCollisions() {
+            if (!isRunning) return;
+
+            for (let i = 0; i < objects.length; i++) {
+                for (let j = i + 1; j < objects.length; j++) {
+                    const a = objects[i];
+                    const b = objects[j];
+
+                    // 圓形與圓形碰撞 (彈性碰撞公式)
+                    if (a.type === 'circle' && b.type === 'circle') {
+                        const dist = Math.hypot(b.x - a.x, b.y - a.y);
+                        if (dist < a.r + b.r) {
+                            const nx = (b.x - a.x) / dist;
+                            const ny = (b.y - a.y) / dist;
+                            const rvX = a.vx - b.vx;
+                            const rvY = a.vy - b.vy;
+                            const relVelNormal = rvX * nx + rvY * ny;
+
+                            if (relVelNormal < 0) continue;
+
+                            const impulse = (2 * relVelNormal) / (a.m + b.m);
+                            a.vx -= impulse * b.m * nx;
+                            a.vy -= impulse * b.m * ny;
+                            b.vx += impulse * a.m * nx;
+                            b.vy += impulse * a.m * ny;
+                        }
+                    }
+                    // 圓形與矩形垂直碰撞 (簡化版)
+                    else {
+                        const circle = (a.type === 'circle') ? a : b;
+                        const rect = (a.type === 'circle') ? b : a;
+                        const inX = circle.x > rect.x - rect.w / 2 && circle.x < rect.x + rect.w / 2;
+                        const inY = circle.y + circle.r > rect.y - rect.h / 2 && circle.y - circle.r < rect.y + rect.h / 2;
+
+                        if (inX && inY) {
+                            const relVelY = circle.vy - rect.vy;
+                            if (relVelY > 0) {
+                                const impulse = (2 * relVelY) / (circle.m + rect.m);
+                                circle.vy -= impulse * rect.m;
+                                rect.vy += impulse * circle.m;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * 主動畫循環 (繪製與物理演算)
+         */
+        function animate() {
+            // 1. 清除畫布與繪製背景
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+
+            const dt = (1 / 60) * TIME_SCALE;
+
+            // 2. 場景特殊行為模擬 (如捕球場景的隨機拋球)
+            if (curScene === 3) {
+                // 場景 3：滑板傳球 (人板一體版邏輯)
+                const manL = objects[0], manR = objects[1], ball = objects[2];
+                const REL_V = 2;
+                const unitM = 90; // 人+板總質量
+
+                // 初始化傳遞次數紀錄
+                if (ball.passCount === undefined) ball.passCount = 0;
+
+                if (ball.state === 'hold_left') {
+                    ball.x = manL.x + 25;
+                    ball.y = manL.y - 15;
+                    ball.vx = manL.vx;
+
+                    // 只有在還沒傳過或是剛重置時才投球 (A 傳向 B)
+                    if (isRunning && ball.passCount === 0) {
+                        ball.state = 'fly_right';
+                        ball.vx = manL.vx + REL_V;
+                        const vOld = manL.vx;
+                        const vNew = ((unitM + ball.m) * vOld - ball.m * ball.vx) / unitM;
+                        manL.vx = vNew;
+                        ball.passCount = 1;
+                    }
+                    // 如果 A 已經接回球 (完成第二次傳遞)，則停止
+                    else if (isRunning && ball.passCount === 2) {
+                        togglePause();
+                    }
+                } else if (ball.state === 'fly_right') {
+                    if (ball.x >= manR.x - 25) {
+                        ball.state = 'hold_right';
+                        const vFinal = (unitM * manR.vx + ball.m * ball.vx) / (unitM + ball.m);
+                        manR.vx = ball.vx = vFinal;
+                    }
+                } else if (ball.state === 'hold_right') {
+                    ball.x = manR.x - 25; // 改為左手側 (面向 A)
+                    ball.y = manR.y - 15;
+                    ball.vx = manR.vx;
+
+                    // B 接到球後，立刻傳回給 A
+                    if (isRunning && ball.passCount === 1) {
+                        ball.state = 'fly_left';
+                        ball.vx = manR.vx - REL_V;
+                        const vOld = manR.vx;
+                        const vNew = ((unitM + ball.m) * vOld - ball.m * ball.vx) / unitM;
+                        manR.vx = vNew;
+                        ball.passCount = 2;
+                    }
+                } else if (ball.state === 'fly_left') {
+                    if (ball.x <= manL.x + 25) {
+                        ball.state = 'hold_left';
+                        const vFinal = (unitM * manL.vx + ball.m * ball.vx) / (unitM + ball.m);
+                        manL.vx = ball.vx = vFinal;
+                    }
+                }
+            }
+
+            // 3. 處理進行中的模擬邏輯 (受力分析)
+            if (isRunning) {
+                if (curScene === 1) {
+                    // 自由落體：施加相互引力 (F = G*m)
+                    const ball = objects[0];
+                    const ground = objects[1];
+                    const F_G = 5 * ball.m;
+                    ball.applyForce(0, F_G);
+                    ground.applyForce(0, -F_G);
+                } else if (curScene === 2) {
+                    // 小船反衝：施加內部推力 (牛頓第三定律)
+                    const boat = objects[0];
+                    const man = objects[1];
+                    const pierWidth = 120;
+                    const targetRelX = boat.w / 2 - 25;
+
+                    const hasNotReachedEnd = man.x - boat.x < targetRelX;
+                    const hasNotHitPier = boat.x - boat.w / 2 - 40 > pierWidth;
+
+                    if (hasNotReachedEnd && hasNotHitPier) {
+                        const F_INTERNAL = 20; // 交互推力
+                        man.applyForce(F_INTERNAL, 0);
+                        boat.applyForce(-F_INTERNAL, 0);
+                    } else {
+                        // 抵達邊界：精密校準位置並暫停，但保留即時速度
+                        boat.x = pierWidth + boat.w / 2 + 40;
+                        man.x = boat.x + targetRelX;
+                        togglePause();
+                    }
+                }
+
+                // 物理計算：處理碰撞與衝量
+                resolveCollisions();
+            }
+
+            // 4. 更新物件狀態並繪製
+            objects.forEach(o => {
+                o.update(dt);
+                o.draw();
+            });
+
+            // 5. 繪製選取框 (VFX)
+            drawSystemVFX();
+
+            // 6. 動量數據統計與遙測 (Telemetry)
+            let sumPx = 0;
+            let sumPy = 0;
+            objects.filter(o => o.isSelected).forEach(o => {
+                sumPx += o.vx * o.m;
+                sumPy += o.vy * o.m;
+            });
+
+            // 更新右側極坐標動量圖
+            updateVectorDisplay(sumPx, sumPy);
+
+            const totalP = Math.sqrt(sumPx ** 2 + sumPy ** 2);
+            pVal.textContent = totalP.toFixed(3);
+            pBar.style.width = Math.min((totalP / 8) * 100, 100) + '%';
+
+            // 7. 守恆狀態判定處理
+            const diff = Math.abs(totalP - lastP);
+            if (diff > 0.005 && isRunning) {
+                leakTimer = 60; // 偵測到突變，設定約 1 秒 (60 幀) 的 PERSISTENCE
+            }
+
+            if (leakTimer > 0) {
+                statusPill.style.display = "inline-block";
+                statusPill.textContent = "⚠️ 外力介入";
+                statusPill.className = "status-pill pill-leak";
+                pBar.classList.add('leaking');
+                if (isRunning) leakTimer--;
+            } else {
+                statusPill.style.display = "none";
+                pBar.classList.remove('leaking');
+            }
+
+            lastP = totalP;
+
+            requestAnimationFrame(animate);
+        }
+
+        // ==========================================
+        // 事件監聽與環境初始化
+        // ==========================================
+
+        /**
+         * 滑鼠點擊物件選取
+         */
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            // 轉換視窗坐標為畫布內坐標
+            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+            // 切換選取狀態
+            objects.forEach(o => {
+                if (o.contains(mx, my)) {
+                    o.isSelected = !o.isSelected;
+                }
+            });
+        });
+
+        /**
+         * 視窗尺寸變動自動縮放與重置場景
+         */
+        window.addEventListener('resize', () => {
+            width = canvas.width = canvas.offsetWidth;
+            height = canvas.height = canvas.offsetHeight;
+            switchScene(curScene === -1 ? 0 : curScene);
+        });
+
+        // 首次初始化啟動
+        function initCanvas() {
+            width = canvas.width = canvas.offsetWidth;
+            height = canvas.height = canvas.offsetHeight;
+            if (width === 0) {
+                // 如果初始獲取為 0，則使用固定尺寸或延遲獲取
+                width = canvas.width = 660; // 960 - 280 - gap
+                height = canvas.height = 510; // 600 - header - gap
+            }
+            switchScene(0);
+        }
+        initCanvas();
+        animate();
+    </script>
+</body>
+
+</html>
