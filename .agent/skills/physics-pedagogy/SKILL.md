@@ -1,6 +1,6 @@
 ---
 name: physics-pedagogy
-description: 專門用於物理教學邏輯、LaTeX 公式生成、原理解釋及工作紙設計。
+description: 專門用於物理教學模擬的情節設定。
 ---
 
 # Physics Pedagogy Skill

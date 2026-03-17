@@ -2,8 +2,16 @@
  * 繪製帶有標籤的物理向量箭頭
  */
 function drawArrow(ctx, x1, y1, x2, y2, color, label, width, labelPos = 'auto', isDashed = false) {
-    const headlen = 10;
-    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.sqrt(dx * dx + dy * dy);
+
+    // 防呆：如果長度極短則不繪製
+    if (length < 1) return;
+
+    // 如果向量很短，動態縮小箭頭大小 (最大比例為全長 40%)
+    const headlen = Math.min(10, length * 0.4);
+    const angle = Math.atan2(dy, dx);
 
     ctx.save();
     ctx.strokeStyle = ctx.fillStyle = color;
@@ -13,6 +21,7 @@ function drawArrow(ctx, x1, y1, x2, y2, color, label, width, labelPos = 'auto', 
     // 繪製箭身
     ctx.beginPath();
     ctx.moveTo(x1, y1);
+    // 減去箭頭長度，避免箭頭被粗線身體遮蔽
     ctx.lineTo(x2 - headlen * Math.cos(angle) * 0.8, y2 - headlen * Math.sin(angle) * 0.8);
     ctx.stroke();
 
