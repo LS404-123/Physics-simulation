@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>碰撞與衝量模擬 - 物理科</title>
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            --text-color: #ffffff;
+            --accent-color: #4facfe;
+            --danger-color: #ff4b2b;
+            --success-color: #00b09b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* Move to top */
+            min-height: 100vh;
+            padding: 20px 0;
+            /* Move slightly up */
+            box-sizing: border-box;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        /* iPad Air strict size limit */
+        .app-container {
+            width: 1100px;
+            height: 700px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+            flex-shrink: 0;
+            /* Don't crush if screen small */
+        }
+
+        /* Bento Box Grid Items */
+        .glass-box {
+            background: var(--glass-bg);
+            border-radius: 15px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            min-height: 40px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            min-width: 0;
+            /* Allow grid item to shrink */
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
+            min-width: 0;
+            /* Allow grid item to shrink */
+            min-height: 0;
+            /* Allow grid item to shrink */
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+            position: relative;
+            padding: 0 !important;
+            border: 2px solid transparent;
+            border-radius: 15px;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .canvas-container.bullet-time-glow {
+            border-color: #ffeb3b;
+            box-shadow: 0 0 50px rgba(255, 235, 59, 1),
+                inset 0 0 20px rgba(255, 235, 59, 0.5);
+            animation: pulse-yellow 1s infinite alternate;
+            z-index: 20;
+        }
+
+        @keyframes pulse-yellow {
+            from {
+                box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+            }
+
+            to {
+                box-shadow: 0 0 60px rgba(255, 235, 59, 1);
+            }
+        }
+
+        .bullet-indicator {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: #ffeb3b;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            z-index: 30;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .bullet-time-glow .bullet-indicator {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .data-box {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #fff;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .graph-data-box {
+            top: 10px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: flex-end;
+        }
+
+        .data-label {
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .data-value {
+            font-family: 'Consolas', monospace;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        canvas {
+            display: block;
+            background: transparent;
+            width: 100%;
+            height: 100%;
+            border-radius: inherit;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            flex: 1 1 30%;
+            padding: 8px 5px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.3s;
+            font-size: 13px;
+            border: 1px solid transparent;
+        }
+
+        .tab.active {
+            background: var(--accent-color);
+            color: white;
+            box-shadow: 0 0 15px rgba(79, 172, 254, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 14.5px;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        select,
+        input[type="range"] {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 6px;
+        }
+
+        select option {
+            background: #2c3e50;
+            color: white;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            text-align: center;
+            background: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 176, 155, 0.4);
+        }
+
+        .btn.pause {
+            background: #f39c12;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn.reset {
+            background: var(--danger-color);
+            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
+        }
+
+        .btn.info {
+            background: #8e44ad;
+            box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);
+        }
+
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.45);
+            /* Slightly darker for punchy text */
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            border-left: 5px solid var(--accent-color);
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            margin-top: 10px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: rgba(30, 60, 114, 0.85);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            color: white;
+            line-height: 1.6;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .modal-body {
+            font-size: 15px;
+            margin-bottom: 25px;
+        }
+
+        .close-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #0088cc;
+        }
+
+        /* Canvas Overlays */
+        .canvas-title {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            color: #ddd;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <div class="header glass-box">碰撞與衝量模擬</div>
+
+        <div class="sidebar glass-box">
+            <div class="tabs">
+                <div class="tab active" onclick="setScenario(1)">1. 撞擊地面</div>
+                <div class="tab" onclick="setScenario(2)">2. 物理追撞</div>
+                <div class="tab" onclick="setScenario(3)">3. 球桿擊球</div>
+            </div>
+
+            <div id="controls-1" class="scenario-controls">
+                <div class="control-group">
+                    <label>物體材質 (影響恢復系數及接觸時間)</label>
+                    <select id="s1-mat" onchange="resetSim()">
+                        <option value="hard">硬 (鋼球) - 接觸時間短</option>
+                        <option value="medium" selected>中 (網球) - 接觸時間中</option>
+                        <option value="soft">軟 (泥膠球) - 接觸時間長</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>跌落高度: <span id="s1-h-val">5.0</span> m</label>
+                    <input type="range" id="s1-h" min="1" max="10" step="0.5" value="5"
+                        oninput="document.getElementById('s1-h-val').innerText=this.value; resetSim();">
+                </div>
+                <div class="info-panel">
+                    觀察不同材質的 \(v-t\) 圖斜率。<br>斜率越陡，代表接觸期間的平均力越大。
+                </div>
+            </div>
+
+            <div id="controls-2" class="scenario-controls" style="display:none;">
+                <div class="control-group">
+                    <label>碰撞類型 (材質)</label>
+                    <select id="s2-mat" onchange="resetSim()">
+                        <option value="elastic" selected>彈性碰撞</option>
+                        <option value="inelastic">非彈性碰撞</option>
+                        <option value="perfect">完全非彈性碰撞</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>球 A 質量 ($m_A$): <span id="s2-mA-val">1.0</span> kg</label>
+                    <input type="range" id="s2-mA" min="1.0" max="2.0" step="0.5" value="1.0"
+                        oninput="document.getElementById('s2-mA-val').innerText=this.value; resetSim();">
+                </div>
+                <div class="control-group">
+                    <label>球 B 質量 ($m_B$): <span id="s2-mB-val">1.5</span> kg</label>
+                    <input type="range" id="s2-mB" min="1.0" max="2.0" step="0.5" value="1.5"
+                        oninput="document.getElementById('s2-mB-val').innerText=this.value; resetSim();">
+                </div>
+                <div class="info-panel">
+                    觀察不同質量的物體碰撞。<br>驗證碰撞前後的總動量 \(p = m_A v_A + m_B v_B\) 是否守恆。
+                </div>
+            </div>
+
+            <div id="controls-3" class="scenario-controls" style="display:none;">
+                <div class="control-group">
+                    <label>球桿揮動時間: <span id="s3-t-val">0.5</span> s</label>
+                    <input type="range" id="s3-t" min="0.1" max="1.5" step="0.1" value="0.5"
+                        oninput="document.getElementById('s3-t-val').innerText=this.value; resetSim();">
+                </div>
+                <div class="info-panel">
+                    接觸時間固定。<br>揮動時間越長，轉移給高爾夫球的衝量 (\(J = F \Delta t\)) 以及動量就會越大。
+                </div>
+            </div>
+
+            <div style="flex-grow: 1;"></div> <!-- Spacer -->
+
+            <button class="btn info" onclick="showModal()">原理講解</button>
+            <button class="btn" id="btn-play" onclick="togglePlay()">開始</button>
+            <button class="btn reset" onclick="resetSim()">重設</button>
+        </div>
+
+        <div class="main-content">
+            <div class="canvas-container glass-box">
+                <div class="canvas-title">物理情景</div>
+                <div class="bullet-indicator">⚡ 子彈時間 (1/6x)</div>
+                <canvas id="simCanvas" width="710" height="270"></canvas>
+            </div>
+            <div class="canvas-container glass-box">
+                <div class="canvas-title">
+                    <select id="graph-type" onchange="drawGraph()"
+                        style="width: auto; padding: 2px 5px; font-size: 13px; margin-right: 15px; font-weight: bold;">
+                        <option value="v">速度 - 時間 (v-t) 圖</option>
+                        <option value="F">力 - 時間 (F-t) 圖</option>
+                    </select>
+                    <span style="font-size: 11px; font-weight: normal; color: #aaa;">(滾動縮放，拖曳平移)</span>
+                </div>
+                <div class="bullet-indicator">⚡ 子彈時間 (1/6x)</div>
+                <div class="data-box graph-data-box">
+                    <div>
+                        <span class="data-label">碰撞時間 (Δt):</span>
+                        <span id="collision-time-val" class="data-value">0.000 s</span>
+                    </div>
+                </div>
+                <canvas id="graphCanvas" width="710" height="270" style="cursor: grab;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">原理解釋</div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content filled by JS -->
+            </div>
+            <button class="close-btn" onclick="closeModal()">明白</button>
+        </div>
+    </div>
+
+    <script>
+        const simCtx = document.getElementById('simCanvas').getContext('2d');
+        const graphCtx = document.getElementById('graphCanvas').getContext('2d');
+
+        let scenario = 1;
+        let isPlaying = false;
+        let animReq;
+
+        // Simulation Speed Variables
+        const normalSteps = 20;
+        const bulletTimeScale = 6; // 1/6 speed during contact
+
+        // Cache containers for class toggling (performance)
+        const canvasContainers = document.querySelectorAll('.canvas-container');
+
+        // Physics World
+        let t = 0;
+        const dt = 0.001; // Highest precision (1ms per step) for smooth F-t curves
+        const g = -9.81;
+
+        // Objects
+        let objA = { x: 0, y: 0, v: 0, m: 1, r: 20, color: '#ff4757' };
+        let objB = { x: 0, y: 0, v: 0, f: 0, m: 1, r: 20, color: '#1e90ff' };
+        let bat = { angle: 0, hit: false };
+
+        let state = 'pre'; // pre, contact, post
+        let contactTimer = 0;
+        let graphData = [];
+
+        // Graph Config Fixed axes
+        let graphConfig = { vMin: -15, vMax: 15, fMin: -50, fMax: 50, tMin: 0, tMax: 5 };
+        let contactStartTime = null;
+        let contactEndTime = null;
+
+        const explanations = {
+            1: {
+                title: "場景一：撞擊地面",
+                text: `當物體撞擊地面時，它會受到地面的反作用力而產生**衝量**。<br><br>
+               根據牛頓第二定律，衝量等於動量的變化量：<br>
+               $$ J = \\Delta p = m v_f - m v_i $$ <br>
+               平均撞擊力 $F$ 可以從接觸時間 $\\Delta t$ 計算出：<br>
+               $$ F = \\frac{\\Delta p}{\\Delta t} $$ <br>
+               👉 **提示**：硬材質接觸時間短，在 \\(v-t\\) 圖上的斜率（即加速度因數 $F/m$）會更陡峭，代表承受的衝擊力更大！`
+            },
+            2: {
+                title: "場景二：物理追撞",
+                text: `在沒有外力的情況下，兩物體碰撞時**總動量守恆**：<br>
+               $$ m_1 u_1 + m_2 u_2 = m_1 v_1 + m_2 v_2 $$ <br>
+               **恢復系數 $e$** 決定了碰撞的彈性程度：<br>
+               - **彈性碰撞 ($e=1$)**：動能完全守恆，物體會完美彈開。<br>
+               - **非彈性碰撞 ($0 < e < 1$)**：部分動能流失為熱能和聲音。<br>
+               - **完全非彈性碰撞 ($e=0$)**：兩物體碰撞後黏在一起，以共同速度移動。`
+            },
+            3: {
+                title: "場景三：球桿擊球",
+                text: `在這個場景中，我們改變的是**球桿的揮動時間**（即揮桿的距離和累積的速度）。<br><br>
+               揮動時間越長，代表在擊中球之前，球員對球桿作功的時間越久，球桿獲得的動能就會越大。<br>
+               這導致在碰撞瞬間，轉移給高爾夫球的**衝量 \\(J\\) 和動量變化量會更大**：<br>
+               $$ J = m v_f - m v_i $$ <br>
+               👉 **提示**：由於球的質量 \\(m\\) 固定，衝量越大，球被擊出後的**末速度 \\(v_f\\) 就會越高**，這可以在 \\(v-t\\) 圖中清楚看到最大的速度峰值有所增加。`
+            }
+        };
+
+        function showModal() {
+            document.getElementById('modalTitle').innerText = explanations[scenario].title;
+            document.getElementById('modalBody').innerHTML = explanations[scenario].text;
+            document.getElementById('infoModal').classList.add('active');
+            // Tell MathJax to re-render the new equations
+            if (window.MathJax) {
+                MathJax.typesetPromise([document.getElementById('modalBody')]).catch(function (err) {
+                    console.log('MathJax error: ', err.message);
+                });
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('infoModal').classList.remove('active');
+        }
+
+        function setScenario(s) {
+            scenario = s;
+            document.querySelectorAll('.tab').forEach((t, i) => t.className = (i + 1 === s) ? 'tab active' : 'tab');
+            document.querySelectorAll('.scenario-controls').forEach((c, i) => c.style.display = (i + 1 === s) ? 'block' : 'none');
+
+            resetSim();
+        }
+
+        function getMatParams(s) {
+            if (s === 1) {
+                const val = document.getElementById('s1-mat').value;
+                if (val === 'hard') return { e: 0.85, tc: 0.05 };
+                if (val === 'medium') return { e: 0.60, tc: 0.15 };
+                return { e: 0.0, tc: 0.30 }; // soft
+            }
+            if (s === 2) {
+                const val = document.getElementById('s2-mat').value;
+                if (val === 'elastic') return { e: 1.0, tc: 0.10 };
+                if (val === 'inelastic') return { e: 0.5, tc: 0.15 };
+                return { e: 0.0, tc: 0.20 }; // perfect inelastic
+            }
+        }
+
+        function resetSim() {
+            cancelAnimationFrame(animReq);
+            isPlaying = false;
+            document.getElementById('btn-play').innerText = '開始';
+            document.getElementById('btn-play').className = 'btn';
+
+            // Remove any bullet-time glow
+            document.querySelectorAll('.canvas-container').forEach(c => c.classList.remove('bullet-time-glow'));
+
+            t = 0;
+            state = 'pre';
+            contactTimer = 0;
+            contactStartTime = null;
+            contactEndTime = null;
+            graphData = [];
+
+            if (scenario === 1) {
+                const h = parseFloat(document.getElementById('s1-h').value);
+                objA.y = h;
+                objA.v = 0;
+                objA.f = 0;
+                // v max ~ 10m/s. f max can be >800N for hard
+                graphConfig = { vMin: -15, vMax: 15, fMin: -100, fMax: 1000, tMin: 0, tMax: 5 };
+            } else if (scenario === 2) {
+                const mA = parseFloat(document.getElementById('s2-mA').value);
+                const mB = parseFloat(document.getElementById('s2-mB').value);
+                objA.x = -4; objA.v = 6; objA.f = 0; objA.m = mA;
+                objB.x = 0; objB.v = 0; objB.f = 0; objB.m = mB;
+                // v goes 0 to 5. max f is ~ 80N
+                graphConfig = { vMin: -2, vMax: 8, fMin: -100, fMax: 100, tMin: 0, tMax: 2 };
+            } else if (scenario === 3) {
+                objA.x = -2; objA.v = 0; objA.f = 0;
+
+                // Swing time determines starting angle and bat velocity
+                const swingT = parseFloat(document.getElementById('s3-t').value);
+                // Suppose bat swings at angular velocity omega = 2 rad/s
+                bat.omega = 2; // Fixed angular swing speed for simplicity
+                bat.angle = -bat.omega * swingT; // Start further back if swingT is larger
+
+                bat.hit = false;
+                // J from 6 to 20, tc = 0.1. F max ~ 400N (2 * J / tc)
+                graphConfig = { vMin: -2, vMax: 25, fMin: -100, fMax: 500, tMin: 0, tMax: 3 }; // Extended view
+            }
+
+            updateData();
+            drawSim();
+            drawGraph();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('btn-play');
+            if (isPlaying) {
+                btn.innerText = '暫停';
+                btn.classList.add('pause');
+                loop();
+            } else {
+                btn.innerText = '繼續';
+                btn.classList.remove('pause');
+                cancelAnimationFrame(animReq);
+            }
+        }
+
+        function loop() {
+            // "Bullet Time": Slow down simulation visibly during contact
+            let stepsPerFrame = (state === 'contact') ? Math.round(normalSteps / bulletTimeScale) : normalSteps;
+
+            for (let i = 0; i < stepsPerFrame; i++) {
+                if (t < graphConfig.tMax) stepPhysics();
+                updateData();
+            }
+
+            // Apply Bullet Time Glow (Yellow)
+            if (state === 'contact') {
+                for (let c of canvasContainers) c.classList.add('bullet-time-glow');
+                // During contact, show elapsed contact time
+                const elapsed = (t - contactStartTime);
+                document.getElementById('collision-time-val').innerText = elapsed.toFixed(3) + ' s';
+            } else {
+                for (let c of canvasContainers) c.classList.remove('bullet-time-glow');
+                if (state === 'post' || state === 'done') {
+                    // Show final duration
+                    const duration = (contactEndTime - contactStartTime);
+                    document.getElementById('collision-time-val').innerText = duration.toFixed(3) + ' s';
+                } else {
+                    document.getElementById('collision-time-val').innerText = '0.000 s';
+                }
+            }
+
+            drawSim();
+            drawGraph();
+            if (isPlaying && t <= graphConfig.tMax) {
+                animReq = requestAnimationFrame(loop);
+            } else if (t > graphConfig.tMax) {
+                togglePlay(); // Auto pause at end
+                document.getElementById('btn-play').innerText = '完成';
+            }
+        }
+
+        function stepPhysics() {
+            t += dt;
+
+            // Clear forces every step so only act on contact
+            objA.f = 0;
+            objB.f = 0;
+
+            if (scenario === 1) {
+                const p = getMatParams(1);
+                if (state === 'pre') {
+                    objA.v += g * dt;
+                    objA.y += objA.v * dt;
+                    if (objA.y <= 0) {
+                        objA.y = 0;
+                        state = 'contact';
+                        objA.vi = objA.v;
+                        contactTimer = 0;
+                        contactStartTime = t;
+                    }
+                } else if (state === 'contact') {
+                    contactTimer += dt;
+                    let ratio = contactTimer / p.tc;
+                    if (ratio > 1) ratio = 1;
+                    const vf = -objA.vi * p.e;
+
+                    // Bell Curve implementation for Velocity and Force
+                    const deltaV = vf - objA.vi;
+                    objA.v = objA.vi + deltaV * (ratio - Math.sin(2 * Math.PI * ratio) / (2 * Math.PI));
+
+                    if (ratio < 1 && ratio > 0) {
+                        objA.f = objA.m * 2 * (deltaV / p.tc) * Math.pow(Math.sin(Math.PI * ratio), 2);
+                    }
+
+                    if (ratio === 1) {
+                        state = 'post';
+                        contactEndTime = t;
+                        if (Math.abs(objA.v) < 0.1) objA.v = 0;
+                    }
+                } else if (state === 'post') {
+                    const oldV = objA.v;
+                    objA.v += g * dt;
+                    objA.y += objA.v * dt;
+
+                    // Check if it reached the highest point (velocity switches from positive to 0/negative)
+                    if (oldV > 0 && objA.v <= 0) {
+                        objA.v = 0;
+                        state = 'done'; // Stop simulating its movement
+                        togglePlay();   // Auto pause the simulation
+                        document.getElementById('btn-play').innerText = '完成';
+                    }
+                    // Failsafe if it hits ground before reaching 0 velocity somehow
+                    else if (objA.y <= 0) {
+                        objA.y = 0;
+                        objA.v = 0;
+                        state = 'done';
+                        togglePlay();
+                        document.getElementById('btn-play').innerText = '完成';
+                    }
+                } else if (state === 'done') {
+                    // Do nothing, simulation is paused at apex
+                }
+            }
+            else if (scenario === 2) {
+                const p = getMatParams(2);
+                if (state === 'pre') {
+                    objA.x += objA.v * dt;
+                    objB.x += objB.v * dt;
+                    if (objA.x + 1.0 >= objB.x) { // Radius gap exactly 1.0m (40px)
+                        objA.x = objB.x - 1.0; // Prevent initial overlap
+                        state = 'contact';
+                        objA.vi = objA.v; objB.vi = objB.v;
+                        objA.vf = (objA.m * objA.vi + objB.m * objB.vi - objB.m * p.e * (objA.vi - objB.vi)) / (objA.m + objB.m);
+                        objB.vf = (objA.m * objA.vi + objB.m * objB.vi + objA.m * p.e * (objA.vi - objB.vi)) / (objA.m + objB.m);
+                        contactTimer = 0;
+                        contactStartTime = t;
+                    }
+                } else if (state === 'contact') {
+                    contactTimer += dt;
+                    let ratio = contactTimer / p.tc;
+                    if (ratio > 1) ratio = 1;
+
+                    const deltaVA = objA.vf - objA.vi;
+                    const deltaVB = objB.vf - objB.vi;
+
+                    objA.v = objA.vi + deltaVA * (ratio - Math.sin(2 * Math.PI * ratio) / (2 * Math.PI));
+                    objB.v = objB.vi + deltaVB * (ratio - Math.sin(2 * Math.PI * ratio) / (2 * Math.PI));
+
+                    if (ratio < 1 && ratio > 0) {
+                        objA.f = objA.m * 2 * (deltaVA / p.tc) * Math.pow(Math.sin(Math.PI * ratio), 2);
+                        objB.f = objB.m * 2 * (deltaVB / p.tc) * Math.pow(Math.sin(Math.PI * ratio), 2);
+                    }
+
+                    // Allow slight visual compression during contact for elastic/inelastic
+                    // But prevent passing through each other
+                    objA.x += objA.v * dt;
+                    objB.x += objB.v * dt;
+                    if (objA.x + 1.0 > objB.x && p.e === 0) {
+                        // For perfectly inelastic, strictly stick them together
+                        objA.x = objB.x - 1.0;
+                    }
+                    if (ratio === 1) {
+                        state = 'post';
+                        contactEndTime = t;
+                    }
+                } else {
+                    objA.x += objA.v * dt;
+                    objB.x += objB.v * dt;
+                    // Prevent overlap in post state (e.g., e=0)
+                    if (objA.x + 1.0 > objB.x) {
+                        objA.x = objB.x - 1.0;
+                    }
+                }
+            }
+            else if (scenario === 3) {
+                // Swing time (s3-t) determines how much momentum the bat has built up
+                const swingT = parseFloat(document.getElementById('s3-t').value);
+                // The impulse scale factors based on the swing time
+                const J = 5 + (swingT * 10); // Base impulse + extra impulse from longer swing
+                const tc = 0.1; // Increased collision time to 100ms for even smoother, wider visual sampling
+
+                if (state === 'pre') {
+                    bat.angle += bat.omega * dt; // swing speed
+                    if (bat.angle >= 0) {
+                        bat.angle = 0;
+                        state = 'contact';
+                        contactTimer = 0;
+                        contactStartTime = t;
+                        objA.vi = objA.v;
+                        objA.vf = objA.vi + (J / objA.m);
+                    }
+                } else if (state === 'contact') {
+                    contactTimer += dt;
+                    let ratio = contactTimer / tc;
+                    if (ratio > 1) ratio = 1;
+
+                    const deltaV = objA.vf - objA.vi;
+                    objA.v = objA.vi + deltaV * (ratio - Math.sin(2 * Math.PI * ratio) / (2 * Math.PI));
+
+                    if (ratio < 1 && ratio > 0) {
+                        objA.f = objA.m * 2 * (deltaV / tc) * Math.pow(Math.sin(Math.PI * ratio), 2);
+                    }
+
+                    objA.x += objA.v * dt;
+                    if (ratio < 1) bat.angle = 0 + ratio * 0.2;
+                    if (ratio === 1) {
+                        state = 'post';
+                        contactEndTime = t;
+                    }
+                } else {
+                    objA.x += objA.v * dt;
+                    bat.angle += 1 * dt; // follow through slower
+                }
+            }
+        }
+
+        function updateData() {
+            if (t <= graphConfig.tMax) {
+                graphData.push({
+                    t: t,
+                    vA: objA.v,
+                    vB: (scenario === 2) ? objB.v : null,
+                    fA: objA.f,
+                    fB: (scenario === 2) ? objB.f : null
+                });
+            }
+        }
+
+        function drawSim() {
+            const W = simCtx.canvas.width;
+            const H = simCtx.canvas.height;
+            simCtx.clearRect(0, 0, W, H);
+
+            const ppm = 40;
+            const cy = H / 2 + 60; // Ground line
+
+            // Glowing ground
+            simCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            simCtx.fillRect(0, cy, W, H - cy);
+            simCtx.beginPath();
+            simCtx.moveTo(0, cy); simCtx.lineTo(W, cy);
+            simCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            simCtx.lineWidth = 2;
+            simCtx.stroke();
+
+            if (scenario === 1) {
+                const px = W / 2;
+                const py = cy - (objA.y * ppm) - objA.r;
+
+                simCtx.beginPath();
+                let scaleY = 1, scaleX = 1;
+                if (state === 'contact') {
+                    const p = getMatParams(1);
+                    const ratio = contactTimer / p.tc;
+                    const squash = Math.sin(ratio * Math.PI) * 0.4 * (1 - p.e);
+                    scaleY = 1 - squash;
+                    scaleX = 1 + squash;
+                }
+                simCtx.ellipse(px, py + objA.r * (1 - scaleY), objA.r * scaleX, objA.r * scaleY, 0, 0, Math.PI * 2);
+                simCtx.fillStyle = objA.color;
+                simCtx.shadowColor = objA.color;
+                simCtx.shadowBlur = 15;
+                simCtx.fill();
+                simCtx.shadowBlur = 0; // reset
+            }
+            else if (scenario === 2) {
+                const cx = W / 2;
+                const py = cy - objA.r;
+                const pxA = cx + objA.x * ppm;
+                const pxB = cx + objB.x * ppm;
+
+                // Block B
+                simCtx.beginPath(); simCtx.arc(pxB, py, objA.r, 0, Math.PI * 2);
+                simCtx.fillStyle = objB.color; simCtx.shadowColor = objB.color; simCtx.shadowBlur = 15; simCtx.fill();
+
+                // Block A
+                simCtx.beginPath(); simCtx.arc(pxA, py, objA.r, 0, Math.PI * 2);
+                simCtx.fillStyle = objA.color; simCtx.shadowColor = objA.color; simCtx.shadowBlur = 15; simCtx.fill();
+                simCtx.shadowBlur = 0;
+            }
+            else if (scenario === 3) {
+                const cx = W / 2 - 50;
+                const py = cy - objA.r;
+                const pxA = cx + objA.x * ppm;
+
+                simCtx.beginPath();
+                let scaleX = 1;
+                if (state === 'contact') {
+                    const tc = parseFloat(document.getElementById('s3-t').value) / 1000;
+                    const ratio = contactTimer / tc;
+                    scaleX = 1 - Math.sin(ratio * Math.PI) * 0.3;
+                }
+                simCtx.ellipse(pxA - objA.r * (1 - scaleX), py, objA.r * scaleX, objA.r, 0, 0, Math.PI * 2);
+                simCtx.fillStyle = objA.color; simCtx.shadowColor = objA.color; simCtx.shadowBlur = 15; simCtx.fill();
+                simCtx.shadowBlur = 0;
+
+                // Draw Bat
+                simCtx.save();
+                simCtx.translate(cx - 100, py + 50);
+                simCtx.rotate(bat.angle);
+
+                // Club shaft
+                simCtx.fillStyle = '#bdc3c7';
+                simCtx.fillRect(-5, -130, 10, 130);
+                // Club head
+                simCtx.fillStyle = '#95a5a6';
+                simCtx.fillRect(0, -10, 30, 20);
+
+                simCtx.restore();
+            }
+        }
+
+        function drawGraph() {
+            const W = graphCtx.canvas.width;
+            const H = graphCtx.canvas.height;
+            graphCtx.clearRect(0, 0, W, H);
+
+            const marginL = 60;
+            const marginR = 30;
+            const marginT = 50;  // Increased top margin to shift graph down
+            const marginB = 30;  // Decreased bottom margin
+
+            const gW = W - marginL - marginR;
+            const gH = H - marginT - marginB;
+
+            // Graph Background for better contrast
+            graphCtx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+            graphCtx.fillRect(marginL, marginT, gW, gH);
+
+            const isForceGraph = document.getElementById('graph-type').value === 'F';
+
+            // Use Min and Max for calculating range and mapping depending on graph type
+            const { vMin, vMax, fMin, fMax, tMin, tMax } = graphConfig;
+
+            const gMin = isForceGraph ? fMin : vMin;
+            const gMax = isForceGraph ? fMax : vMax;
+
+            const rangeY = gMax - gMin;
+            const rangeT = tMax - tMin;
+
+            function mapX(val) { return marginL + ((val - tMin) / rangeT) * gW; }
+            function mapY(val) { return marginT + gH - ((val - gMin) / rangeY) * gH; }
+
+            // Grid System
+            graphCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+            graphCtx.lineWidth = 1;
+            graphCtx.fillStyle = '#ddd';
+            graphCtx.font = '12px ' + '"Segoe UI", Tahoma, sans-serif';
+            graphCtx.textAlign = 'right';
+            graphCtx.textBaseline = 'middle';
+
+            // Y Grid & text
+            let yStep = isForceGraph ? 50 : 5;
+            if (!isForceGraph && (scenario === 2 || scenario === 3)) yStep = 2;
+            if (isForceGraph && scenario === 2) yStep = 20;
+            if (isForceGraph && scenario === 3) yStep = 100;
+            if (isForceGraph && scenario === 1) yStep = 200;
+
+            for (let v = Math.ceil(gMin / yStep) * yStep; v <= gMax; v += yStep) {
+                const y = mapY(v);
+                graphCtx.beginPath(); graphCtx.moveTo(marginL, y); graphCtx.lineTo(marginL + gW, y); graphCtx.stroke();
+                graphCtx.fillText(v, marginL - 10, y);
+            }
+
+            // X Grid & text
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'top';
+            let tStep = (rangeT > 2) ? 1 : 0.5;
+            if (rangeT < 1) tStep = 0.2;
+            // Calculate first grid line multiple of tStep greater than or equal to tMin
+            let startTStep = Math.ceil(tMin / tStep) * tStep;
+            for (let currentT = startTStep; currentT <= tMax; currentT += tStep) {
+                const x = mapX(currentT);
+                // Ensure within bounds
+                if (x >= marginL && x <= marginL + gW) {
+                    graphCtx.beginPath(); graphCtx.moveTo(x, marginT); graphCtx.lineTo(x, marginT + gH); graphCtx.stroke();
+                    graphCtx.fillStyle = '#ddd';
+                    graphCtx.fillText(currentT.toFixed(1), x, marginT + gH + 8);
+                }
+            }
+
+            // Helper to draw vertical time lines for contacts
+            function drawContactLine(timeVal, labelStr) {
+                if (timeVal !== null && timeVal <= tMax) {
+                    const x = mapX(timeVal);
+
+                    graphCtx.save();
+                    graphCtx.beginPath();
+                    graphCtx.rect(marginL, marginT, gW, gH);
+                    graphCtx.clip();
+
+                    graphCtx.strokeStyle = '#9b59b6'; // Purple
+                    graphCtx.lineWidth = 1.5;
+                    graphCtx.setLineDash([5, 5]); // Dotted/dashed
+                    graphCtx.beginPath(); graphCtx.moveTo(x, marginT); graphCtx.lineTo(x, marginT + gH); graphCtx.stroke();
+                    graphCtx.restore(); // Free clip so we can draw text unclipped
+
+                    graphCtx.save();
+                    // Text annotation slightly offset from bottom
+                    graphCtx.fillStyle = '#d2b4de'; // Lighter purple for better contrast
+                    graphCtx.font = 'bold 12px "Segoe UI"';
+                    graphCtx.setLineDash([]); // Reset
+
+                    // Adjust y-position depending on Start/End to avoid text overlapping each other if too close
+                    let txtY = marginT + gH - 10;
+                    if (labelStr === "End") txtY -= 15; // Shift 'End' up slightly if they are very close
+
+                    // Only draw text if it's generally visible (within the X-margin or slightly beyond)
+                    if (x >= marginL - 10 && x <= marginL + gW + 10) {
+                        graphCtx.fillText(labelStr, x, txtY);
+                    }
+                    graphCtx.restore();
+                }
+            }
+
+            drawContactLine(contactStartTime, "開始");
+            drawContactLine(contactEndTime, "結束");
+
+            // Clip plotting area so lines don't draw outside margins when panned
+            graphCtx.save();
+            graphCtx.beginPath();
+            graphCtx.rect(marginL, marginT, gW, gH);
+            graphCtx.clip();
+
+            // Axes
+            graphCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+            graphCtx.lineWidth = 2;
+
+            // zero v line
+            const zeroY = mapY(0);
+            if (zeroY >= marginT && zeroY <= marginT + gH) {
+                // Extend the 'ground' axis across the whole canvas visually
+                graphCtx.beginPath(); graphCtx.moveTo(0, zeroY); graphCtx.lineTo(W, zeroY); graphCtx.stroke();
+            }
+            // zero t line
+            const zeroX = mapX(0);
+            if (zeroX >= marginL && zeroX <= marginL + gW) {
+                graphCtx.beginPath(); graphCtx.moveTo(zeroX, marginT); graphCtx.lineTo(zeroX, marginT + gH); graphCtx.stroke();
+            }
+
+            // Axis Labels (outside clip)
+            graphCtx.restore();
+            graphCtx.fillStyle = '#fff';
+            graphCtx.font = 'bold 13px ' + '"Segoe UI", Tahoma, sans-serif';
+            graphCtx.textAlign = 'center';
+            graphCtx.fillText('t (s)', marginL + gW + 10, zeroY + 15);
+            graphCtx.textAlign = 'left';
+
+            const ylabel = isForceGraph ? 'F (N)' : 'v (m/s)';
+            graphCtx.fillText(ylabel, marginL - 10, marginT - 20);
+
+            if (graphData.length === 0) return;
+
+            // Plot Function
+            function plot(key, color, labelText) {
+                graphCtx.save();
+                graphCtx.beginPath();
+                graphCtx.rect(marginL, marginT, gW, gH);
+                graphCtx.clip();
+
+                graphCtx.strokeStyle = color;
+                graphCtx.shadowColor = color;
+                graphCtx.shadowBlur = 8;
+                graphCtx.lineWidth = 3;
+                graphCtx.beginPath();
+                let isFirst = true;
+                let lastX, lastY;
+                for (let d of graphData) {
+                    const x = mapX(d.t);
+                    let y = mapY(d[key]);
+
+                    // skip mapping if out of bounds (handled safely by line mapping, but only draw label if in bounds)
+                    if (isFirst) { graphCtx.moveTo(x, y); isFirst = false; }
+                    else graphCtx.lineTo(x, y);
+                    lastX = x; lastY = y;
+                }
+                graphCtx.stroke();
+
+                graphCtx.restore(); // Restores clip so label can be safely drawn outside if needed, or near edges.
+
+                // Keep label drawing outside the strictly clipped area so large fonts aren't cut off half-way
+                if (!isFirst && lastX >= marginL && lastX <= marginL + gW) {
+                    graphCtx.fillStyle = color;
+                    graphCtx.font = 'bold 14px "Segoe UI"';
+                    graphCtx.textAlign = 'left';
+                    graphCtx.textBaseline = 'middle';
+
+                    // Clamp text vertical position so it doesn't float into title or out of bottom margin
+                    let textY = lastY;
+                    if (textY < marginT) textY = marginT + 10;
+                    if (textY > marginT + gH) textY = marginT + gH - 10;
+
+                    graphCtx.fillText(labelText, lastX + 8, textY);
+                }
+            }
+
+            const activeKeyA = isForceGraph ? 'fA' : 'vA';
+            const activeKeyB = isForceGraph ? 'fB' : 'vB';
+
+            plot(activeKeyA, objA.color, (scenario === 2 || isForceGraph) ? 'A' : '');
+            if (scenario === 2) plot(activeKeyB, objB.color, 'B');
+
+            graphCtx.restore(); // Ensure clip is restored if loop exits early
+        }
+
+        // Interactivity states
+        let isDraggingGraph = false;
+        let lastMouseX = 0;
+
+        const gCanvas = document.getElementById('graphCanvas');
+
+        // Zoom functionality for Graph Canvas via Mouse Wheel
+        gCanvas.addEventListener('wheel', function (e) {
+            if (graphData.length === 0 && !isPlaying) return; // Allow zooming anytime if data exists or playing
+
+            e.preventDefault(); // Prevent page scrolling
+
+            // Determine zoom direction
+            const zoomFactor = 0.15;
+            let range = graphConfig.tMax - graphConfig.tMin;
+            let newRange = range;
+
+            if (e.deltaY < 0) {
+                // Zoom IN (make time scale smaller)
+                newRange *= (1 - zoomFactor);
+            } else {
+                // Zoom OUT (make time scale larger)
+                newRange *= (1 + zoomFactor);
+            }
+
+            // Clamp zoom levels
+            if (newRange < 0.2) newRange = 0.2; // Maximum zoom in (0.2s view)
+            if (newRange > 20.0) newRange = 20.0; // Maximum zoom out (20s view)
+
+            // Adjust max based on new range, keeping min the same
+            graphConfig.tMax = graphConfig.tMin + newRange;
+
+            if (!isPlaying) drawGraph();
+        }, { passive: false });
+
+        // Panning functionality for Graph Canvas via Mouse Drag
+        gCanvas.addEventListener('mousedown', function (e) {
+            if (graphData.length === 0 && !isPlaying) return;
+            isDraggingGraph = true;
+            lastMouseX = e.offsetX;
+            gCanvas.style.cursor = 'grabbing';
+        });
+
+        gCanvas.addEventListener('mousemove', function (e) {
+            if (!isDraggingGraph) return;
+
+            const dx = e.offsetX - lastMouseX;
+            lastMouseX = e.offsetX;
+
+            // Convert pixel movement to time movement
+            const marginL = 60;
+            const marginR = 30;
+            const gW = gCanvas.width - marginL - marginR;
+
+            const rangeT = graphConfig.tMax - graphConfig.tMin;
+            // dx / gW determines the fraction of the view panned
+            const dtPan = -(dx / gW) * rangeT;
+
+            graphConfig.tMin += dtPan;
+            graphConfig.tMax += dtPan;
+
+            // Prevent panning before t=0
+            if (graphConfig.tMin < 0) {
+                graphConfig.tMax -= graphConfig.tMin; // Re-add the overshoot to max
+                graphConfig.tMin = 0;
+            }
+
+            if (!isPlaying) drawGraph();
+        });
+
+        window.addEventListener('mouseup', function () {
+            isDraggingGraph = false;
+            gCanvas.style.cursor = 'grab';
+        });
+
+        gCanvas.addEventListener('mouseleave', function () {
+            isDraggingGraph = false;
+            gCanvas.style.cursor = 'grab';
+        });
+
+        // --- Touch Interactivity for iPad ---
+        let initialTouchX = 0;
+        let initialPinchDist = 0;
+        let initialRange = 0;
+
+        function getPinchDist(e) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        gCanvas.addEventListener('touchstart', function (e) {
+            if (graphData.length === 0 && !isPlaying) return;
+            if (e.touches.length === 1) {
+                isDraggingGraph = true;
+                initialTouchX = e.touches[0].clientX;
+            } else if (e.touches.length === 2) {
+                isDraggingGraph = false; // Disable pan during pinch
+                initialPinchDist = getPinchDist(e);
+                initialRange = graphConfig.tMax - graphConfig.tMin;
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        gCanvas.addEventListener('touchmove', function (e) {
+            if (graphData.length === 0 && !isPlaying) return;
+            if (e.touches.length === 1 && isDraggingGraph) {
+                const currentTouchX = e.touches[0].clientX;
+                const dx = currentTouchX - initialTouchX;
+                initialTouchX = currentTouchX;
+
+                const marginL = 60;
+                const marginR = 30;
+                const gW = gCanvas.width - marginL - marginR;
+                const rangeT = graphConfig.tMax - graphConfig.tMin;
+                const dtPan = -(dx / gW) * rangeT;
+
+                graphConfig.tMin += dtPan;
+                graphConfig.tMax += dtPan;
+                if (graphConfig.tMin < 0) {
+                    graphConfig.tMax -= graphConfig.tMin;
+                    graphConfig.tMin = 0;
+                }
+                if (!isPlaying) drawGraph();
+            } else if (e.touches.length === 2) {
+                const currentPinchDist = getPinchDist(e);
+                if (initialPinchDist > 0) {
+                    const ratio = initialPinchDist / currentPinchDist;
+                    let newRange = initialRange * ratio;
+
+                    // Clamp
+                    if (newRange < 0.2) newRange = 0.2;
+                    if (newRange > 20.0) newRange = 20.0;
+
+                    graphConfig.tMax = graphConfig.tMin + newRange;
+                    if (!isPlaying) drawGraph();
+                }
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        gCanvas.addEventListener('touchend', function (e) {
+            isDraggingGraph = false;
+            initialPinchDist = 0;
+        });
+
+        // Ensure first modal fires on load after MathJax loaded
+        function resizeCanvases() {
+            const simC = document.getElementById('simCanvas');
+            const graphC = document.getElementById('graphCanvas');
+            simC.width = simC.clientWidth;
+            simC.height = simC.clientHeight;
+            graphC.width = graphC.clientWidth;
+            graphC.height = graphC.clientHeight;
+
+            if (!isPlaying) {
+                drawSim();
+                drawGraph();
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvases);
+
+        window.onload = function () {
+            resizeCanvases();
+            setScenario(1);
+            drawGraph(); // Draw axes before playing
+
+            // Process LaTeX in the initial info panels
+            if (window.MathJax) {
+                MathJax.typesetPromise().catch(function (err) {
+                    console.log('MathJax error: ', err.message);
+                });
+            }
+        };
+
+    </script>
+</body>
+
+</html>
