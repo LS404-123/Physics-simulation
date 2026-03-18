@@ -1,9 +1,7 @@
 ---
 name: physics-viz-vectors
-description: 專門負責將物理向量（力、速度、加速度）可視化，支持箭頭繪製與數值標註。
+description: 箭頭繪製與數值標註的標準。
 ---
-
-# Physics Visualization: Vectors
 
 ## 視覺規範
 - **配色標準**：
