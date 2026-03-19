@@ -687,8 +687,8 @@
                 const mB = parseFloat(document.getElementById('s2-mB').value);
                 objA.x = -4; objA.v = 6; objA.f = 0; objA.m = mA;
                 objB.x = 0; objB.v = 0; objB.f = 0; objB.m = mB;
-                // v goes 0 to 5. max f is ~ 80N. 使用者要求 y 軸上限為 150
-                graphConfig = { vMin: -2, vMax: 8, fMin: -150, fMax: 150, tMin: 0, tMax: 2 };
+                // v goes 0 to 5. max f is ~ 80N. 使用者要求 y 軸上限為 250
+                graphConfig = { vMin: -2, vMax: 8, fMin: -250, fMax: 250, tMin: 0, tMax: 2 };
                 simDuration = 2;
             } else if (scenario === 3) {
                 objA.x = -2.0; objA.v = 0; objA.f = 0;
