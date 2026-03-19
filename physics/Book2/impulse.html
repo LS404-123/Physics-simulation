@@ -450,7 +450,7 @@
 
             <div id="controls-1" class="scenario-controls">
                 <div class="control-group">
-                    <label>物體材質 (影響恢復系數及接觸時間)</label>
+                    <label>物體材質 (僅影響接觸時間)</label>
                     <select id="s1-mat" onchange="resetSim()">
                         <option value="hard">硬 (鋼球) - 接觸時間短</option>
                         <option value="medium" selected>中 (網球) - 接觸時間中</option>
@@ -591,7 +591,7 @@
                $$ J = \\Delta p = m v_f - m v_i $$ <br>
                平均撞擊力 $F$ 可以從接觸時間 $\\Delta t$ 計算出：<br>
                $$ F = \\frac{\\Delta p}{\\Delta t} $$ <br>
-               👉 **提示**：硬材質接觸時間短，在 \\(v-t\\) 圖上的斜率（即加速度因數 $F/m$）會更陡峭，代表承受的衝擊力更大！`
+               👉 **提示**：材質越硬，接觸時間越短，在 \\(v-t\\) 圖上的斜率會更陡峭，代表承受的平均撞擊力最大，但最終反彈速率保持一致！`
             },
             2: {
                 title: "場景二：物理追撞",
@@ -646,9 +646,10 @@
         function getMatParams(s) {
             if (s === 1) {
                 const val = document.getElementById('s1-mat').value;
-                if (val === 'hard') return { e: 0.85, tc: 0.05 };
-                if (val === 'medium') return { e: 0.60, tc: 0.15 };
-                return { e: 0.0, tc: 0.30 }; // soft
+                const fixedE = 0.75;
+                if (val === 'hard') return { e: fixedE, tc: 0.05 };
+                if (val === 'medium') return { e: fixedE, tc: 0.15 };
+                return { e: fixedE, tc: 0.30 }; // soft
             }
             if (s === 2) {
                 const val = document.getElementById('s2-mat').value;
@@ -875,7 +876,7 @@
                 const tc = parseFloat(document.getElementById('s3-t').value);
                 // 使用固定峰值力模型：J = F_peak * tc / 2
                 // 接觸時間越長，傳遞的總衝量 J 越大，末速度越高
-                const F_peak = 500;
+                const F_peak = 400;
                 const J = F_peak * (tc / 2);
 
                 if (state === 'pre') {
