@@ -74,7 +74,7 @@
             border-radius: 15px;
             border: 1px solid var(--glass-border);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 15px;
+            padding: 12px;
             box-sizing: border-box;
         }
 
@@ -83,17 +83,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             letter-spacing: 1px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            min-height: 40px;
+            min-height: 30px;
         }
 
         .sidebar {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 5px;
             overflow-y: auto;
             min-width: 0;
             /* Allow grid item to shrink */
@@ -213,14 +213,14 @@
 
         .tab {
             flex: 1 1 30%;
-            padding: 8px 5px;
+            padding: 6px 3px;
             text-align: center;
             background: rgba(255, 255, 255, 0.1);
             cursor: pointer;
             border-radius: 8px;
             font-weight: bold;
             transition: 0.3s;
-            font-size: 13px;
+            font-size: 12.5px;
             border: 1px solid transparent;
         }
 
@@ -237,14 +237,14 @@
         }
 
         .control-group {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-weight: 600;
-            font-size: 14.5px;
+            font-size: 14px;
             color: #ffffff;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
@@ -257,7 +257,7 @@
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 6px;
-            padding: 6px;
+            padding: 4px 6px;
         }
 
         select option {
@@ -268,16 +268,16 @@
         .btn {
             display: block;
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             text-align: center;
             background: var(--success-color);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 15px;
+            font-size: 14.5px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 8px;
             transition: 0.2s;
             box-shadow: 0 4px 15px rgba(0, 176, 155, 0.4);
         }
@@ -309,14 +309,14 @@
         .info-panel {
             background: rgba(0, 0, 0, 0.45);
             /* Slightly darker for punchy text */
-            padding: 14px;
+            padding: 10px;
             border-radius: 10px;
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 13px;
+            line-height: 1.5;
             border-left: 5px solid var(--accent-color);
             color: #ffffff;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         /* Modal Styles */
@@ -402,6 +402,37 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
             color: #ddd;
         }
+
+        /* Graph Toggle Tabs */
+        .graph-tabs {
+            display: inline-flex;
+            gap: 5px;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+
+        .graph-tab {
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            font-size: 12px;
+            color: #eee;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .graph-tab.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 12px rgba(79, 172, 254, 0.5);
+        }
+
+        .graph-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.25);
+        }
     </style>
 </head>
 
@@ -414,7 +445,7 @@
             <div class="tabs">
                 <div class="tab active" onclick="setScenario(1)">1. 撞擊地面</div>
                 <div class="tab" onclick="setScenario(2)">2. 物理追撞</div>
-                <div class="tab" onclick="setScenario(3)">3. 球桿擊球</div>
+                <div class="tab" onclick="setScenario(3)">3. 網球擊球</div>
             </div>
 
             <div id="controls-1" class="scenario-controls">
@@ -462,12 +493,12 @@
 
             <div id="controls-3" class="scenario-controls" style="display:none;">
                 <div class="control-group">
-                    <label>球桿揮動時間: <span id="s3-t-val">0.5</span> s</label>
-                    <input type="range" id="s3-t" min="0.1" max="1.5" step="0.1" value="0.5"
-                        oninput="document.getElementById('s3-t-val').innerText=this.value; resetSim();">
+                    <label>碰撞時間 ($\Delta t$): <span id="s3-t-val">0.02</span> s</label>
+                    <input type="range" id="s3-t" min="0.01" max="0.05" step="0.005" value="0.02"
+                        oninput="document.getElementById('s3-t-val').innerText=parseFloat(this.value).toFixed(3); resetSim();">
                 </div>
                 <div class="info-panel">
-                    接觸時間固定。<br>揮動時間越長，轉移給高爾夫球的衝量 (\(J = F \Delta t\)) 以及動量就會越大。
+                    網球拍擊球。<br>假設由運動員控制最大擊球力。碰撞時間（隨揮）越長，傳遞給球的總衝量越大，球速越快。
                 </div>
             </div>
 
@@ -486,11 +517,10 @@
             </div>
             <div class="canvas-container glass-box">
                 <div class="canvas-title">
-                    <select id="graph-type" onchange="drawGraph()"
-                        style="width: auto; padding: 2px 5px; font-size: 13px; margin-right: 15px; font-weight: bold;">
-                        <option value="v">速度 - 時間 (v-t) 圖</option>
-                        <option value="F">力 - 時間 (F-t) 圖</option>
-                    </select>
+                    <div class="graph-tabs">
+                        <div id="gt-v" class="graph-tab active" onclick="setGraphType('v')">v - t 圖</div>
+                        <div id="gt-F" class="graph-tab" onclick="setGraphType('F')">F - t 圖</div>
+                    </div>
                     <span style="font-size: 11px; font-weight: normal; color: #aaa;">(滾動縮放，拖曳平移)</span>
                 </div>
                 <div class="bullet-indicator">⚡ 子彈時間 (1/6x)</div>
@@ -523,6 +553,7 @@
         let scenario = 1;
         let isPlaying = false;
         let animReq;
+        let currentGraphType = 'v'; // 'v' or 'F'
 
         // Simulation Speed Variables
         const normalSteps = 20;
@@ -544,6 +575,8 @@
         let state = 'pre'; // pre, contact, post
         let contactTimer = 0;
         let graphData = [];
+        let simDuration = 5; // 整個模擬的持續時間，獨立於圖表顯示範圍
+
 
         // Graph Config Fixed axes
         let graphConfig = { vMin: -15, vMax: 15, fMin: -50, fMax: 50, tMin: 0, tMax: 5 };
@@ -570,12 +603,12 @@
                - **完全非彈性碰撞 ($e=0$)**：兩物體碰撞後黏在一起，以共同速度移動。`
             },
             3: {
-                title: "場景三：球桿擊球",
-                text: `在這個場景中，我們改變的是**球桿的揮動時間**（即揮桿的距離和累積的速度）。<br><br>
-               揮動時間越長，代表在擊中球之前，球員對球桿作功的時間越久，球桿獲得的動能就會越大。<br>
-               這導致在碰撞瞬間，轉移給高爾夫球的**衝量 \\(J\\) 和動量變化量會更大**：<br>
-               $$ J = m v_f - m v_i $$ <br>
-               👉 **提示**：由於球的質量 \\(m\\) 固定，衝量越大，球被擊出後的**末速度 \\(v_f\\) 就會越高**，這可以在 \\(v-t\\) 圖中清楚看到最大的速度峰值有所增加。`
+                title: "場景三：網球擊球",
+                text: `在這個場景中，我們模擬了在**峰值力 $F_{max}$ 固定**的情況下，如何透過增加碰撞時間 $\Delta t$ 來提升球速。<br><br>
+               當擊球力量達到身體極限（$F_{max}$ 固定）時：<br>
+               $$ J = \int F(t) dt \propto F_{max} \cdot \Delta t $$ <br>
+               增加接觸時間 $\Delta t$（即良好的「隨揮」）可以顯著增加球獲得的**衝量 $J$**，從而提高末速度。<br>
+               👉 **提示**：觀察不同的 $\Delta t$，你會發現 $F-t$ 圖的積分面積（衝量）隨時間增加而變大，這直接導致了 $v-t$ 圖中末速度的提升。`
             }
         };
 
@@ -601,6 +634,13 @@
             document.querySelectorAll('.scenario-controls').forEach((c, i) => c.style.display = (i + 1 === s) ? 'block' : 'none');
 
             resetSim();
+        }
+
+        function setGraphType(type) {
+            currentGraphType = type;
+            document.querySelectorAll('.graph-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('gt-' + type).classList.add('active');
+            drawGraph();
         }
 
         function getMatParams(s) {
@@ -641,25 +681,25 @@
                 objA.f = 0;
                 // v max ~ 10m/s. f max can be >800N for hard
                 graphConfig = { vMin: -15, vMax: 15, fMin: -100, fMax: 1000, tMin: 0, tMax: 5 };
+                simDuration = 5;
             } else if (scenario === 2) {
                 const mA = parseFloat(document.getElementById('s2-mA').value);
                 const mB = parseFloat(document.getElementById('s2-mB').value);
                 objA.x = -4; objA.v = 6; objA.f = 0; objA.m = mA;
                 objB.x = 0; objB.v = 0; objB.f = 0; objB.m = mB;
-                // v goes 0 to 5. max f is ~ 80N
-                graphConfig = { vMin: -2, vMax: 8, fMin: -100, fMax: 100, tMin: 0, tMax: 2 };
+                // v goes 0 to 5. max f is ~ 80N. 使用者要求 y 軸上限為 150
+                graphConfig = { vMin: -2, vMax: 8, fMin: -150, fMax: 150, tMin: 0, tMax: 2 };
+                simDuration = 2;
             } else if (scenario === 3) {
-                objA.x = -2; objA.v = 0; objA.f = 0;
+                objA.x = -2.0; objA.v = 0; objA.f = 0;
 
-                // Swing time determines starting angle and bat velocity
-                const swingT = parseFloat(document.getElementById('s3-t').value);
-                // Suppose bat swings at angular velocity omega = 2 rad/s
-                bat.omega = 2; // Fixed angular swing speed for simplicity
-                bat.angle = -bat.omega * swingT; // Start further back if swingT is larger
-
+                bat.omega = 4; // 揮拍速度
+                bat.angle = -0.5; // 固定起始角度
                 bat.hit = false;
-                // J from 6 to 20, tc = 0.1. F max ~ 400N (2 * J / tc)
-                graphConfig = { vMin: -2, vMax: 25, fMin: -100, fMax: 500, tMin: 0, tMax: 3 }; // Extended view
+                // tc 較小時，力的峰值會非常高 (J=12)，故 fMax 設定為 3000
+                // 為了強調碰撞瞬間，將 x 軸縮放至 0.5s，但持續模擬至 2.5s
+                graphConfig = { vMin: -2, vMax: 20, fMin: -200, fMax: 3000, tMin: 0, tMax: 0.5 };
+                simDuration = 2.5;
             }
 
             updateData();
@@ -686,7 +726,7 @@
             let stepsPerFrame = (state === 'contact') ? Math.round(normalSteps / bulletTimeScale) : normalSteps;
 
             for (let i = 0; i < stepsPerFrame; i++) {
-                if (t < graphConfig.tMax) stepPhysics();
+                if (t < simDuration) stepPhysics();
                 updateData();
             }
 
@@ -709,9 +749,9 @@
 
             drawSim();
             drawGraph();
-            if (isPlaying && t <= graphConfig.tMax) {
+            if (isPlaying && t <= simDuration) {
                 animReq = requestAnimationFrame(loop);
-            } else if (t > graphConfig.tMax) {
+            } else if (t > simDuration) {
                 togglePlay(); // Auto pause at end
                 document.getElementById('btn-play').innerText = '完成';
             }
@@ -831,14 +871,15 @@
                 }
             }
             else if (scenario === 3) {
-                // Swing time (s3-t) determines how much momentum the bat has built up
-                const swingT = parseFloat(document.getElementById('s3-t').value);
-                // The impulse scale factors based on the swing time
-                const J = 5 + (swingT * 10); // Base impulse + extra impulse from longer swing
-                const tc = 0.1; // Increased collision time to 100ms for even smoother, wider visual sampling
+                // 接觸時間控制
+                const tc = parseFloat(document.getElementById('s3-t').value);
+                // 使用固定峰值力模型：J = F_peak * tc / 2
+                // 接觸時間越長，傳遞的總衝量 J 越大，末速度越高
+                const F_peak = 500;
+                const J = F_peak * (tc / 2);
 
                 if (state === 'pre') {
-                    bat.angle += bat.omega * dt; // swing speed
+                    bat.angle += bat.omega * dt;
                     if (bat.angle >= 0) {
                         bat.angle = 0;
                         state = 'contact';
@@ -860,20 +901,22 @@
                     }
 
                     objA.x += objA.v * dt;
-                    if (ratio < 1) bat.angle = 0 + ratio * 0.2;
+                    // 接觸期間拍子繼續揮動，表現「揮擊」
+                    bat.angle = 0 + ratio * 0.2;
+
                     if (ratio === 1) {
                         state = 'post';
                         contactEndTime = t;
                     }
                 } else {
                     objA.x += objA.v * dt;
-                    bat.angle += 1 * dt; // follow through slower
+                    // 碰撞結束後球拍停止動作 (Stop at follow-through position)
                 }
             }
         }
 
         function updateData() {
-            if (t <= graphConfig.tMax) {
+            if (t <= simDuration) {
                 graphData.push({
                     t: t,
                     vA: objA.v,
@@ -944,7 +987,7 @@
                 simCtx.beginPath();
                 let scaleX = 1;
                 if (state === 'contact') {
-                    const tc = parseFloat(document.getElementById('s3-t').value) / 1000;
+                    const tc = parseFloat(document.getElementById('s3-t').value);
                     const ratio = contactTimer / tc;
                     scaleX = 1 - Math.sin(ratio * Math.PI) * 0.3;
                 }
@@ -952,17 +995,32 @@
                 simCtx.fillStyle = objA.color; simCtx.shadowColor = objA.color; simCtx.shadowBlur = 15; simCtx.fill();
                 simCtx.shadowBlur = 0;
 
-                // Draw Bat
+                // Draw Tennis Racket
                 simCtx.save();
-                simCtx.translate(cx - 100, py + 50);
+                // 調整支點與球對齊 (球在 cx + objA.x*ppm)
+                simCtx.translate(cx - 80, py + 100);
                 simCtx.rotate(bat.angle);
 
-                // Club shaft
-                simCtx.fillStyle = '#bdc3c7';
-                simCtx.fillRect(-5, -130, 10, 130);
-                // Club head
-                simCtx.fillStyle = '#95a5a6';
-                simCtx.fillRect(0, -10, 30, 20);
+                // Handle (從支點 0 連接到拍頭底部 ~ -65)
+                simCtx.fillStyle = '#7f8c8d';
+                simCtx.fillRect(-3, -65, 6, 65);
+
+                // Head Frame (中心在 -100，半徑 35 確保中心與球心對齊)
+                simCtx.beginPath();
+                simCtx.ellipse(0, -100, 25, 35, 0, 0, Math.PI * 2);
+                simCtx.strokeStyle = '#34495e';
+                simCtx.lineWidth = 5;
+                simCtx.stroke();
+
+                // Strings (球網)
+                simCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                simCtx.lineWidth = 1;
+                for (let j = -15; j <= 15; j += 5) {
+                    simCtx.beginPath(); simCtx.moveTo(j, -130); simCtx.lineTo(j, -70); simCtx.stroke();
+                }
+                for (let j = -130; j <= -70; j += 5) {
+                    simCtx.beginPath(); simCtx.moveTo(-20, j); simCtx.lineTo(20, j); simCtx.stroke();
+                }
 
                 simCtx.restore();
             }
@@ -975,17 +1033,17 @@
 
             const marginL = 60;
             const marginR = 30;
-            const marginT = 50;  // Increased top margin to shift graph down
+            const marginT = 70;  // 增加頂部邊距以避開切換按鈕
             const marginB = 30;  // Decreased bottom margin
 
             const gW = W - marginL - marginR;
             const gH = H - marginT - marginB;
 
-            // Graph Background for better contrast
+            // Graph Background
             graphCtx.fillStyle = 'rgba(0, 0, 0, 0.25)';
             graphCtx.fillRect(marginL, marginT, gW, gH);
 
-            const isForceGraph = document.getElementById('graph-type').value === 'F';
+            const isForceGraph = (currentGraphType === 'F');
 
             // Use Min and Max for calculating range and mapping depending on graph type
             const { vMin, vMax, fMin, fMax, tMin, tMax } = graphConfig;
@@ -1010,8 +1068,8 @@
             // Y Grid & text
             let yStep = isForceGraph ? 50 : 5;
             if (!isForceGraph && (scenario === 2 || scenario === 3)) yStep = 2;
-            if (isForceGraph && scenario === 2) yStep = 20;
-            if (isForceGraph && scenario === 3) yStep = 100;
+            if (isForceGraph && scenario === 2) yStep = 50;
+            if (isForceGraph && scenario === 3) yStep = 500;
             if (isForceGraph && scenario === 1) yStep = 200;
 
             for (let v = Math.ceil(gMin / yStep) * yStep; v <= gMax; v += yStep) {
