@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拋體運動：相同最高點與飛行時間</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Inter:wght@400&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0c;
+            --accent-color: #00d2ff;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --gap: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* Move to top */
+            padding-top: 10px;
+            /* Near the top but not touching */
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen-container {
+            width: 1100px;
+            height: 650px;
+            display: grid;
+            grid-template-columns: 700px 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: var(--gap);
+            padding: var(--gap);
+            position: relative;
+        }
+
+        .bento-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        .bento-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+        }
+
+        .modern-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sim-container {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .explanation {
+            grid-column: 2 / 3;
+            grid-row: 2 / 4;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .explanation h3 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--accent-color);
+            margin-bottom: 2px;
+        }
+
+        .controls {
+            grid-column: 1 / 2;
+            grid-row: 3 / 4;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        button {
+            padding: 10px 25px;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent-color);
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            font-family: monospace;
+            color: var(--accent-color);
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .line-x {
+            width: 20px;
+            height: 2px;
+            border-top: 2px dotted #ff4757;
+        }
+
+        .line-y {
+            width: 20px;
+            height: 2px;
+            border-top: 2px dashed #2ed573;
+        }
+
+        .line-z {
+            width: 20px;
+            height: 2px;
+            border-top: 2px solid #1e90ff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="screen-container">
+        <!-- Header -->
+        <div class="bento-card header">
+            <h1 class="modern-title">拋體運動：飛行時間之謎</h1>
+            <div style="font-size: 14px; color: var(--text-secondary);">為什麼最高點相同，時間就相同？</div>
+        </div>
+
+        <!-- Simulation -->
+        <div class="bento-card sim-container" id="sim-box">
+            <canvas id="simCanvas"></canvas>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="line-x"></div> 拋體 A (短射程)
+                </div>
+                <div class="legend-item">
+                    <div class="line-y"></div> 拋體 B (中射程)
+                </div>
+                <div class="legend-item">
+                    <div class="line-z"></div> 拋體 C (長射程)
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bento-card controls">
+            <div class="control-group">
+                <label style="font-size: 12px; color: var(--text-secondary);">最高高度</label>
+                <input type="range" id="heightSlider" min="50" max="250" value="150">
+            </div>
+            <button id="startBtn">同時發射</button>
+            <button id="resetBtn" style="background: rgba(255,255,255,0.1); color: #fff;">重置</button>
+            <div class="stats">
+                <div>時間: <span id="timeVal">0.00</span> 秒</div>
+                <div>飛行總時: <span id="totalTimeVal">0.00</span> 秒</div>
+            </div>
+        </div>
+
+        <!-- Explanation -->
+        <div class="bento-card explanation">
+            <h3>垂直同步：飛行時間相同</h3>
+            <p>拋體運動可分解為<strong>「垂直向上」</strong>與<strong>「水平衝刺」</strong>。</p>
+            <div
+                style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; border-left: 4px solid var(--accent-color);">
+                <p><strong>關鍵點：</strong></p>
+                <p style="margin-top: 5px;">重力僅垂直作用。既然 A、B、C 三者的<strong>最高高度相同</strong>，代表：</p>
+                <ul style="margin: 5px 0 5px 20px;">
+                    <li>它們的「垂直初速度」完全相同。</li>
+                    <li>它們在垂直方向經歷了相同的加減速過程。</li>
+                </ul>
+            </div>
+            <p><strong>直覺結論：</strong></p>
+            <p>水平射程長短只是決定在這個「跳躍期」內跑多遠。高度一樣，垂直行程完全重疊，因此必然同時降落在地面。</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const heightSlider = document.getElementById('heightSlider');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const timeVal = document.getElementById('timeVal');
+        const totalTimeVal = document.getElementById('totalTimeVal');
+
+        let animationId = null;
+        let startTime = null;
+        let isRunning = false;
+        let currentTime = 0;
+
+        const g = 9.81; // m/s^2
+
+        // Projectile profiles (base horizontal velocities in m/s)
+        let projectiles = [
+            { id: 'A', color: '#ff4757', dash: [2, 4], vx: 10 },
+            { id: 'B', color: '#2ed573', dash: [10, 5], vx: 20 },
+            { id: 'C', color: '#1e90ff', dash: [], vx: 40 }
+        ];
+
+        function resize() {
+            const box = document.getElementById('sim-box');
+            canvas.width = box.clientWidth;
+            canvas.height = box.clientHeight;
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function getParams() {
+            const H = parseFloat(heightSlider.value); // meters
+            const vy = Math.sqrt(2 * g * H);
+            const T = (2 * vy) / g;
+            return { H, vy, T };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const { H, vy, T } = getParams();
+            totalTimeVal.innerText = T.toFixed(2);
+
+            const groundY = canvas.height - 50;
+            const startX = 60;
+            const availableWidth = canvas.width - startX - 60;
+            const availableHeight = groundY - 60;
+
+            // Calculate horizontal scale based on the furthest projectile
+            const maxVx = Math.max(...projectiles.map(p => p.vx));
+            const maxRange = maxVx * T;
+            const pxPerMeterX = availableWidth / maxRange;
+            const pxPerMeterY = availableHeight / H;
+            const pxPerMeter = Math.min(pxPerMeterX, pxPerMeterY); // Uniform scaling
+
+            // Draw Ground
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+
+            // Draw Trajectories
+            projectiles.forEach(p => {
+                ctx.beginPath();
+                ctx.setLineDash(p.dash);
+                ctx.strokeStyle = p.color + '66'; // Increased opacity for trace
+                ctx.lineWidth = 2; // Thicker lines
+
+                const step = T / 60; // Smoother curves
+                for (let t = 0; t <= T; t += step) {
+                    const x = startX + (p.vx * t) * pxPerMeter;
+                    const y = groundY - (vy * t - 0.5 * g * t * t) * pxPerMeter;
+                    if (t === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                // Ensure endpoint at T is drawn
+                const endX = startX + (p.vx * T) * pxPerMeter;
+                ctx.lineTo(endX, groundY);
+                ctx.stroke();
+
+                // Draw current ball
+                if (currentTime <= T) {
+                    const cx = startX + (p.vx * currentTime) * pxPerMeter;
+                    const cy = groundY - (vy * currentTime - 0.5 * g * currentTime * currentTime) * pxPerMeter;
+
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 7, 0, Math.PI * 2); // Slightly larger
+                    ctx.fill();
+
+                    // Stronger Glow effect
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = p.color;
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                } else {
+                    // Landed ball
+                    const cx = startX + (p.vx * T) * pxPerMeter;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(cx, groundY, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Label
+                    ctx.font = 'bold 12px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(p.id, cx, groundY + 20);
+                }
+            });
+
+            // Horizontal line for max height
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.beginPath();
+            ctx.moveTo(0, groundY - H * pxPerMeter);
+            ctx.lineTo(canvas.width, groundY - H * pxPerMeter);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '12px Outfit';
+            ctx.textAlign = 'left';
+            ctx.fillText(`最高點 = ${H} 米`, startX, groundY - H * pxPerMeter - 10);
+            ctx.textAlign = 'right';
+            ctx.fillText(`總飛行時間 = ${T.toFixed(2)} 秒`, canvas.width - 20, groundY + 20);
+        }
+
+        function updateControls() {
+            heightSlider.disabled = isRunning;
+            startBtn.disabled = isRunning;
+            startBtn.style.opacity = isRunning ? 0.5 : 1;
+            startBtn.style.cursor = isRunning ? 'not-allowed' : 'pointer';
+            heightSlider.style.opacity = isRunning ? 0.5 : 1;
+        }
+
+        function animate(timestamp) {
+            if (!startTime) {
+                startTime = timestamp;
+                updateControls();
+            }
+            currentTime = (timestamp - startTime) / 1000; // Time in seconds
+
+            const { T } = getParams();
+            timeVal.innerText = Math.min(currentTime, T).toFixed(2);
+
+            draw();
+
+            if (currentTime < T) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                isRunning = false;
+                updateControls();
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            isRunning = true;
+            startTime = null;
+            currentTime = 0;
+            animationId = requestAnimationFrame(animate);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+            isRunning = false;
+            currentTime = 0;
+            startTime = null;
+            timeVal.innerText = '0.00';
+            updateControls();
+            draw();
+        });
+
+        heightSlider.addEventListener('input', () => {
+            if (!isRunning) draw();
+        });
+
+        // Initial draw
+        draw();
+
+    </script>
+
+</body>
+
+</html>
