@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>甩石索神射手 - 離心力鬼火</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+TC:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0c;
+            --box-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-blue: #00d2ff;
+            --accent-red: #ff4d4d;
+            --accent-gold: #ffd700;
+            --text-main: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 1100px;
+            height: 650px;
+            display: grid;
+            grid-template-columns: 800px 1fr;
+            grid-template-rows: 1fr auto;
+            gap: 15px;
+            padding: 15px;
+            background: radial-gradient(circle at top left, #1a1a2e, #0a0a0c);
+            position: relative;
+        }
+
+        .bento-box {
+            background: var(--box-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #canvas-box {
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            padding: 0;
+            background: rgba(20, 20, 35, 1);
+            border: 2px solid rgba(0, 210, 255, 0.2);
+        }
+
+        #control-box {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #info-box {
+            grid-column: 2;
+            grid-row: 2;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .instruction {
+            color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background: var(--glass-border);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #tutorial-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 20, 0.8);
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--accent-blue);
+            border-radius: 15px;
+            padding: 15px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #tutorial-overlay.visible {
+            opacity: 1;
+        }
+
+        #retry-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+
+        #retry-overlay.visible {
+            display: flex;
+        }
+
+        .retry-content {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #stat-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-item .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .stat-item span:last-child {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+        }
+
+        #fever-bar-container {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #fever-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff4d4d, #ffd700);
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .highlight-text {
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .fever-active #timeVal {
+            color: var(--accent-red) !important;
+            animation: pulse 1s infinite;
+        }
+
+        .fever-active #scoreVal {
+            color: var(--accent-gold) !important;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .physics-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(255, 77, 77, 0.2);
+            color: var(--accent-red);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app-container">
+        <div id="canvas-box" class="bento-box">
+            <div id="tutorial-overlay"></div>
+            <div id="retry-overlay">
+                <div class="retry-content">
+                    <h2 id="result-title">🎯 擊中目標！</h2>
+                    <p id="result-msg"></p>
+                    <button id="canvasResetBtn" class="btn"
+                        style="margin-top: 20px; width: auto; padding-left: 40px; padding-right: 40px;">繼續</button>
+                </div>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <aside id="control-box" class="bento-box">
+            <h1>甩石索神射手</h1>
+            <p class="instruction">掌握切線運動的藝術</p>
+
+            <div id="stat-panel">
+                <div class="stat-item">
+                    <span class="stat-label">剩餘時間</span>
+                    <span id="timeVal">--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">目前積分</span>
+                    <span id="scoreVal">0</span>
+                </div>
+                <div id="fever-bar-container">
+                    <div id="fever-bar-fill"></div>
+                </div>
+            </div>
+
+            <button id="releaseBtn" class="btn">按住旋轉 / 滑動移動 / 放開釋放</button>
+            <button id="resetBtn" class="btn btn-secondary">全場重置</button>
+            <button id="tutorialBtn" class="btn btn-secondary">切換至挑戰模式</button>
+        </aside>
+
+        <section id="info-box" class="bento-box">
+            <div id="challenge-info" style="display: none;">
+                <span class="physics-badge">挑戰模式</span>
+                <p>2 分鐘限時。目標靜止，擊中增加 FEVER 值。<b>金色目標 5 倍分！</b> 狂熱模式時時間暫停且積分翻倍。</p>
+            </div>
+            <div id="tutorial-info">
+                <span class="physics-badge">教學提示</span>
+                <p>長按開始旋轉，滑動可上下左右移動。擊中後可進入狂熱挑戰模式。</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+
+        const config = {
+            targetRadius: 40,
+            ballRadius: 10,
+            ropeWidth: 2,
+            colors: {
+                player: '#ffffff',
+                ball: '#00d2ff',
+                rope: 'rgba(255, 255, 255, 0.4)',
+                target: '#ff4d4d',
+                special: '#ffd700',
+                ghost: 'rgba(255, 255, 255, 0.3)',
+                fever: 'rgba(255, 215, 0, 0.15)'
+            }
+        };
+
+        let state = {
+            time: 0,
+            lastTimestamp: 0,
+            angle: 0,
+            speed: 4.5,
+            radius: 80,
+            isSpinning: false,
+            isReleased: false,
+            ballPos: { x: 0, y: 0 },
+            ballVel: { x: 0, y: 0 },
+            releasePos: { x: 0, y: 0 },
+            releasePlayer: { x: 0, y: 0 },
+            isTutorial: true,
+            playerX: 200,
+            playerY: 325,
+            side: 'left',
+            targets: [],
+            score: 0,
+            timeLeft: 120,
+            explosions: [],
+            isGameOver: false,
+            keys: {},
+            // Fever mechanics
+            targetsBroken: 0,
+            feverThreshold: 10,
+            isFeverMode: false,
+            feverTimeLeft: 0
+        };
+
+        function spawnTarget() {
+            if (state.targets.length >= (state.isFeverMode ? 5 : 3)) return;
+
+            let tx, ty;
+            const padding = 100;
+            const w = 800, h = 650;
+
+            if (state.side === 'left') { tx = 500 + Math.random() * 250; ty = padding + Math.random() * (h - 2 * padding); }
+            else if (state.side === 'right') { tx = 50 + Math.random() * 250; ty = padding + Math.random() * (h - 2 * padding); }
+            else if (state.side === 'top') { tx = padding + Math.random() * (w - 2 * padding); ty = 400 + Math.random() * 200; }
+            else { tx = padding + Math.random() * (w - 2 * padding); ty = 50 + Math.random() * 200; }
+
+            const isSpecial = !state.isTutorial && Math.random() < 0.3;
+            state.targets.push({ x: tx, y: ty, id: Math.random(), r: isSpecial ? 50 : 40, isSpecial });
+        }
+
+        function updateStats() {
+            const timeEl = document.getElementById('timeVal');
+            const scoreEl = document.getElementById('scoreVal');
+            const feverFill = document.getElementById('fever-bar-fill');
+            const panel = document.getElementById('stat-panel');
+
+            if (timeEl) timeEl.innerText = state.isTutorial ? "∞" : Math.max(0, Math.ceil(state.timeLeft)) + "s";
+            if (scoreEl) scoreEl.innerText = state.score;
+            if (feverFill) {
+                const percent = state.isFeverMode ? (state.feverTimeLeft / 10 * 100) : (state.targetsBroken / state.feverThreshold * 100);
+                feverFill.style.width = Math.min(100, percent) + '%';
+                feverFill.style.background = state.isFeverMode ? 'linear-gradient(90deg, #ffd700, #ffffff)' : 'linear-gradient(90deg, #ff4d4d, #ffd700)';
+            }
+
+            if (state.isFeverMode) panel.classList.add('fever-active');
+            else panel.classList.remove('fever-active');
+
+            const overlay = document.getElementById('tutorial-overlay');
+            if (overlay) {
+                if (state.isTutorial && !state.isReleased && !state.isGameOver) {
+                    overlay.classList.add('visible');
+                    overlay.innerHTML = state.isSpinning ?
+                        `💡 <span class="highlight-text">旋轉中：</span> 在朝向目標時放手！` :
+                        `💡 <span class="highlight-text">教學中：</span> 長按畫布開始旋轉水球。`;
+                } else { overlay.classList.remove('visible'); }
+            }
+        }
+
+        function reset() {
+            state.isSpinning = false;
+            state.isReleased = false;
+            state.angle = 0;
+            state.explosions = [];
+            state.targets = [];
+            state.isGameOver = false;
+
+            if (state.isTutorial) {
+                state.side = 'left'; state.playerX = 200; state.playerY = 325; state.speed = 3.0;
+                state.targets.push({ x: 600, y: 325, id: 'tut', r: 65, isSpecial: false });
+            } else {
+                const sides = ['left', 'right', 'top', 'bottom'];
+                state.side = sides[Math.floor(Math.random() * sides.length)];
+                state.speed = 4.5;
+                if (state.side === 'left') { state.playerX = 100; state.playerY = 325; }
+                else if (state.side === 'right') { state.playerX = 700; state.playerY = 325; }
+                else if (state.side === 'top') { state.playerX = 400; state.playerY = 100; }
+                else { state.playerX = 400; state.playerY = 550; }
+                for (let i = 0; i < 3; i++) spawnTarget();
+            }
+            state.ballPos = { x: state.playerX + state.radius, y: state.playerY };
+            updateStats();
+        }
+
+        function fullReset() {
+            state.score = 0; state.timeLeft = 120; state.targetsBroken = 0; state.feverTimeLeft = 0; state.isFeverMode = false;
+            reset();
+        }
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width > 0) { canvas.width = rect.width * dpr; canvas.height = rect.height * dpr; ctx.scale(dpr, dpr); }
+        }
+
+        function update(dt) {
+            if (dt <= 0) return;
+            state.time += dt;
+
+            // Fever logic
+            if (state.feverTimeLeft > 0) {
+                state.feverTimeLeft -= dt;
+                state.isFeverMode = true;
+            } else {
+                state.isFeverMode = false;
+                if (!state.isTutorial && !state.isGameOver) state.timeLeft -= dt;
+            }
+
+            if (state.timeLeft <= 0) { state.timeLeft = 0; state.isGameOver = "timeup"; }
+
+            // Player Perpendicular Movement
+            const moveSpeed = 350;
+            if (state.side === 'left' || state.side === 'right') {
+                if (state.keys['ArrowUp'] || state.keys['KeyW']) state.playerY = Math.max(50, state.playerY - moveSpeed * dt);
+                if (state.keys['ArrowDown'] || state.keys['KeyS']) state.playerY = Math.min(600, state.playerY + moveSpeed * dt);
+            } else {
+                if (state.keys['ArrowLeft'] || state.keys['KeyA']) state.playerX = Math.max(50, state.playerX - moveSpeed * dt);
+                if (state.keys['ArrowRight'] || state.keys['KeyD']) state.playerX = Math.min(750, state.playerX + moveSpeed * dt);
+            }
+
+            if (!state.isTutorial && !state.isGameOver) if (state.targets.length < (state.isFeverMode ? 5 : 3)) spawnTarget();
+
+            if (!state.isReleased) {
+                const oldX = state.ballPos.x; const oldY = state.ballPos.y;
+                if (state.isSpinning) state.angle += state.speed * dt;
+                state.ballPos.x = state.playerX + state.radius * Math.cos(state.angle);
+                state.ballPos.y = state.playerY + state.radius * Math.sin(state.angle);
+                state.ballVel.x = (state.ballPos.x - oldX) / dt;
+                state.ballVel.y = (state.ballPos.y - oldY) / dt;
+            } else {
+                const boost = 1.35;
+                state.ballPos.x += state.ballVel.x * boost * dt;
+                state.ballPos.y += state.ballVel.y * boost * dt;
+
+                for (let i = state.targets.length - 1; i >= 0; i--) {
+                    const t = state.targets[i];
+                    const dx = state.ballPos.x - t.x; const dy = state.ballPos.y - t.y;
+                    const r = t.r || 40;
+                    if (Math.sqrt(dx * dx + dy * dy) < (r + 10)) {
+                        createExplosion(t.x, t.y, t.isSpecial);
+                        state.targets.splice(i, 1);
+
+                        // Scoring
+                        let points = t.isSpecial ? 500 : 100;
+                        if (state.isFeverMode) points *= 2;
+                        state.score += points;
+
+                        if (state.isTutorial) state.isGameOver = "pass";
+                        else {
+                            if (!state.isFeverMode) {
+                                state.targetsBroken++;
+                                if (state.targetsBroken >= state.feverThreshold) {
+                                    state.isFeverMode = true; state.feverTimeLeft = 10; state.targetsBroken = 0;
+                                }
+                            }
+                            setTimeout(() => { if (!state.isTutorial) { state.isReleased = false; state.isSpinning = false; } }, 400);
+                        }
+                    }
+                }
+                if (state.ballPos.x > 850 || state.ballPos.x < -50 || state.ballPos.y > 700 || state.ballPos.y < -50) {
+                    state.isReleased = false; state.isSpinning = false;
+                }
+            }
+
+            state.explosions.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
+            state.explosions = state.explosions.filter(p => p.life > 0);
+            updateStats();
+        }
+
+        function createExplosion(x, y, isSpecial) {
+            const color = isSpecial ? '#ffd700' : (Math.random() > 0.5 ? '#00d2ff' : '#ff4d4d');
+            for (let i = 0; i < 25; i++) state.explosions.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, life: 1, color });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            if (state.isFeverMode) { ctx.fillStyle = config.colors.fever; ctx.fillRect(0, 0, 800, 650); }
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = 1;
+            for (let i = 0; i <= 800; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 650); ctx.stroke(); }
+            for (let i = 0; i <= 650; i += 50) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(800, i); ctx.stroke(); }
+
+            if (state.isReleased) {
+                ctx.strokeStyle = config.colors.ghost; ctx.setLineDash([5, 10]);
+                ctx.beginPath(); ctx.arc(state.releasePlayer.x, state.releasePlayer.y, state.radius, 0, Math.PI * 2); ctx.stroke();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.setLineDash([8, 8]);
+                ctx.beginPath(); ctx.moveTo(state.releasePos.x, state.releasePos.y); ctx.lineTo(state.ballPos.x, state.ballPos.y); ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ctx.fillStyle = config.colors.player;
+            const rot = !state.isReleased ? Math.cos(state.angle) * 0.1 : 0;
+            ctx.save(); ctx.translate(state.playerX, state.playerY); ctx.rotate(rot);
+            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, -25, 8, 0, Math.PI * 2); ctx.fill();
+            if (!state.isReleased) {
+                ctx.strokeStyle = config.colors.rope; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(state.ballPos.x - state.playerX, state.ballPos.y - state.playerY); ctx.stroke();
+            }
+            ctx.restore();
+
+            state.targets.forEach(t => {
+                ctx.strokeStyle = t.isSpecial ? config.colors.special : config.colors.target;
+                ctx.lineWidth = t.isSpecial ? 5 : 3;
+                const rMax = t.r || 40;
+                for (let r = 10; r <= rMax; r += 10) { ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.stroke(); }
+                ctx.beginPath(); ctx.moveTo(t.x - rMax - 10, t.y); ctx.lineTo(t.x + rMax + 10, t.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(t.x, t.y - rMax - 10); ctx.lineTo(t.x, t.y + rMax + 10); ctx.stroke();
+                if (t.isSpecial) { ctx.fillStyle = 'rgba(255, 215, 0, 0.2)'; ctx.fill(); }
+            });
+
+            const b = state.ballPos; const grad = ctx.createRadialGradient(b.x - 3, b.y - 3, 2, b.x, b.y, 12);
+            grad.addColorStop(0, '#70e1ff'); grad.addColorStop(1, '#009ccf'); ctx.fillStyle = grad;
+            ctx.beginPath(); const w = !state.isReleased ? Math.sin(state.time * 10) : 0;
+            ctx.ellipse(b.x, b.y, 10 + w, 10 - w, state.angle, 0, 2 * Math.PI); ctx.fill();
+
+            state.explosions.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI); ctx.fill(); });
+            ctx.globalAlpha = 1;
+
+            if (state.isFeverMode) {
+                ctx.fillStyle = '#ffd700'; ctx.font = '800 40px Inter'; ctx.textAlign = 'center';
+                ctx.fillText('⚡ FEVER MODE ⚡', 400, 80);
+                ctx.font = '600 20px Inter'; ctx.fillText('DOUBLE POINTS + TIME STOP', 400, 110);
+            }
+
+            const overlay = document.getElementById('retry-overlay');
+            const title = document.getElementById('result-title');
+            const msg = document.getElementById('result-msg');
+            const btn = document.getElementById('canvasResetBtn');
+
+            if (state.isGameOver) {
+                overlay.classList.add('visible');
+                if (state.isGameOver === "timeup") {
+                    title.innerText = "⌛ 時間到！";
+                    msg.innerHTML = `挑戰結束！總得分：<span class="highlight-text" style="color:#ffd700">${state.score}</span><br>你在 2 分鐘內展現了極致的神射技巧！`;
+                    btn.innerText = "再挑戰一次"; btn.onclick = fullReset;
+                } else if (state.isGameOver === "pass") {
+                    title.innerText = "🎯 教學完成！";
+                    msg.innerText = "你已學會如何發射。準備好進入「狂熱挑戰」模式了嗎？";
+                    btn.innerText = "進入挑戰模式";
+                    btn.onclick = () => { state.isTutorial = false; document.getElementById('tutorialBtn').innerText = "切換至教學模式"; fullReset(); };
+                }
+            } else overlay.classList.remove('visible');
+        }
+
+        function handleStartSpin() { if (state.isReleased || state.isGameOver) return; state.isSpinning = true; updateStats(); }
+        function handleRelease() {
+            if (!state.isSpinning || state.isReleased) return;
+            state.isSpinning = false; state.isReleased = true;
+            state.releasePos = { ...state.ballPos }; state.releasePlayer = { x: state.playerX, y: state.playerY };
+            updateStats();
+        }
+
+        function loop(timestamp) {
+            const dt = Math.min((timestamp - state.lastTimestamp) / 1000, 0.1);
+            state.lastTimestamp = timestamp; update(dt); draw(); requestAnimationFrame(loop);
+        }
+
+        function init() { resize(); reset(); state.lastTimestamp = performance.now(); requestAnimationFrame(loop); }
+
+        window.addEventListener('load', init); window.addEventListener('resize', resize);
+        const releaseBtn = document.getElementById('releaseBtn');
+        const comboStart = (e) => { if (e.type === 'touchstart') e.preventDefault(); handleStartSpin(); };
+        const comboEnd = (e) => { if (e.type === 'touchend') e.preventDefault(); handleRelease(); };
+
+        canvas.addEventListener('mousedown', comboStart); canvas.addEventListener('mouseup', comboEnd);
+        canvas.addEventListener('touchstart', comboStart, { passive: false }); canvas.addEventListener('touchend', comboEnd, { passive: false });
+        
+        canvas.addEventListener('pointermove', (e) => {
+            if (!state.isSpinning && e.buttons === 0 && e.pointerType === 'mouse') return; // Only move if dragging or touch
+            if (state.isGameOver) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (state.side === 'left' || state.side === 'right') {
+                state.playerY = Math.max(50, Math.min(600, y));
+            } else {
+                state.playerX = Math.max(50, Math.min(750, x));
+            }
+        });
+
+        releaseBtn.addEventListener('mousedown', comboStart); releaseBtn.addEventListener('mouseup', comboEnd);
+        releaseBtn.addEventListener('touchstart', comboStart, { passive: false }); releaseBtn.addEventListener('touchend', comboEnd, { passive: false });
+
+        document.getElementById('resetBtn').onclick = fullReset;
+        document.getElementById('tutorialBtn').onclick = (e) => {
+            state.isTutorial = !state.isTutorial;
+            e.target.innerText = state.isTutorial ? "切換至挑戰模式" : "切換至教學模式";
+            fullReset();
+        };
+
+        window.onkeydown = (e) => { state.keys[e.code] = true; if (e.code === 'Space') handleStartSpin(); };
+        window.onkeyup = (e) => { state.keys[e.code] = false; if (e.code === 'Space') handleRelease(); };
+    </script>
+</body>
+
+</html>
