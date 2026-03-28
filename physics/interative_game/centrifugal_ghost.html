@@ -4,20 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>甩石索神射手 - 離心力鬼火</title>
+    <title>阿爾斯：離心之火 | Aris: Centrifugal Flame</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+TC:wght@400;700&display=swap"
         rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0a0a0c;
-            --box-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-blue: #00d2ff;
-            --accent-red: #ff4d4d;
-            --accent-gold: #ffd700;
-            --text-main: #ffffff;
-            --text-dim: rgba(255, 255, 255, 0.6);
+            /* Hades Underworld Palette */
+            --bg-color: #0d0115;
+            --box-bg: rgba(26, 11, 46, 0.7);
+            --glass-border: rgba(147, 51, 234, 0.3);
+            --accent-primary: #f97316;
+            /* Hades Orange (Flame) */
+            --accent-cyan: #22d3ee;
+            /* Ghost Cyan */
+            --accent-blood: #f43f5e;
+            /* Blood Red */
+            --accent-green: #4ade80;
+            /* Spirit Green */
+            --accent-gold: #fbbf24;
+            /* Ambrosia Gold */
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            --star-rail-border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         * {
@@ -25,10 +35,14 @@
             margin: 0;
             padding: 0;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(88, 28, 135, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(30, 58, 138, 0.15) 0%, transparent 40%);
             color: var(--text-main);
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
             display: flex;
@@ -44,29 +58,59 @@
             display: grid;
             grid-template-columns: 800px 1fr;
             grid-template-rows: 1fr auto;
-            gap: 15px;
-            padding: 15px;
-            background: radial-gradient(circle at top left, #1a1a2e, #0a0a0c);
+            gap: 12px;
+            padding: 12px;
             position: relative;
         }
 
+        /* Star Rail Styles */
         .bento-box {
             background: var(--box-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 20px;
+            backdrop-filter: blur(16px);
+            border: var(--star-rail-border);
+            border-radius: 4px;
+            /* Star Rail uses sharper corners for panels */
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--panel-shadow);
+            transition: all 0.3s ease;
+        }
+
+        /* Subtle corner accents for Bento Boxes */
+        .mode-info {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+            pointer-events: none;
+            position: relative;
+            padding-left: 10px;
+            border-left: 2px solid #f97316;
+            margin-top: 5px;
+        }
+        /* Explicitly ensure NO blue corner exists here */
+        .mode-info::before, .mode-info::after, .mode-card .mode-info::before {
+            display: none !important;
+            content: none !important;
+        }
+        .bento-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 10px;
+            height: 10px;
+            border-top: 2px solid var(--accent-cyan);
+            border-left: 2px solid var(--accent-cyan);
+            opacity: 0.5;
         }
 
         #canvas-box {
             grid-column: 1;
             grid-row: 1 / span 2;
             padding: 0;
-            background: rgba(20, 20, 35, 1);
-            border: 2px solid rgba(0, 210, 255, 0.2);
+            background: #000;
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            border-radius: 8px;
         }
 
         #control-box {
@@ -74,14 +118,21 @@
             grid-row: 1;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
+            padding: 24px;
         }
 
         #info-box {
             grid-column: 2;
             grid-row: 2;
-            font-size: 0.9rem;
-            line-height: 1.5;
+            font-size: 0.85rem;
+            padding: 16px;
+            border-left: 3px solid var(--accent-primary);
+        }
+        /* User request: remove the blue corner for THIS box specifically */
+        #info-box::before {
+            display: none !important;
+            content: none !important;
         }
 
         canvas {
@@ -91,65 +142,259 @@
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            letter-spacing: 2px;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         .instruction {
-            color: var(--text-dim);
-            margin-bottom: 10px;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
         }
 
+        /* Star Rail Diamond Button */
         .btn {
-            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
-            border: none;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 14px 28px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            text-align: center;
-            width: 100%;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Corner Decorations */
+        .btn .corner-tl,
+        .btn .corner-br {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: rgba(34, 211, 238, 0.6);
+            border-style: solid;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            pointer-events: none;
+        }
+
+        .btn .corner-tl {
+            top: -2px;
+            left: -2px;
+            border-width: 2px 0 0 2px;
+        }
+
+        .btn .corner-br {
+            bottom: -2px;
+            right: -2px;
+            border-width: 0 2px 2px 0;
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4);
+            background: rgba(34, 211, 238, 0.1);
+            border-color: rgba(34, 211, 238, 0.3);
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+            color: var(--accent-cyan);
+        }
+
+        .btn:hover .corner-tl {
+            top: -5px;
+            left: -5px;
+        }
+
+        .btn:hover .corner-br {
+            bottom: -5px;
+            right: -5px;
         }
 
         .btn:active {
-            transform: scale(0.95);
+            transform: scale(0.98);
+        }
+
+        .btn:active .corner-tl {
+            top: 2px;
+            left: 2px;
+            opacity: 1;
+            border-color: var(--accent-cyan);
+        }
+
+        .btn:active .corner-br {
+            bottom: 2px;
+            right: 2px;
+            opacity: 1;
+            border-color: var(--accent-cyan);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #7e22ce);
+            border: none;
+        }
+
+        .btn-primary .corner-tl,
+        .btn-primary .corner-br {
+            border-color: var(--accent-gold);
         }
 
         .btn-secondary {
-            background: var(--glass-border);
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        #stat-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .mode-selector .btn {
+            padding: 10px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .mode-selector .btn.active {
+            opacity: 1;
+            background: rgba(34, 211, 238, 0.2);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--accent-gold);
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+        }
+
+        #fever-bar-container {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 8px;
+            position: relative;
+        }
+
+        #fever-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 10px var(--accent-cyan);
+            transition: width 0.3s ease;
+        }
+
+        .fever-active #fever-bar-fill {
+            background: var(--accent-gold);
+            box-shadow: 0 0 15px var(--accent-gold);
+            animation: barPulse 0.5s infinite;
+        }
+
+        @keyframes barPulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        #story-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 5000; transition: opacity 0.5s;
+        }
+
+        .story-content {
+            background: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 20px; padding: 40px; max-width: 500px;
+            text-align: center; box-shadow: 0 0 50px rgba(168, 85, 247, 0.2);
+        }
+
+        .story-content h2 { color: #22d3ee; margin-top: 0; font-weight: 800; }
+        .story-content p { color: #cbd5e1; line-height: 1.8; margin: 20px 0; }
+        
+        .accept-btn {
+            background: linear-gradient(135deg, #a855f7, #22d3ee);
+            color: white; border: none; padding: 12px 30px;
+            border-radius: 10px; cursor: pointer; font-weight: 800;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 0 auto; display: block;
+        }
+        .accept-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4); }
+
         #tutorial-overlay {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(0, 0, 20, 0.8);
-            backdrop-filter: blur(5px);
-            border: 1px solid var(--accent-blue);
-            border-radius: 15px;
-            padding: 15px;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            background: rgba(13, 1, 21, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--accent-cyan);
+            border-left: 4px solid var(--accent-cyan);
+            padding: 16px 20px;
             z-index: 10;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.5s;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(-10px);
+            font-size: 0.9rem;
+            color: #fff;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
         #tutorial-overlay.visible {
             opacity: 1;
+            transform: translateY(0);
+        }
+
+        .highlight-text {
+            color: var(--accent-cyan);
+            font-weight: 800;
+            text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
         }
 
         #retry-overlay {
@@ -158,12 +403,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
+            background: rgba(13, 1, 21, 0.85);
+            backdrop-filter: blur(10px);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 20;
+            z-index: 100;
         }
 
         #retry-overlay.visible {
@@ -171,112 +416,72 @@
         }
 
         .retry-content {
-            background: rgba(20, 20, 30, 0.8);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
+            width: 450px;
+            background: #1a1b26;
+            border: 1px solid var(--accent-primary);
             padding: 40px;
             text-align: center;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        #stat-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 5px;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-        }
-
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .stat-item .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-        }
-
-        .stat-item span:last-child {
-            font-family: 'Inter', sans-serif;
-            font-weight: 800;
-            font-size: 1.1rem;
-            color: var(--accent-blue);
-        }
-
-        #fever-bar-container {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            margin-top: 5px;
-            overflow: hidden;
             position: relative;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        #fever-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #ff4d4d, #ffd700);
-            transition: width 0.3s;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-
-        .highlight-text {
-            color: var(--accent-blue);
-            font-weight: bold;
-        }
-
-        .fever-active #timeVal {
-            color: var(--accent-red) !important;
-            animation: pulse 1s infinite;
-        }
-
-        .fever-active #scoreVal {
-            color: var(--accent-gold) !important;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 1;
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
             }
 
-            50% {
-                opacity: 0.5;
-            }
-
-            100% {
+            to {
+                transform: translateY(0);
                 opacity: 1;
             }
         }
 
-        .physics-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: rgba(255, 77, 77, 0.2);
-            color: var(--accent-red);
-            border-radius: 4px;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            margin-right: 5px;
+        #app-container.fever-active {
+            background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.1), transparent);
+            animation: feverGlow 2s infinite alternate;
+        }
+
+        @keyframes feverGlow {
+            from {
+                box-shadow: inset 0 0 50px rgba(251, 191, 36, 0.1);
+            }
+
+            to {
+                box-shadow: inset 0 0 100px rgba(251, 191, 36, 0.2);
+            }
         }
     </style>
 </head>
 
 <body>
+    <div id="story-modal">
+        <div class="story-content bento-box">
+            <span class="physics-badge">冥界史詩</span>
+            <h2>阿爾斯：離心之火</h2>
+            <p>
+                在遺忘的深處，小靈魂 <b>阿爾斯</b> 拾起了太陽的碎片。<br>
+                你是這片黑暗中唯一的引路人。<br><br>
+                擊碎那些阻塞輪迴之路的<b>「虛空結核」</b>，<br>
+                釋放被困的回憶，找回通往光明的路。
+            </p>
+            <button class="accept-btn" onclick="closeStory()">接受使命</button>
+        </div>
+    </div>
+
     <div id="app-container">
         <div id="canvas-box" class="bento-box">
             <div id="tutorial-overlay"></div>
             <div id="retry-overlay">
-                <div class="retry-content">
+                <div class="retry-content bento-box">
                     <h2 id="result-title">🎯 擊中目標！</h2>
-                    <p id="result-msg"></p>
-                    <button id="canvasResetBtn" class="btn"
-                        style="margin-top: 20px; width: auto; padding-left: 40px; padding-right: 40px;">繼續</button>
+                    <p id="result-msg" style="margin: 15px 0; color: var(--text-dim);"></p>
+                    <button id="canvasResetBtn" class="btn btn-primary"
+                        style="margin: 20px auto 0; width: auto; padding-left: 40px; padding-right: 40px; display: flex;">
+                        <span class="corner-tl"></span>
+                        繼續探險
+                        <span class="corner-br"></span>
+                    </button>
                 </div>
             </div>
             <canvas id="gameCanvas"></canvas>
@@ -288,31 +493,51 @@
 
             <div id="stat-panel">
                 <div class="stat-item">
-                    <span class="stat-label">剩餘時間</span>
-                    <span id="timeVal">--</span>
+                    <span class="stat-label" data-type="time">殘餘週期</span>
+                    <span id="timeVal" class="stat-value">--</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">目前積分</span>
-                    <span id="scoreVal">0</span>
+                    <span class="stat-label" data-type="score">淨化點數</span>
+                    <span id="scoreVal" class="stat-value">0</span>
                 </div>
                 <div id="fever-bar-container">
                     <div id="fever-bar-fill"></div>
                 </div>
             </div>
 
-            <button id="releaseBtn" class="btn">按住旋轉 / 滑動移動 / 放開釋放</button>
-            <button id="resetBtn" class="btn btn-secondary">全場重置</button>
-            <button id="tutorialBtn" class="btn btn-secondary">切換至挑戰模式</button>
+            <button id="releaseBtn" class="btn btn-primary">
+                <span class="corner-tl"></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                        d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                </svg>
+                釋放鬼火
+                <span class="corner-br"></span>
+            </button>
+            <button id="resetBtn" class="btn btn-secondary">
+                <span class="corner-tl"></span>
+                全場重置
+                <span class="corner-br"></span>
+            </button>
+            <div class="mode-selector">
+                <button id="modeTutorial" class="btn btn-secondary active">教學試煉</button>
+                <button id="modeTraining" class="btn btn-secondary">修行模式</button>
+                <button id="modeChallenge" class="btn btn-secondary">耀日挑戰</button>
+            </div>
         </aside>
 
         <section id="info-box" class="bento-box">
             <div id="challenge-info" style="display: none;">
-                <span class="physics-badge">挑戰模式</span>
-                <p>2 分鐘限時。目標靜止，擊中增加 FEVER 值。<b>金色目標 5 倍分！</b> 狂熱模式時時間暫停且積分翻倍。</p>
+                <span class="physics-badge">耀日挑戰</span>
+                <p>2 分鐘限時。目標靜止，擊中增加日耀值。日耀狀態下，「聖火」能量全開，時間暫停且淨化倍率 X2。</p>
+            </div>
+            <div id="training-info" style="display: none;">
+                <span class="physics-badge">修行模式</span>
+                <p>無時間限制。目標會不斷重生。在此磨練您的切線釋放與「貫穿淨化」技巧。</p>
             </div>
             <div id="tutorial-info">
-                <span class="physics-badge">教學提示</span>
-                <p>長按開始旋轉，滑動可上下左右移動。擊中後可進入狂熱挑戰模式。</p>
+                <span class="physics-badge">基礎教學</span>
+                <p>跟隨阿爾斯的指引完成試煉。長按釋放鬼火，學習如何一次擊穿多個虛空核心。</p>
             </div>
         </section>
     </div>
@@ -327,14 +552,16 @@
             ballRadius: 10,
             ropeWidth: 2,
             colors: {
-                player: '#ffffff',
-                ball: '#00d2ff',
-                rope: 'rgba(255, 255, 255, 0.4)',
-                target: '#ff4d4d',
-                special: '#ffd700',
-                ghost: 'rgba(255, 255, 255, 0.3)',
-                fever: 'rgba(255, 215, 0, 0.15)'
-            }
+                player: '#a855f7', // Underworld Purple
+                ball: '#22d3ee',   // Ghost Fire Cyan
+                rope: 'rgba(34, 211, 238, 0.3)',
+                target: '#4ade80', // Toxic Green
+                special: '#fbbf24', // Radiant Memory Gold
+                ghost: 'rgba(168, 85, 247, 0.2)',
+                fever: 'rgba(251, 191, 36, 0.08)',
+                domain: 'rgba(34, 211, 238, 0.05)'
+            },
+            domainRadius: 70
         };
 
         let state = {
@@ -350,6 +577,8 @@
             releasePos: { x: 0, y: 0 },
             releasePlayer: { x: 0, y: 0 },
             isTutorial: true,
+            gameMode: 'tutorial',
+            tutorialStep: 1,
             playerX: 200,
             playerY: 325,
             side: 'left',
@@ -363,23 +592,54 @@
             targetsBroken: 0,
             feverThreshold: 10,
             isFeverMode: false,
-            feverTimeLeft: 0
+            feverTimeLeft: 0,
+            // Visual Effects
+            screenshake: 0,
+            hitStop: 0,
+            hitboxSize: 22,
+            orbTrail: [], // Ghosting effects for the orb
+            dialogue: "",
+            dialogueTimer: 0,
+            lastBreakTime: 0,
+            breakCombo: 0,
+            tutorialHits: 0,
+            domainX: 400,
+            domainY: 325,
+            dialogueCooldown: 0,
+            sprite: new Image(),
+            facingX: 1,
+            transitionAnim: 0, // 1 to 0 flash
+            arenaScale: 1     // 0.8 to 1 scale-in
         };
+        state.sprite.src = 'assets/aris_cartoon_v7.png';
 
         function spawnTarget() {
-            if (state.targets.length >= (state.isFeverMode ? 5 : 3)) return;
+            if (state.targets.length >= (state.isFeverMode ? 15 : 8)) return;
 
-            let tx, ty;
-            const padding = 100;
-            const w = 800, h = 650;
+            // PHYSICS/GAMEPLAY: Circular Arena Spawning (Clamped inside box)
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 180 + Math.random() * 160;
+            const tx = Math.max(50, Math.min(750, 400 + Math.cos(angle) * dist));
+            const ty = Math.max(50, Math.min(600, 325 + Math.sin(angle) * dist));
 
-            if (state.side === 'left') { tx = 500 + Math.random() * 250; ty = padding + Math.random() * (h - 2 * padding); }
-            else if (state.side === 'right') { tx = 50 + Math.random() * 250; ty = padding + Math.random() * (h - 2 * padding); }
-            else if (state.side === 'top') { tx = padding + Math.random() * (w - 2 * padding); ty = 400 + Math.random() * 200; }
-            else { tx = padding + Math.random() * (w - 2 * padding); ty = 50 + Math.random() * 200; }
+            const isSpecial = !state.isTutorial && Math.random() < 0.25;
+            state.targets.push({ x: tx, y: ty, id: Math.random(), r: isSpecial ? 50 : 40, isSpecial, spawnAnim: 0 });
+        }
 
-            const isSpecial = !state.isTutorial && Math.random() < 0.3;
-            state.targets.push({ x: tx, y: ty, id: Math.random(), r: isSpecial ? 50 : 40, isSpecial });
+        function showDialogue(text, duration = 3) {
+            if (state.gameMode === 'challenge' && state.dialogueCooldown > 0) return;
+            state.dialogue = text;
+            state.dialogueTimer = duration;
+            if (state.gameMode === 'challenge') state.dialogueCooldown = 10 + duration; 
+        }
+
+        function resetTutorialStep2() {
+            state.tutorialHits = 0;
+            state.targets = [];
+            state.targets.push({ x: 450, y: 325, id: 993, r: 48, isSpecial: false, spawnAnim: 0 }); // Apex
+            state.targets.push({ x: 550, y: 285, id: 992, r: 48, isSpecial: false, spawnAnim: 0 }); // Top
+            state.targets.push({ x: 550, y: 365, id: 994, r: 48, isSpecial: false, spawnAnim: 0 }); // Bottom
+            showDialogue("「貫穿試煉」：兩擊之內完成淨化。否則影子將重聚！");
         }
 
         function updateStats() {
@@ -388,7 +648,8 @@
             const feverFill = document.getElementById('fever-bar-fill');
             const panel = document.getElementById('stat-panel');
 
-            if (timeEl) timeEl.innerText = state.isTutorial ? "∞" : Math.max(0, Math.ceil(state.timeLeft)) + "s";
+            const isInfinite = state.gameMode === 'tutorial' || state.gameMode === 'training';
+            if (timeEl) timeEl.innerText = isInfinite ? "∞" : Math.max(0, Math.ceil(state.timeLeft)) + "s";
             if (scoreEl) scoreEl.innerText = state.score;
             if (feverFill) {
                 const percent = state.isFeverMode ? (state.feverTimeLeft / 10 * 100) : (state.targetsBroken / state.feverThreshold * 100);
@@ -396,18 +657,40 @@
                 feverFill.style.background = state.isFeverMode ? 'linear-gradient(90deg, #ffd700, #ffffff)' : 'linear-gradient(90deg, #ff4d4d, #ffd700)';
             }
 
-            if (state.isFeverMode) panel.classList.add('fever-active');
-            else panel.classList.remove('fever-active');
+            const appContainer = document.getElementById('app-container');
+            if (state.isFeverMode) { panel.classList.add('fever-active'); appContainer.classList.add('fever-active'); }
+            else { panel.classList.remove('fever-active'); appContainer.classList.remove('fever-active'); }
 
             const overlay = document.getElementById('tutorial-overlay');
             if (overlay) {
-                if (state.isTutorial && !state.isReleased && !state.isGameOver) {
+                if (state.isTutorial && !state.isGameOver) {
                     overlay.classList.add('visible');
-                    overlay.innerHTML = state.isSpinning ?
-                        `💡 <span class="highlight-text">旋轉中：</span> 在朝向目標時放手！` :
-                        `💡 <span class="highlight-text">教學中：</span> 長按畫布開始旋轉水球。`;
+                    if (!state.isSpinning && !state.isReleased) {
+                        overlay.innerHTML = `<div style="font-size: 1.2em; border-bottom: 2px solid #22d3ee; margin-bottom: 10px; padding-bottom: 5px;">冥界引路人的職責</div>第一步：<span class="highlight-text">長按畫面</span> 以凝聚離心之火。`;
+                    } else if (state.isSpinning) {
+                        overlay.innerHTML = `第二步：觀察 <span class="highlight-text">靈能路徑</span>，對準遺忘結核時 <span class="highlight-text">放手</span>。`;
+                    } else if (state.isReleased) {
+                        overlay.innerHTML = `正在淨化... 執念消散後靈魂即可獲得自由。`;
+                    }
                 } else { overlay.classList.remove('visible'); }
             }
+        }
+
+        function prepareNextShot() {
+            state.isReleased = false;
+            state.isSpinning = false;
+            state.orbTrail = [];
+
+            // Tutorial Step 2 Failure Check
+            if (state.gameMode === 'tutorial' && state.tutorialStep === 2) {
+                if (state.targets.length > 0 && state.tutorialHits >= 2) {
+                    showDialogue("影子重新聚集了... 善用「貫穿」技巧！");
+                    setTimeout(() => resetTutorialStep2(), 1000);
+                }
+            }
+
+            // Keep player generally in the center arena
+            state.ballPos = { x: state.playerX + state.radius * Math.cos(state.angle), y: state.playerY + state.radius * Math.sin(state.angle) };
         }
 
         function reset() {
@@ -417,19 +700,36 @@
             state.explosions = [];
             state.targets = [];
             state.isGameOver = false;
+            state.transitionAnim = 1.0;
 
-            if (state.isTutorial) {
-                state.side = 'left'; state.playerX = 200; state.playerY = 325; state.speed = 3.0;
-                state.targets.push({ x: 600, y: 325, id: 'tut', r: 65, isSpecial: false });
+            // Determine Positioning
+            if (state.gameMode === 'tutorial' && state.tutorialStep === 2) {
+                state.domainX = 200; state.domainY = 325;
             } else {
-                const sides = ['left', 'right', 'top', 'bottom'];
-                state.side = sides[Math.floor(Math.random() * sides.length)];
-                state.speed = 4.5;
-                if (state.side === 'left') { state.playerX = 100; state.playerY = 325; }
-                else if (state.side === 'right') { state.playerX = 700; state.playerY = 325; }
-                else if (state.side === 'top') { state.playerX = 400; state.playerY = 100; }
-                else { state.playerX = 400; state.playerY = 550; }
-                for (let i = 0; i < 3; i++) spawnTarget();
+                state.domainX = 400; state.domainY = 325;
+            }
+            state.playerX = state.domainX; state.playerY = state.domainY;
+            state.side = 'center';
+            state.ballPos = { x: state.playerX + state.radius, y: state.playerY };
+
+            if (state.gameMode === 'tutorial') {
+                state.speed = 3.0;
+                if (state.tutorialStep === 1) {
+                    state.targets.push({ x: 650, y: 325, id: 991, r: 65, isSpecial: false, spawnAnim: 0 });
+                    showDialogue("阿爾斯，感受離心力的指引。對準它並釋放。");
+                } else if (state.tutorialStep === 2) {
+                    resetTutorialStep2();
+                }
+            } else if (state.gameMode === 'training') {
+                state.playerX = 400; state.playerY = 325;
+                state.domainX = 400; state.domainY = 325;
+                state.speed = 4.0;
+                for (let i = 0; i < 8; i++) spawnTarget();
+                showDialogue("「修行模式」：無盡的磨練，只為那一瞬的圓滿。");
+            } else {
+                state.speed = 4.8;
+                for (let i = 0; i < 6; i++) spawnTarget();
+                showDialogue("「耀日挑戰」：虛空正在擴散... 淨化之旅開始。");
             }
             state.ballPos = { x: state.playerX + state.radius, y: state.playerY };
             updateStats();
@@ -447,7 +747,21 @@
 
         function update(dt) {
             if (dt <= 0) return;
+
+            // Hit-stop logic
+            if (state.hitStop > 0) {
+                state.hitStop -= dt;
+                return; // Pause update while hit-stopping
+            }
+
             state.time += dt;
+            if (state.dialogueTimer > 0) state.dialogueTimer -= dt;
+
+            // Screenshake decay
+            if (state.screenshake > 0) {
+                state.screenshake -= dt * 15;
+                if (state.screenshake < 0) state.screenshake = 0;
+            }
 
             // Fever logic
             if (state.feverTimeLeft > 0) {
@@ -455,22 +769,53 @@
                 state.isFeverMode = true;
             } else {
                 state.isFeverMode = false;
-                if (!state.isTutorial && !state.isGameOver) state.timeLeft -= dt;
+                if (state.gameMode === 'challenge' && !state.isGameOver) state.timeLeft -= dt;
             }
 
             if (state.timeLeft <= 0) { state.timeLeft = 0; state.isGameOver = "timeup"; }
 
             // Player Perpendicular Movement
+            // Center Arena Movement (Restricted to Spirit Domain)
             const moveSpeed = 350;
-            if (state.side === 'left' || state.side === 'right') {
-                if (state.keys['ArrowUp'] || state.keys['KeyW']) state.playerY = Math.max(50, state.playerY - moveSpeed * dt);
-                if (state.keys['ArrowDown'] || state.keys['KeyS']) state.playerY = Math.min(600, state.playerY + moveSpeed * dt);
-            } else {
-                if (state.keys['ArrowLeft'] || state.keys['KeyA']) state.playerX = Math.max(50, state.playerX - moveSpeed * dt);
-                if (state.keys['ArrowRight'] || state.keys['KeyD']) state.playerX = Math.min(750, state.playerX + moveSpeed * dt);
+            let moveX = 0, moveY = 0;
+            if (state.keys['ArrowUp'] || state.keys['KeyW']) moveY -= moveSpeed * dt;
+            if (state.keys['ArrowDown'] || state.keys['KeyS']) moveY += moveSpeed * dt;
+            if (state.keys['ArrowLeft'] || state.keys['KeyA']) moveX -= moveSpeed * dt;
+            if (state.keys['ArrowRight'] || state.keys['KeyD']) moveX += moveSpeed * dt;
+
+            if (moveX !== 0 || moveY !== 0) {
+                const nextX = state.playerX + moveX;
+                const nextY = state.playerY + moveY;
+                const dx = nextX - state.domainX; const dy = nextY - state.domainY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const effectiveRadius = config.domainRadius - (state.hitboxSize / 2);
+                if (dist <= effectiveRadius) {
+                    state.playerX = nextX; state.playerY = nextY;
+                } else {
+                    state.playerX = state.domainX + (dx / dist) * effectiveRadius;
+                    state.playerY = state.domainY + (dy / dist) * effectiveRadius;
+                }
             }
 
-            if (!state.isTutorial && !state.isGameOver) if (state.targets.length < (state.isFeverMode ? 5 : 3)) spawnTarget();
+            if (!state.isTutorial && !state.isGameOver) {
+                if (state.targets.length < (state.isFeverMode ? 10 : 5)) spawnTarget();
+                
+                // Crisis Warning
+                if (state.targets.length >= 7 && !state.isFeverMode && Math.random() < 0.01) {
+                    showDialogue("執念凝聚得太快了... 局勢變得愈發嚴峻！", 2);
+                }
+            }
+
+            // Arena Scale and Transition Animation
+            if (state.arenaScale < 1) state.arenaScale = Math.min(1, state.arenaScale + dt * 2);
+            if (state.transitionAnim > 0) state.transitionAnim = Math.max(0, state.transitionAnim - dt * 2);
+
+            // Target Animation Progress
+            state.targets.forEach(t => {
+                if(t.spawnAnim < 1) t.spawnAnim = Math.min(1, t.spawnAnim + dt * 2.5);
+            });
+
+            if (state.dialogueCooldown > 0) state.dialogueCooldown -= dt;
 
             if (!state.isReleased) {
                 const oldX = state.ballPos.x; const oldY = state.ballPos.y;
@@ -480,9 +825,10 @@
                 state.ballVel.x = (state.ballPos.x - oldX) / dt;
                 state.ballVel.y = (state.ballPos.y - oldY) / dt;
             } else {
-                const boost = 1.35;
-                state.ballPos.x += state.ballVel.x * boost * dt;
-                state.ballPos.y += state.ballVel.y * boost * dt;
+                // PHYSICS CLARITY: Move in straight line with linear velocity
+                // Remove artificial boost/drag to show pure Newtonian physics
+                state.ballPos.x += state.ballVel.x * dt;
+                state.ballPos.y += state.ballVel.y * dt;
 
                 for (let i = state.targets.length - 1; i >= 0; i--) {
                     const t = state.targets[i];
@@ -490,6 +836,11 @@
                     const r = t.r || 40;
                     if (Math.sqrt(dx * dx + dy * dy) < (r + 10)) {
                         createExplosion(t.x, t.y, t.isSpecial);
+
+                        // Hit-stop and Screenshake
+                        state.hitStop = 0.08;
+                        state.screenshake = t.isSpecial ? 10 : 5;
+
                         state.targets.splice(i, 1);
 
                         // Scoring
@@ -497,22 +848,60 @@
                         if (state.isFeverMode) points *= 2;
                         state.score += points;
 
-                        if (state.isTutorial) state.isGameOver = "pass";
-                        else {
+                        // Performance Dialogue
+                        const now = performance.now();
+                        if (now - state.lastBreakTime < 1200) {
+                            state.breakCombo++;
+                            if (state.breakCombo === 3) showDialogue("太棒了！更多靈魂被釋放了！");
+                            if (state.breakCombo === 6) showDialogue("絕地清算！光明正在回歸！");
+                        } else {
+                            state.breakCombo = 0;
+                        }
+                        state.lastBreakTime = now;
+
+                        if (state.gameMode === 'tutorial') {
+                            if (state.targets.length === 0) {
+                                if (state.tutorialStep === 1) {
+                                    state.tutorialStep = 2;
+                                    setTimeout(() => reset(), 1500);
+                                    showDialogue("做得好！現在嘗試更高層次的淨化。");
+                                } else {
+                                    state.isGameOver = "pass";
+                                    showDialogue("試煉完成。你已經是位合格的引路人了。");
+                                }
+                            }
+                        } else {
                             if (!state.isFeverMode) {
                                 state.targetsBroken++;
                                 if (state.targetsBroken >= state.feverThreshold) {
                                     state.isFeverMode = true; state.feverTimeLeft = 10; state.targetsBroken = 0;
+                                    state.screenshake = 15;
+                                    showDialogue("「耀日之時！」太陽的碎片正在共鳴！");
                                 }
                             }
-                            setTimeout(() => { if (!state.isTutorial) { state.isReleased = false; state.isSpinning = false; } }, 400);
                         }
+
+                        // Milestone dialogues
+                        if (state.score >= 1000 && state.score < 1100) showDialogue("很好，阿爾斯。我感覺到瘴氣在消退。");
+                        if (state.score >= 3000 && state.score < 3100) showDialogue("傳說中的守門人... 你的意志比火焰更強大。");
                     }
                 }
-                if (state.ballPos.x > 850 || state.ballPos.x < -50 || state.ballPos.y > 700 || state.ballPos.y < -50) {
-                    state.isReleased = false; state.isSpinning = false;
+                // Out of bounds reset (Perfectly outside canvas borders)
+                if (state.ballPos.x > 825 || state.ballPos.x < -25 || state.ballPos.y > 675 || state.ballPos.y < -25) {
+                    prepareNextShot();
                 }
             }
+
+            // Orb Trail (Ghosting) logic
+            if (state.isReleased) {
+                state.orbTrail.push({
+                    x: state.ballPos.x, y: state.ballPos.y,
+                    angle: Math.atan2(state.ballVel.y, state.ballVel.x),
+                    life: 1.0
+                });
+            }
+            state.orbTrail.forEach(t => t.life -= 0.05); // Fade out
+            state.orbTrail = state.orbTrail.filter(t => t.life > 0);
 
             state.explosions.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
             state.explosions = state.explosions.filter(p => p.life > 0);
@@ -520,60 +909,373 @@
         }
 
         function createExplosion(x, y, isSpecial) {
-            const color = isSpecial ? '#ffd700' : (Math.random() > 0.5 ? '#00d2ff' : '#ff4d4d');
-            for (let i = 0; i < 25; i++) state.explosions.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, life: 1, color });
+            const color = isSpecial ? config.colors.special : (Math.random() > 0.5 ? '#fff' : config.colors.ball);
+            // Soul Essence Particles
+            for (let i = 0; i < 30; i++) state.explosions.push({ 
+                x, y, 
+                vx: (Math.random() - 0.5) * 15, 
+                vy: (Math.random() - 0.5) * 15, 
+                life: 1, 
+                color,
+                size: Math.random() * 3 + 1
+            });
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-            if (state.isFeverMode) { ctx.fillStyle = config.colors.fever; ctx.fillRect(0, 0, 800, 650); }
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = 1;
-            for (let i = 0; i <= 800; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 650); ctx.stroke(); }
-            for (let i = 0; i <= 650; i += 50) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(800, i); ctx.stroke(); }
-
-            if (state.isReleased) {
-                ctx.strokeStyle = config.colors.ghost; ctx.setLineDash([5, 10]);
-                ctx.beginPath(); ctx.arc(state.releasePlayer.x, state.releasePlayer.y, state.radius, 0, Math.PI * 2); ctx.stroke();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.setLineDash([8, 8]);
-                ctx.beginPath(); ctx.moveTo(state.releasePos.x, state.releasePos.y); ctx.lineTo(state.ballPos.x, state.ballPos.y); ctx.stroke();
-                ctx.setLineDash([]);
+            
+            ctx.save();
+            // Screenshake
+            if (state.screenshake > 0) {
+                ctx.translate((Math.random() - 0.5) * state.screenshake, (Math.random() - 0.5) * state.screenshake);
             }
 
-            ctx.fillStyle = config.colors.player;
-            const rot = !state.isReleased ? Math.cos(state.angle) * 0.1 : 0;
-            ctx.save(); ctx.translate(state.playerX, state.playerY); ctx.rotate(rot);
-            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(0, -25, 8, 0, Math.PI * 2); ctx.fill();
-            if (!state.isReleased) {
-                ctx.strokeStyle = config.colors.rope; ctx.lineWidth = 1.5;
-                ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(state.ballPos.x - state.playerX, state.ballPos.y - state.playerY); ctx.stroke();
+            // Arena Scale Transition
+            ctx.save();
+            ctx.translate(canvas.width / (2 * dpr), canvas.height / (2 * dpr));
+            ctx.scale(state.arenaScale, state.arenaScale);
+            ctx.translate(-canvas.width / (2 * dpr), -canvas.height / (2 * dpr));
+
+            // Isometric Floor (Hades style)
+            ctx.strokeStyle = 'rgba(249, 115, 22, 0.08)';
+            ctx.lineWidth = 1;
+            const tileSize = 60;
+            for (let i = -1000; i <= 2000; i += tileSize) {
+                // Diagonal lines
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - 650, 650); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 650, 650); ctx.stroke();
             }
+
+            // Greek Key Decorations in corners
+            function drawGreekKey(x, y, size, rotation) {
+                ctx.save(); ctx.translate(x, y); ctx.rotate(rotation);
+                ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0); ctx.lineTo(size, 0); ctx.lineTo(size, size);
+                ctx.lineTo(size / 2, size); ctx.lineTo(size / 2, size / 2);
+                ctx.lineTo(size * 0.75, size / 2); ctx.stroke();
+                ctx.restore();
+            }
+            drawGreekKey(20, 20, 30, 0);
+            drawGreekKey(780, 20, 30, Math.PI / 2);
+            drawGreekKey(780, 630, 30, Math.PI);
+            drawGreekKey(20, 630, 30, -Math.PI / 2);
+
+            // SPIRIT CIRCLE (Movable Area UI) - Star Rail Glassmorphism x Hades Runes
+            ctx.save();
+            ctx.translate(state.domainX, state.domainY);
+            ctx.rotate(state.time * 0.2); // Slow, mystical rotation
+
+            // Glass/Glow Base (Diamond Shape)
+            const dR = config.domainRadius + 5;
+            ctx.beginPath();
+            ctx.moveTo(0, -dR); ctx.lineTo(dR, 0); ctx.lineTo(0, dR); ctx.lineTo(-dR, 0);
+            ctx.closePath();
+
+            // Subtle Background Fill
+            ctx.fillStyle = 'rgba(34, 211, 238, 0.04)'; ctx.fill();
+
+            // Glowing Borders
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)'; ctx.lineWidth = 1;
+            ctx.shadowBlur = 10; ctx.shadowColor = config.colors.ball;
+            ctx.stroke();
+
+            // Inner Core Circle
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.1)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(0, 0, config.domainRadius - 10, 0, Math.PI * 2); ctx.stroke();
+
+            // Greek/Rune Accents on 4 points
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = config.colors.ball; ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.4;
+            for (let i = 0; i < 4; i++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.beginPath();
+                ctx.moveTo(config.domainRadius - 5, -8);
+                ctx.lineTo(config.domainRadius + 5, 0);
+                ctx.lineTo(config.domainRadius - 5, 8);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
             ctx.restore();
 
+            if (state.isFeverMode) { ctx.fillStyle = config.colors.fever; ctx.fillRect(0, 0, 800, 650); }
+
+            // SPIRIT ORBIT (Restored & Improved) - Boundary of Aris's Will
+            if (state.isSpinning && !state.isReleased) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.shadowBlur = 10; ctx.shadowColor = config.colors.ball;
+                ctx.setLineDash([8, 12]);
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(state.playerX, state.playerY, state.radius, 0, Math.PI * 2); ctx.stroke();
+                
+                // Secondary Inner Pulse
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.2)';
+                ctx.setLineDash([]); ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(state.playerX, state.playerY, state.radius - 2, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+
+            if (state.isReleased) {
+                // Ghost Trailing
+                ctx.strokeStyle = config.colors.ghost; ctx.setLineDash([5, 15]);
+                ctx.beginPath(); ctx.arc(state.releasePlayer.x, state.releasePlayer.y, state.radius, 0, Math.PI * 2); ctx.stroke();
+
+                // Release Path (Dynamic Gradient - Steeper Transition)
+                const grad = ctx.createLinearGradient(state.releasePos.x, state.releasePos.y, state.ballPos.x, state.ballPos.y);
+                grad.addColorStop(0, 'rgba(168, 85, 247, 0.05)');
+                grad.addColorStop(0.15, 'rgba(168, 85, 247, 0.4)');
+                grad.addColorStop(0.3, 'rgba(34, 211, 238, 0.5)');
+                grad.addColorStop(1, 'rgba(34, 211, 238, 0.5)');
+
+                ctx.shadowBlur = 10; ctx.shadowColor = config.colors.ball;
+                ctx.strokeStyle = grad; ctx.setLineDash([5, 8]);
+                ctx.beginPath(); ctx.moveTo(state.releasePos.x, state.releasePos.y); ctx.lineTo(state.ballPos.x, state.ballPos.y); ctx.stroke();
+                ctx.setLineDash([]); ctx.shadowBlur = 0;
+            }
+
+            // TUTORIAL HINT: Predictive Tangent Line
+            if (state.isTutorial && state.isSpinning && !state.isReleased) {
+                const b = state.ballPos;
+                const bVel = state.ballVel;
+                const vMag = Math.sqrt(bVel.x * bVel.x + bVel.y * bVel.y);
+                if (vMag > 10) {
+                    ctx.save();
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+                    ctx.beginPath();
+                    ctx.moveTo(b.x, b.y);
+                    // Show short 150px preview line
+                    ctx.lineTo(b.x + (bVel.x / vMag) * 150, b.y + (bVel.y / vMag) * 150);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            // Draw Link Line (Only if spinning) - MOVED TO BENEATH PLAYER
+            const bounce = Math.sin(state.time * 4) * 5;
+            if (!state.isReleased) {
+                ctx.save();
+                ctx.translate(state.playerX, state.playerY);
+                ctx.strokeStyle = config.colors.rope; ctx.lineWidth = 2;
+                ctx.shadowBlur = 10; ctx.shadowColor = config.colors.ball;
+                ctx.beginPath(); ctx.moveTo(0, 0 + bounce); ctx.lineTo(state.ballPos.x - state.playerX, state.ballPos.y - state.playerY); ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            // Draw Player (Aris - The Spirit Guide)
+            ctx.save();
+            ctx.translate(state.playerX, state.playerY);
+            ctx.translate(0, bounce);
+
+            // Dynamic Orientation: Flip based on drag movement direction
+            ctx.scale(state.facingX, 1);
+
+            // Ethereal Glow Base (Dimmer & Circular)
+            const glowSize = 45;
+            const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
+            glowGrad.addColorStop(0, 'rgba(34, 211, 238, 0.15)');
+            glowGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.05)');
+            glowGrad.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = glowGrad;
+            ctx.beginPath(); ctx.arc(0, 0, glowSize, 0, Math.PI * 2); ctx.fill();
+            
+            // Draw Sprite
+            if (state.sprite.complete) {
+                ctx.globalCompositeOperation = 'screen';
+                const s = 0.16; // Optimized for Cartoon outlines
+                ctx.drawImage(state.sprite, -state.sprite.width * s / 2, -state.sprite.height * s / 2, state.sprite.width * s, state.sprite.height * s);
+                ctx.globalCompositeOperation = 'source-over';
+            } else {
+                // Fallback: Ethereal Cloak/Diamond
+                ctx.rotate(Math.PI / 4);
+                ctx.strokeStyle = config.colors.player;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-15, -15, 30, 30);
+                // Core Sun Fragment
+                ctx.fillStyle = config.colors.special;
+                ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+            }
+            
+            ctx.restore();
+
+            // Draw Targets (Soul Cores / Fragments)
             state.targets.forEach(t => {
-                ctx.strokeStyle = t.isSpecial ? config.colors.special : config.colors.target;
-                ctx.lineWidth = t.isSpecial ? 5 : 3;
-                const rMax = t.r || 40;
-                for (let r = 10; r <= rMax; r += 10) { ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.stroke(); }
-                ctx.beginPath(); ctx.moveTo(t.x - rMax - 10, t.y); ctx.lineTo(t.x + rMax + 10, t.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(t.x, t.y - rMax - 10); ctx.lineTo(t.x, t.y + rMax + 10); ctx.stroke();
-                if (t.isSpecial) { ctx.fillStyle = 'rgba(255, 215, 0, 0.2)'; ctx.fill(); }
+                const pulse = Math.sin(state.time * 6 + (t.id || 0)) * 5;
+                const baseColor = t.isSpecial ? config.colors.special : config.colors.target;
+                const s = t.spawnAnim || 1; // Animation Scale
+
+                ctx.save();
+                ctx.translate(t.x, t.y);
+                ctx.scale(s, s);
+                ctx.globalAlpha = s;
+                
+                // Miasma Glow (Corruption)
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = t.isSpecial ? 'rgba(251, 191, 36, 0.4)' : 'rgba(74, 222, 128, 0.3)';
+                
+                // Redesigned Crystalline Core
+                const r = t.r || 40;
+                
+                // Energy Shell / Ripple on Spawn
+                if (s < 1) {
+                    ctx.save();
+                    ctx.strokeStyle = '#a855f7';
+                    ctx.lineWidth = 2 * (1-s);
+                    ctx.beginPath(); ctx.arc(0, 0, r * (1 + s), 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Energy Shell
+                ctx.strokeStyle = baseColor;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.3 * s;
+                ctx.beginPath(); ctx.arc(0, 0, r + pulse, 0, Math.PI * 2); ctx.stroke();
+                ctx.globalAlpha = s;
+
+                // Crystal Body (High-Fidelity) - Cartoon Outlines added
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2 * s;
+                ctx.fillStyle = baseColor;
+                ctx.beginPath();
+                for(let i=0; i<6; i++) {
+                    const angle = (i / 6) * Math.PI * 2 + state.time * 2;
+                    const cr = (i % 2 === 0 ? 12 : 8) + pulse/3;
+                    ctx.lineTo(Math.cos(angle) * cr, Math.sin(angle) * cr);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Inner Glow / Facets
+                ctx.strokeStyle = '#fff'; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+                ctx.beginPath();
+                for(let i=0; i<3; i++) {
+                    const angle = (i / 3) * Math.PI * 2 + state.time * 2;
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(angle) * 10, Math.sin(angle) * 10);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                // Core Cracks (Corruption visual)
+                if (!t.isSpecial) {
+                    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-4, -4); ctx.lineTo(4, 4);
+                    ctx.moveTo(4, -4); ctx.lineTo(-4, 4);
+                    ctx.stroke();
+                } else {
+                    // Radiant Memory Sparkles
+                    ctx.fillStyle = '#fff';
+                    for(let i=0; i<4; i++) {
+                        ctx.rotate(Math.PI/2);
+                        ctx.fillRect(10, -1, 4, 2);
+                    }
+                }
+
+                // Crosshair markers (Warden's focus)
+                ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.restore();
             });
 
-            const b = state.ballPos; const grad = ctx.createRadialGradient(b.x - 3, b.y - 3, 2, b.x, b.y, 12);
-            grad.addColorStop(0, '#70e1ff'); grad.addColorStop(1, '#009ccf'); ctx.fillStyle = grad;
-            ctx.beginPath(); const w = !state.isReleased ? Math.sin(state.time * 10) : 0;
-            ctx.ellipse(b.x, b.y, 10 + w, 10 - w, state.angle, 0, 2 * Math.PI); ctx.fill();
+            // Draw Ball (Ghost Orb - Upgraded Fluid Visuals)
+            const b = state.ballPos;
+            const bVel = state.ballVel;
+            const velocityMag = Math.sqrt(bVel.x * bVel.x + bVel.y * bVel.y);
+
+            // DRAW PHANTOM TRAIL (Ghosting Clones)
+            if (state.isReleased) {
+                state.orbTrail.forEach(t => {
+                    ctx.save();
+                    ctx.translate(t.x, t.y);
+                    ctx.rotate(t.angle);
+                    ctx.globalAlpha = t.life * 0.4;
+
+                    // Simple Fading Silhouette - Subtler stretch
+                    ctx.fillStyle = config.colors.ball;
+                    ctx.beginPath();
+                    const tStretch = 1 + velocityMag / 1500;
+                    ctx.ellipse(0, 0, 10 * tStretch * t.life, 10 / tStretch, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+                ctx.globalAlpha = 1;
+            }
+
+            // Passive Physics: Stretch directly correlates to linear velocity magnitude
+            // Tuned for subtler deformation
+            const stretch = Math.min(1.35, 1 + velocityMag / 1200);
+            const stretchAngle = Math.atan2(bVel.y, bVel.x);
+
+            // Fluid Wobble effect based on velocity
+            const wobbleTime = state.time * 8;
+            const wobbleX = Math.sin(wobbleTime) * 1.5;
+            const wobbleY = Math.cos(wobbleTime * 0.6) * 1.5;
+
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.rotate(stretchAngle);
+
+            // Outer Glow / Aura (Elongated)
+            const auraGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 20);
+            auraGrad.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
+            auraGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = auraGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 20 * stretch, 20 / stretch, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main Orb Body (Layered Gradients)
+            const orbGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 12);
+            orbGrad.addColorStop(0, '#fff');
+            orbGrad.addColorStop(0.3, config.colors.ball);
+            orbGrad.addColorStop(1, 'rgba(249, 115, 22, 0.5)');
+
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = config.colors.ball;
+            ctx.fillStyle = orbGrad;
+            ctx.beginPath();
+            ctx.ellipse(wobbleX, wobbleY, (12 + wobbleX / 2) * stretch, (12 - wobbleX / 2) / stretch, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inner Core (Bright & Pulsing)
+            const corePulse = Math.sin(state.time * 12) * 2;
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(wobbleX * 0.5, wobbleY * 0.5, 4 + corePulse, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            // Passive Physics: Straight Line Particles Trail (Reduced random noise)
+            if (state.isReleased && Math.random() > 0.7) {
+                state.explosions.push({
+                    x: b.x, y: b.y, vx: 0, vy: 0, life: 0.4, color: 'rgba(255, 255, 255, 0.3)'
+                });
+            }
 
             state.explosions.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI); ctx.fill(); });
             ctx.globalAlpha = 1;
 
             if (state.isFeverMode) {
-                ctx.fillStyle = '#ffd700'; ctx.font = '800 40px Inter'; ctx.textAlign = 'center';
-                ctx.fillText('⚡ FEVER MODE ⚡', 400, 80);
-                ctx.font = '600 20px Inter'; ctx.fillText('DOUBLE POINTS + TIME STOP', 400, 110);
+                ctx.fillStyle = config.colors.special; ctx.font = '800 40px Inter'; ctx.textAlign = 'center';
+                ctx.shadowBlur = 20; ctx.shadowColor = config.colors.special;
+                ctx.fillText('⚡ 耀日之時 ⚡', 400, 80);
+                ctx.font = '700 16px Inter'; ctx.fillText('靈能全開：淨化效能倍增', 400, 110);
+                ctx.shadowBlur = 0;
             }
+
+            // --- CANVAS STACK RESTORE ---
+            ctx.restore(); // Restore from Arena Scale
+            if (state.screenshake > 0) ctx.restore(); // Restore from screenshake
+            ctx.restore(); // Restore from initial save()
 
             const overlay = document.getElementById('retry-overlay');
             const title = document.getElementById('result-title');
@@ -583,16 +1285,53 @@
             if (state.isGameOver) {
                 overlay.classList.add('visible');
                 if (state.isGameOver === "timeup") {
-                    title.innerText = "⌛ 時間到！";
-                    msg.innerHTML = `挑戰結束！總得分：<span class="highlight-text" style="color:#ffd700">${state.score}</span><br>你在 2 分鐘內展現了極致的神射技巧！`;
-                    btn.innerText = "再挑戰一次"; btn.onclick = fullReset;
+                    title.innerText = "⌛ 靈能耗盡";
+                    msg.innerHTML = `本次探險結束。總功德：<span class="stat-value" style="font-size: 2rem;">${state.score}</span><br>你成功渡化了無數亡靈！`;
+                    btn.innerText = "再次探險"; btn.onclick = fullReset;
                 } else if (state.isGameOver === "pass") {
-                    title.innerText = "🎯 教學完成！";
-                    msg.innerText = "你已學會如何發射。準備好進入「狂熱挑戰」模式了嗎？";
-                    btn.innerText = "進入挑戰模式";
-                    btn.onclick = () => { state.isTutorial = false; document.getElementById('tutorialBtn').innerText = "切換至教學模式"; fullReset(); };
+                    title.innerText = "🎯 試煉完成";
+                    msg.innerText = "你已掌握靈魂飛越。準備好面對真正的冥界挑戰了嗎？";
+                    btn.innerText = "開啟耀日挑戰";
+                    btn.onclick = () => { setMode('challenge'); };
                 }
             } else overlay.classList.remove('visible');
+
+            // Restore from world scale (Arena Scale) before UI/Dialogue
+            ctx.restore();
+
+            // SPECTRAL FLASH (Transition Overlay - MUST BE ON TOP SCREEN SPACE)
+            if (state.transitionAnim > 0) {
+                ctx.save();
+                ctx.fillStyle = `rgba(34, 211, 238, ${state.transitionAnim * 0.4})`;
+                ctx.fillRect(0, 0, 800, 650);
+                ctx.restore();
+            }
+
+            // Restore from screenshake AFTER flash if it was active
+            if (state.screenshake > 0) ctx.restore();
+
+            // NARRATIVE DIALOGUE (Bottom Center)
+            if (state.dialogueTimer > 0) {
+                ctx.save();
+                ctx.translate(400, 600);
+                const alpha = Math.min(1, state.dialogueTimer * 2);
+                ctx.globalAlpha = alpha;
+                
+                // Backdrop
+                ctx.fillStyle = 'rgba(13, 1, 21, 0.7)';
+                ctx.font = '800 18px Inter';
+                const textWidth = ctx.measureText(state.dialogue).width;
+                ctx.roundRect(-textWidth/2 - 20, -15, textWidth + 40, 30, 15);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+                ctx.stroke();
+
+                // Text
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText(state.dialogue, 0, 7);
+                ctx.restore();
+            }
         }
 
         function handleStartSpin() { if (state.isReleased || state.isGameOver) return; state.isSpinning = true; updateStats(); }
@@ -600,6 +1339,10 @@
             if (!state.isSpinning || state.isReleased) return;
             state.isSpinning = false; state.isReleased = true;
             state.releasePos = { ...state.ballPos }; state.releasePlayer = { x: state.playerX, y: state.playerY };
+            
+            if (state.gameMode === 'tutorial' && state.tutorialStep === 2) {
+                state.tutorialHits++;
+            }
             updateStats();
         }
 
@@ -608,28 +1351,56 @@
             state.lastTimestamp = timestamp; update(dt); draw(); requestAnimationFrame(loop);
         }
 
-        function init() { resize(); reset(); state.lastTimestamp = performance.now(); requestAnimationFrame(loop); }
+        function closeStory() {
+            const modal = document.getElementById('story-modal');
+            if (modal) {
+                modal.style.opacity = '0';
+                setTimeout(() => modal.remove(), 500);
+            }
+            init(); 
+        }
 
-        window.addEventListener('load', init); window.addEventListener('resize', resize);
+        function init() { 
+            resize(); 
+            reset(); 
+            state.lastTimestamp = performance.now(); 
+            requestAnimationFrame(loop); 
+        }
+
+        window.addEventListener('load', () => {
+            // Wait for story modal interaction
+        });
+        window.addEventListener('resize', resize);
         const releaseBtn = document.getElementById('releaseBtn');
         const comboStart = (e) => { if (e.type === 'touchstart') e.preventDefault(); handleStartSpin(); };
         const comboEnd = (e) => { if (e.type === 'touchend') e.preventDefault(); handleRelease(); };
 
         canvas.addEventListener('mousedown', comboStart); canvas.addEventListener('mouseup', comboEnd);
         canvas.addEventListener('touchstart', comboStart, { passive: false }); canvas.addEventListener('touchend', comboEnd, { passive: false });
-        
+
         canvas.addEventListener('pointermove', (e) => {
             if (!state.isSpinning && e.buttons === 0 && e.pointerType === 'mouse') return; // Only move if dragging or touch
             if (state.isGameOver) return;
-            
+
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
+
+            // Spirit Domain Circular Bounding with Hitbox Volume
+            const dx = x - state.domainX; const dy = y - state.domainY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
             
-            if (state.side === 'left' || state.side === 'right') {
-                state.playerY = Math.max(50, Math.min(600, y));
+            // Interaction Facing: Detect drag movement direction (Inverted for Sprite V7)
+            if (Math.abs(x - state.playerX) > 1) {
+                state.facingX = x < state.playerX ? 1 : -1;
+            }
+
+            const effectiveRadius = config.domainRadius - (state.hitboxSize / 2);
+            if (dist <= effectiveRadius) {
+                state.playerX = x; state.playerY = y;
             } else {
-                state.playerX = Math.max(50, Math.min(750, x));
+                state.playerX = state.domainX + (dx / dist) * effectiveRadius;
+                state.playerY = state.domainY + (dy / dist) * effectiveRadius;
             }
         });
 
@@ -637,11 +1408,32 @@
         releaseBtn.addEventListener('touchstart', comboStart, { passive: false }); releaseBtn.addEventListener('touchend', comboEnd, { passive: false });
 
         document.getElementById('resetBtn').onclick = fullReset;
-        document.getElementById('tutorialBtn').onclick = (e) => {
-            state.isTutorial = !state.isTutorial;
-            e.target.innerText = state.isTutorial ? "切換至挑戰模式" : "切換至教學模式";
+        
+        function setMode(mode) {
+            state.gameMode = mode;
+            state.isTutorial = (mode === 'tutorial');
+            
+            // Trigger Spatial Recomposition Animation
+            state.arenaScale = 0.8;
+            state.transitionAnim = 1.0;
+            
+            // Update UI
+            document.querySelectorAll('.mode-selector .btn').forEach(b => b.classList.remove('active'));
+            if(mode === 'tutorial') document.getElementById('modeTutorial').classList.add('active');
+            if(mode === 'training') document.getElementById('modeTraining').classList.add('active');
+            if(mode === 'challenge') document.getElementById('modeChallenge').classList.add('active');
+            
+            // Update Info
+            document.getElementById('challenge-info').style.display = (mode === 'challenge') ? 'block' : 'none';
+            document.getElementById('training-info').style.display = (mode === 'training') ? 'block' : 'none';
+            document.getElementById('tutorial-info').style.display = (mode === 'tutorial') ? 'block' : 'none';
+
             fullReset();
-        };
+        }
+
+        document.getElementById('modeTutorial').onclick = () => setMode('tutorial');
+        document.getElementById('modeTraining').onclick = () => setMode('training');
+        document.getElementById('modeChallenge').onclick = () => setMode('challenge');
 
         window.onkeydown = (e) => { state.keys[e.code] = true; if (e.code === 'Space') handleStartSpin(); };
         window.onkeyup = (e) => { state.keys[e.code] = false; if (e.code === 'Space') handleRelease(); };
