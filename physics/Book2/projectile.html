@@ -408,8 +408,8 @@
 
             if (t === 0) {
                 // Initial Velocity Vector
-                drawArrow(ctx, px, py, px + (v0*Math.cos(theta))*0.8, py - (v0*Math.sin(theta))*0.8, 'rgba(255,255,255,0.8)', 'v\u2080', 3);
-                
+                drawArrow(ctx, px, py, px + (v0 * Math.cos(theta)) * 0.8, py - (v0 * Math.sin(theta)) * 0.8, 'rgba(255,255,255,0.8)', 'v\u2080', 3);
+
                 // Launch Angle Arc & Label
                 const arcRad = 35;
                 ctx.strokeStyle = 'var(--accent-blue)';
@@ -417,7 +417,7 @@
                 ctx.beginPath();
                 ctx.arc(origin.x, origin.y, arcRad, 0, -theta, true);
                 ctx.stroke();
-                
+
                 // Label theta (\u03B8)
                 ctx.fillStyle = 'var(--accent-blue)';
                 ctx.font = 'italic 13px "Inter", sans-serif';
