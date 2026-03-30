@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>軌道運動與平拋模擬</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --accent: #38bdf8;
+            --track: #cbd5e1;
+            --dashed: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .bento-box {
+            width: 1100px;
+            height: 650px;
+            background: var(--panel);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .sim-area {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.1), transparent 70%);
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .track {
+            fill: none;
+            stroke: var(--track);
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+
+        .track-dashed {
+            fill: none;
+            stroke: var(--dashed);
+            stroke-width: 2;
+            stroke-dasharray: 6 6;
+        }
+
+        .measure-line {
+            stroke: #64748b;
+            stroke-width: 1;
+        }
+
+        .measure-text {
+            fill: #94a3b8;
+            font-size: 14px;
+        }
+
+        .point-label {
+            fill: #e2e8f0;
+            font-size: 18px;
+            font-family: serif;
+            font-style: italic;
+        }
+
+        .ground {
+            stroke: #475569;
+            stroke-width: 4;
+        }
+
+        .ground-fill {
+            fill: url(#groundHatch);
+        }
+
+        #ball {
+            fill: url(#ballGrad);
+            filter: drop-shadow(0 0 12px rgba(56, 189, 248, 1));
+        }
+
+        .marker {
+            fill: var(--bg);
+            stroke: var(--track);
+            stroke-width: 2;
+            pointer-events: none;
+        }
+
+        .click-zone {
+            fill: transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .click-zone:hover {
+            fill: rgba(255, 255, 255, 0.1);
+            stroke: rgba(255, 255, 255, 0.3);
+            stroke-width: 2;
+        }
+
+        /* Speed Panel */
+        .speed-panel {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 20px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            color: #f8fafc;
+            display: none;
+            /* hidden initially */
+        }
+
+        .speed-panel h4 {
+            margin: 0 0 8px 0;
+            color: #38bdf8;
+            font-size: 16px;
+        }
+
+        .speed-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            width: 200px;
+            font-size: 15px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat .label {
+            color: #94a3b8;
+        }
+
+        /* Physics Notes Panel */
+        .physics-notes {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 16px 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: 0.3s;
+            z-index: 10;
+        }
+
+        .physics-notes h3 {
+            margin: 0 0 12px 0;
+            color: #38bdf8;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .note-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+
+        .note-highlight {
+            color: #fbbf24;
+            font-weight: bold;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* Energy Panel */
+        .energy-panel {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            display: flex;
+            gap: 24px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 16px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .bar-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bar-bg {
+            width: 20px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            width: 100%;
+            transition: height 0.05s linear;
+        }
+
+        #keBar {
+            background: linear-gradient(to top, #f43f5e, #fb7185);
+            height: 0%;
+        }
+
+        #gpeBar {
+            background: linear-gradient(to top, #10b981, #34d399);
+            height: 100%;
+        }
+
+        .bar-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #cbd5e1;
+            letter-spacing: 1px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+</head>
+
+<body>
+    <div class="bento-box">
+        <div class="header">
+            <h1>軌道運動與斜向拋射模擬</h1>
+            <div class="controls">
+                <button id="playBtn">播放</button>
+                <button id="pauseBtn" style="background: #fbbf24; color: #000; display: none;">暫停</button>
+                <button id="resetBtn" style="background: #475569; color: white;">重置</button>
+            </div>
+        </div>
+        <div class="sim-area">
+            <div class="energy-panel">
+                <div class="bar-wrap">
+                    <div class="bar-bg">
+                        <div class="bar-fill" id="keBar"></div>
+                    </div>
+                    <span class="bar-label">KE</span>
+                </div>
+                <div class="bar-wrap">
+                    <div class="bar-bg">
+                        <div class="bar-fill" id="gpeBar"></div>
+                    </div>
+                    <span class="bar-label">GPE</span>
+                </div>
+            </div>
+            <div class="speed-panel" id="speedPanel">
+                <h4>速度分析</h4>
+                <div class="speed-stats">
+                    <div class="stat"><span class="label">水平分量 (Vx):</span> <span><span id="vxVal">0</span> m/s</span>
+                    </div>
+                    <div class="stat"><span class="label">垂直分量 (Vy):</span> <span><span id="vyVal">0</span> m/s</span>
+                    </div>
+                    <div class="stat"><span class="label">總合速度 (V):</span> <span><span id="vTotal">0</span> m/s</span>
+                    </div>
+                </div>
+            </div>
+            <div class="physics-notes">
+                <h3>💡 物理分析</h3>
+                <div class="note-content" id="noteText">
+                    小球從 A 點靜止釋放，總能量守恆，重力位能 (GPE) 正在轉換為動能 (KE)。
+                </div>
+            </div>
+            <svg viewBox="0 120 1100 550">
+                <defs>
+                    <radialGradient id="ballGrad" cx="30%" cy="30%" r="70%">
+                        <stop offset="0%" stop-color="#bae6fd" />
+                        <stop offset="100%" stop-color="#0284c7" />
+                    </radialGradient>
+                    <marker id="arrowStart" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                        <path d="M 8 0 L 0 4 L 8 8 Z" fill="#64748b" />
+                    </marker>
+                    <marker id="arrowEnd" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                        <path d="M 0 0 L 8 4 L 0 8 Z" fill="#64748b" />
+                    </marker>
+                    <pattern id="groundHatch" width="10" height="10" patternTransform="rotate(45 0 0)"
+                        patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="10" stroke="#334155" stroke-width="2" />
+                    </pattern>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <line x1="40" y1="0" x2="40" y2="40" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                        <line x1="0" y1="40" x2="40" y2="40" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                    </pattern>
+                    <!-- 縮小箭頭尺寸並優化比例 -->
+                    <marker id="arrowVx" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"
+                        markerUnits="strokeWidth">
+                        <path d="M 0 0 L 6 3 L 0 6 Z" fill="#f43f5e" />
+                    </marker>
+                    <marker id="arrowVy" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"
+                        markerUnits="strokeWidth">
+                        <path d="M 0 0 L 6 3 L 0 6 Z" fill="#10b981" />
+                    </marker>
+                    <marker id="arrowV" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"
+                        markerUnits="strokeWidth">
+                        <path d="M 0 0 L 6 3 L 0 6 Z" fill="#fbbf24" />
+                    </marker>
+                </defs>
+
+                <!-- 背景網格 -->
+                <rect x="0" y="120" width="1100" height="550" fill="url(#grid)" />
+
+                <!-- 地面 -->
+                <line x1="50" y1="500" x2="1050" y2="500" class="ground" />
+                <rect x="50" y="502" width="1000" height="20" class="ground-fill" />
+                <text x="920" y="490" fill="#cbd5e1" font-size="16px">地面</text>
+
+                <!-- 軌道 (A->B->C) -->
+                <!-- 利用三次貝茲曲線擬合平滑軌道。B點斜率為0，C點斜率為60度。 -->
+                <path d="M 300 280 C 350 480, 430 480, 500 480 C 560 480, 605 443.3, 630 400" class="track" />
+
+                <!-- 拋物線 (C->D->E) -->
+                <!-- 使用二次貝茲完美擬合重力拋物線 -->
+                <path d="M 630 400 Q 757.5 179.25 885 500" class="track-dashed" />
+
+                <!-- 標示線與文字 -->
+                <!-- A點高度 (2.2m) -->
+                <line x1="250" y1="280" x2="300" y2="280" class="measure-line" stroke-dasharray="4 4" />
+                <line x1="250" y1="286" x2="250" y2="494" class="measure-line" marker-start="url(#arrowStart)"
+                    marker-end="url(#arrowEnd)" />
+                <text x="210" y="390" class="measure-text">2.2 m</text>
+
+                <!-- C點高度 (1.0m) -->
+                <line x1="630" y1="400" x2="680" y2="400" class="measure-line" stroke-dasharray="4 4" />
+                <line x1="660" y1="406" x2="660" y2="494" class="measure-line" marker-start="url(#arrowStart)"
+                    marker-end="url(#arrowEnd)" />
+                <text x="670" y="455" class="measure-text">1.0 m</text>
+
+                <!-- C點角度 (60°) -->
+                <!-- 虛線參考 -->
+                <line x1="630" y1="400" x2="680" y2="400" class="measure-line" stroke-dasharray="2 2" />
+                <!-- 角度弧線 -->
+                <path d="M 660 400 A 30 30 0 0 0 645 374" stroke="#94a3b8" stroke-width="1.5" fill="none" />
+                <text x="665" y="388" class="measure-text">60°</text>
+
+                <!-- 關鍵節點標示 -->
+                <!-- 節點位置依據100px = 1m等比例換算得出 -->
+                <circle cx="300" cy="280" r="6" class="marker" /> <!-- A -->
+                <circle cx="500" cy="480" r="6" class="marker" /> <!-- B -->
+                <circle cx="630" cy="400" r="6" class="marker" /> <!-- C -->
+                <circle cx="734" cy="310" r="6" class="marker" /> <!-- D -->
+                <circle cx="885" cy="500" r="6" class="marker" /> <!-- E -->
+
+                <!-- 感應點擊區 -->
+                <circle cx="300" cy="280" r="24" class="click-zone" data-target="A" />
+                <circle cx="500" cy="480" r="24" class="click-zone" data-target="B" />
+                <circle cx="630" cy="400" r="24" class="click-zone" data-target="C" />
+                <circle cx="734" cy="310" r="24" class="click-zone" data-target="D" />
+                <circle cx="885" cy="500" r="24" class="click-zone" data-target="E" />
+
+                <text x="285" y="270" class="point-label pointer-events-none" style="pointer-events: none;">A</text>
+                <text x="495" y="505" class="point-label pointer-events-none" style="pointer-events: none;">B</text>
+                <text x="610" y="390" class="point-label pointer-events-none" style="pointer-events: none;">C</text>
+                <text x="745" y="300" class="point-label pointer-events-none" style="pointer-events: none;">D</text>
+                <text x="895" y="520" class="point-label pointer-events-none" style="pointer-events: none;">E</text>
+
+                <!-- 動畫小球 -->
+                <circle id="ball" cx="300" cy="280" r="10" />
+
+                <!-- 速度向量 -->
+                <g id="vectorGroup" style="display: none;">
+                    <line id="vxLine" x1="0" y1="0" x2="0" y2="0" stroke="#f43f5e" stroke-width="3"
+                        marker-end="url(#arrowVx)" />
+                    <line id="vyLine" x1="0" y1="0" x2="0" y2="0" stroke="#10b981" stroke-width="3"
+                        marker-end="url(#arrowVy)" />
+                    <line id="vLine" x1="0" y1="0" x2="0" y2="0" stroke="#fbbf24" stroke-width="3"
+                        marker-end="url(#arrowV)" />
+                </g>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        const ball = document.getElementById('ball');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const keBar = document.getElementById('keBar');
+        const gpeBar = document.getElementById('gpeBar');
+        const energyPanel = document.querySelector('.energy-panel');
+        const speedPanel = document.getElementById('speedPanel');
+        const vectorGroup = document.getElementById('vectorGroup');
+        const vxVal = document.getElementById('vxVal');
+        const vyVal = document.getElementById('vyVal');
+        const vTotal = document.getElementById('vTotal');
+
+        let trajectory = [];
+        let timeAtC = 0;
+        let pointTimes = {};
+        // 比例尺: 100px = 1m , g = 9.8 m/s^2 => 980 px/s^2
+        const g = 980;
+
+        function getBezierPoint(t, p0, p1, p2, p3) {
+            const mt = 1 - t;
+            return {
+                x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
+                y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y
+            };
+        }
+
+        // 建立完整物理運動軌跡座標與時間戳
+        function buildSimulationData() {
+            trajectory = [];
+            let time = 0;
+            let lastP = { x: 300, y: 280 };
+            trajectory.push({ x: lastP.x, y: lastP.y, t: 0, v: 0 });
+
+            // A -> B 軌道 (利用能量守恆 v = sqrt(2gh) 決定速度)
+            let p0 = { x: 300, y: 280 }, p1 = { x: 350, y: 480 }, p2 = { x: 430, y: 480 }, p3 = { x: 500, y: 480 };
+            for (let i = 1; i <= 100; i++) {
+                let p = getBezierPoint(i / 100, p0, p1, p2, p3);
+                let ds = Math.hypot(p.x - lastP.x, p.y - lastP.y);
+                let drop = p.y - 280; // 以A點為最高基準，求目前下降位移
+                let v = Math.sqrt(2 * g * (drop > 0 ? drop : 0));
+                let vAvg = (v + trajectory[trajectory.length - 1].v) / 2;
+                if (vAvg < 0.1) vAvg = 0.1; // 避免初始無限等待
+                time += ds / vAvg;
+                trajectory.push({ x: p.x, y: p.y, t: time, v: v });
+                lastP = p;
+            }
+
+            // B -> C 軌道
+            p0 = { x: 500, y: 480 }; p1 = { x: 560, y: 480 }; p2 = { x: 605, y: 443.3 }; p3 = { x: 630, y: 400 };
+            for (let i = 1; i <= 100; i++) {
+                let p = getBezierPoint(i / 100, p0, p1, p2, p3);
+                let ds = Math.hypot(p.x - lastP.x, p.y - lastP.y);
+                let drop = p.y - 280;
+                let v = drop > 0 ? Math.sqrt(2 * g * drop) : 0;
+                let vAvg = (v + trajectory[trajectory.length - 1].v) / 2;
+                time += ds / vAvg;
+                trajectory.push({ x: p.x, y: p.y, t: time, v: v });
+                lastP = p;
+            }
+            timeAtC = time;
+
+            // C -> D -> E 拋體運動 (Kinematics)
+            let dt = 0.016; // 60fps 的時間步長
+            let v_c = trajectory[trajectory.length - 1].v;
+            // 發射角 60度 (向上為負y方向)
+            let vx = v_c * Math.cos(-Math.PI / 3);
+            let vy = v_c * Math.sin(-Math.PI / 3);
+
+            let t_proj = 0;
+            while (true) {
+                t_proj += dt;
+                let x = 630 + vx * t_proj;
+                // y = y0 + vy*t + (1/2)*g*t^2
+                let y = 400 + vy * t_proj + 0.5 * g * t_proj * t_proj;
+
+                if (y >= 500) {
+                    // 精確插補落地點
+                    trajectory.push({ x: 885, y: 500, t: time + t_proj });
+                    break;
+                }
+                trajectory.push({ x, y, t: time + t_proj });
+            }
+
+            // 建立各點精確對應時間
+            pointTimes['A'] = 0;
+            let idxB = trajectory.findIndex(p => p.x >= 500 && p.y >= 480);
+            pointTimes['B'] = trajectory[idxB].t;
+            pointTimes['C'] = timeAtC;
+
+            let vy_c = v_c * Math.sin(-Math.PI / 3);
+            let timeToD = Math.abs(vy_c / g); // 最高點時 vertical velocity 為 0
+            pointTimes['D'] = timeAtC + timeToD;
+            pointTimes['E'] = trajectory[trajectory.length - 1].t;
+        }
+
+        buildSimulationData();
+
+        let animFrame;
+        let lastTimestamp = null;
+        let isPlaying = false;
+        let simulatedTime = 0;
+        let hasPausedAtC = false;
+        let currentPhase = -1;
+
+        function render(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            let dt = (timestamp - lastTimestamp) / 3000; // 減速 3 倍
+            lastTimestamp = timestamp;
+
+            if (isPlaying) {
+                simulatedTime += dt;
+            }
+
+            // 檢查是否到達 C 點並需要暫停
+            if (!hasPausedAtC && simulatedTime >= timeAtC) {
+                simulatedTime = timeAtC;
+                hasPausedAtC = true;
+                isPlaying = false;
+                playBtn.style.display = 'inline-block';
+                pauseBtn.style.display = 'none';
+                playBtn.innerText = "繼續 (分析速度)";
+
+                // 切換面板
+                energyPanel.style.display = 'none';
+                speedPanel.style.display = 'flex';
+                vectorGroup.style.display = 'block';
+            }
+
+            // 對應已模擬時間
+            let elapsed = simulatedTime;
+
+            // 在預算好的軌跡陣列中尋找對應時間的位置進行線性插值
+            let currentPt = trajectory[trajectory.length - 1];
+            for (let i = 0; i < trajectory.length - 1; i++) {
+                if (elapsed >= trajectory[i].t && elapsed < trajectory[i + 1].t) {
+                    let ratio = (elapsed - trajectory[i].t) / (trajectory[i + 1].t - trajectory[i].t);
+                    currentPt = {
+                        x: trajectory[i].x + ratio * (trajectory[i + 1].x - trajectory[i].x),
+                        y: trajectory[i].y + ratio * (trajectory[i + 1].y - trajectory[i].y)
+                    };
+                    break;
+                }
+            }
+
+            ball.setAttribute('cx', currentPt.x);
+            ball.setAttribute('cy', currentPt.y);
+
+            // 更新能量條 (以 B 點 y=480 作為位能零面)
+            let maxE = 200; // 480 - 280
+            let currentGPE = 480 - currentPt.y;
+            let currentKE = maxE - currentGPE;
+
+            keBar.style.height = Math.max(0, currentKE / maxE * 100) + '%';
+            gpeBar.style.height = Math.max(0, currentGPE / maxE * 100) + '%';
+
+            // 若切換至平拋階段，即時運算並更新速度向量
+            if (elapsed >= timeAtC) {
+                let t_proj = elapsed - timeAtC;
+                let v_c = trajectory.find(p => p.t >= timeAtC).v;
+                let vx_c = v_c * Math.cos(-Math.PI / 3);
+                let vy_c = v_c * Math.sin(-Math.PI / 3);
+
+                let cx = currentPt.x;
+                let cy = currentPt.y;
+                let current_vx = vx_c;
+                let current_vy = vy_c + g * t_proj;
+                let current_v = Math.hypot(current_vx, current_vy);
+
+                // 100px = 1m，轉換為 m/s
+                vxVal.innerText = (current_vx / 100).toFixed(2);
+                vyVal.innerText = Math.abs(current_vy / 100).toFixed(2);
+                vTotal.innerText = (current_v / 100).toFixed(2);
+
+                // 繪製向量 (以 0.15 縮放倍數顯示在螢幕上)
+                let scale = 0.15;
+                const minLen = 15; // 最小顯示長度閾值，避免只有箭頭
+
+                function updateVector(id, x2, y2, len) {
+                    const el = document.getElementById(id);
+                    if (len < minLen) {
+                        el.style.display = 'none';
+                    } else {
+                        el.style.display = 'block';
+                        el.setAttribute('x1', cx);
+                        el.setAttribute('y1', cy);
+                        el.setAttribute('x2', x2);
+                        el.setAttribute('y2', y2);
+                    }
+                }
+
+                updateVector('vxLine', cx + current_vx * scale, cy, Math.abs(current_vx * scale));
+                updateVector('vyLine', cx, cy + current_vy * scale, Math.abs(current_vy * scale));
+                updateVector('vLine', cx + current_vx * scale, cy + current_vy * scale, current_v * scale);
+
+                if (currentPhase !== 1) {
+                    currentPhase = 1;
+                    noteText.innerHTML = `
+                        <span class="note-highlight">C 點之後：斜拋運動</span>
+                        此時 <span style="color:#f43f5e">Vx</span> 固定不變，只有 <span style="color:#10b981">Vy</span> 受到垂直重力 \\(g\\) 持續加速。水平方向無外力。
+                    `;
+                    if (window.renderMathInElement) renderMathInElement(noteText, { delimiters: [{ left: '\\(', right: '\\)', display: false }, { left: '$', right: '$', display: false }] });
+                }
+            } else {
+                if (currentPhase !== 0) {
+                    currentPhase = 0;
+                    noteText.innerHTML = `
+                        <span class="note-highlight">A 點至 C 點：軌道運動 (光滑路軌)</span>
+                        總力學能守恆：\\(E_{total} = KE + GPE\\)。<br>
+                        在最低點 B 時速度最大，高度差換算速度。
+                    `;
+                    if (window.renderMathInElement) renderMathInElement(noteText, { delimiters: [{ left: '\\(', right: '\\)', display: false }, { left: '$', right: '$', display: false }] });
+                }
+            }
+
+            // 當動畫到底
+            if (elapsed >= trajectory[trajectory.length - 1].t) {
+                simulatedTime = trajectory[trajectory.length - 1].t;
+                isPlaying = false;
+                playBtn.style.display = 'inline-block';
+                pauseBtn.style.display = 'none';
+                playBtn.innerText = "重新播放";
+            }
+
+            animFrame = requestAnimationFrame(render);
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) return;
+            if (simulatedTime >= trajectory[trajectory.length - 1].t) {
+                // 如果已經結束，從頭開始
+                resetBtn.click();
+            }
+            isPlaying = true;
+            playBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            lastTimestamp = null;
+            if (!animFrame) animFrame = requestAnimationFrame(render);
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            if (!isPlaying) return;
+            isPlaying = false;
+            playBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            playBtn.innerText = "繼續";
+        });
+
+        resetBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animFrame);
+            animFrame = null;
+            lastTimestamp = null;
+            simulatedTime = 0;
+            hasPausedAtC = false;
+            isPlaying = false;
+            currentPhase = -1;
+
+            playBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            playBtn.innerText = "播放";
+
+            ball.setAttribute('cx', trajectory[0].x);
+            ball.setAttribute('cy', trajectory[0].y);
+            keBar.style.height = '0%';
+            gpeBar.style.height = '100%';
+
+            energyPanel.style.display = 'flex';
+            speedPanel.style.display = 'none';
+            vectorGroup.style.display = 'none';
+        });
+
+        // 點擊 A, B, C, D, E 跳轉
+        document.querySelectorAll('.click-zone').forEach(zone => {
+            zone.addEventListener('click', (e) => {
+                let target = e.target.getAttribute('data-target');
+                if (pointTimes[target] !== undefined) {
+                    simulatedTime = pointTimes[target];
+                    isPlaying = false;
+
+                    playBtn.style.display = 'inline-block';
+                    pauseBtn.style.display = 'none';
+                    playBtn.innerText = "繼續" + (target === 'A' ? "播放" : "");
+
+                    if (simulatedTime >= timeAtC) {
+                        hasPausedAtC = true;
+                        energyPanel.style.display = 'none';
+                        speedPanel.style.display = 'flex';
+                        vectorGroup.style.display = 'block';
+                    } else {
+                        hasPausedAtC = false;
+                        energyPanel.style.display = 'flex';
+                        speedPanel.style.display = 'none';
+                        vectorGroup.style.display = 'none';
+                    }
+                    currentPhase = -1;
+
+                    // 若尚未啟動動畫迴圈，強制觸發一幀更新畫面
+                    if (!animFrame) animFrame = requestAnimationFrame(render);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
