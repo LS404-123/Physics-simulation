@@ -409,7 +409,7 @@
 
             ctx.beginPath();
             ctx.moveTo(fromX, fromY);
-            ctx.lineTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle) * 0.8, toY - headlen * Math.sin(angle) * 0.8);
             ctx.stroke();
 
             // 箭頭頭部
