@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>獵人與猴子 (Monkey and Hunter)</title>
+    <!-- MathJax -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+        :root {
+            --bg-color: #0f172a; 
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            
+            --neon-blue: #0ea5e9;
+            --neon-red: #ef4444;
+            --neon-green: #22c55e;
+            --neon-yellow: #facc15;
+            
+            --gap: 20px;
+            --radius: 20px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 100%);
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; 
+        }
+
+        #app {
+            width: 1100px;
+            height: 650px;
+            display: grid;
+            grid-template-columns: 2.5fr 1fr;
+            grid-template-rows: 1fr;
+            gap: var(--gap);
+        }
+
+        .bento {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: var(--glass-shadow);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sim-container {
+            grid-column: 1 / 2;
+            grid-row: 1 / 2;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            border-radius: var(--radius);
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            gap: 16px;
+        }
+
+        h2 {
+            margin: 0 0 12px 0;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .pedagogy-title { color: var(--neon-blue); font-size: 18px; margin-bottom: 8px; font-weight: bold;}
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .val-highlight {
+            color: var(--neon-yellow);
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--neon-blue);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+
+        button {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: rgba(255, 255, 255, 0.2); }
+        button:active { transform: scale(0.97); }
+
+        .btn-fire {
+            background: rgba(14, 165, 233, 0.2);
+            border-color: rgba(14, 165, 233, 0.5);
+            color: var(--neon-blue);
+        }
+        .btn-fire:hover { background: rgba(14, 165, 233, 0.3); }
+
+        .hud {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: #94a3b8;
+            margin-top: auto;
+        }
+        .hud .row { display: flex; justify-content: space-between; }
+        .hud .value { color: #fff; }
+
+        #pedagogy-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #cbd5e1;
+            margin-top: 8px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* 捲動條 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 繪圖區 -->
+    <div class="bento" id="sim-container" style="position: relative;">
+        <div style="position: absolute; top: 30px; left: 30px; z-index: 10; pointer-events: none;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #f8fafc; letter-spacing: 1px; text-shadow: 0 0 16px rgba(14,165,233,0.8);">獵人與猴子 <span style="font-size: 16px; color: var(--neon-blue); font-weight: normal; margin-left: 8px;">Monkey & Hunter</span></h1>
+            <p style="margin: 8px 0 0 0; font-size: 14px; color: #94a3b8; font-weight: 400; font-family: monospace;">從各自動量中見證運動的獨立性</p>
+        </div>
+        <canvas id="sim-canvas" width="1400" height="1300"></canvas>
+    </div>
+
+    <!-- 控制區 -->
+    <div class="bento" id="controls">
+        <h2>發射控制</h2>
+        
+        <div class="control-group">
+            <label>
+                <span>拋射初速率 \( v_0 \)</span>
+                <span class="val-highlight"><span id="v0-display">40</span> m/s</span>
+            </label>
+            <input type="range" id="v0-slider" min="10" max="80" step="1" value="40">
+        </div>
+
+        <div class="control-group" style="margin-top: 8px;">
+            <label>
+                <span>重力加速度 \( g \)</span>
+                <span class="val-highlight"><span id="g-display">9.8</span> m/s²</span>
+            </label>
+            <input type="range" id="g-slider" min="0" max="25" step="0.1" value="9.8">
+        </div>
+
+        <div class="btn-row" style="margin-top: 16px;">
+            <button class="btn-fire" id="btn-fire">發射 (Fire)</button>
+            <button id="btn-reset">重置 (Reset)</button>
+        </div>
+
+        <div id="pedagogy-box">
+            <div class="pedagogy-title">運動的獨立性</div>
+            <p>當獵人開火的瞬間，猴子同時鬆手作<strong>自由落體 (Free fall)</strong>。</p>
+            <p>子彈在垂直方向與猴子皆受重力作用：</p>
+            <p style="text-align: center;">$$ \Delta y = \frac{1}{2}gt^2 $$</p> <!-- 香港中學文憑試物理科寫法 -->
+            <p>垂直下落距離始終等於猴子的下落距離，因此若無空氣阻力，<strong>子彈必定會擊中猴子</strong>，不管初速有多快！</p>
+        </div>
+
+        <div class="hud">
+            <div class="row"><span>系統狀態</span><span id="status" style="color: var(--neon-blue); font-weight:bold;">待命</span></div>
+            <div class="row"><span>飛行時間 \( t \)</span><span class="value"><span id="live-t">0.00</span> s</span></div>
+            <div class="row"><span>目標距離 \( d \)</span><span class="value"><span id="live-d">0.0</span> m</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('sim-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // SVG 資產載入
+    const hunterSvgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <circle cx="50" cy="20" r="12" fill="#fcd34d" />
+      <path d="M 50 32 L 50 70 M 50 40 L 75 35 M 50 40 L 25 45 M 50 70 L 30 100 M 50 70 L 70 100" stroke="#e2e8f0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>`;
+    const hunterImg = new Image();
+    hunterImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(hunterSvgStr);
+
+    const monkeySvgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <path d="M 50 80 Q 20 100 10 70" fill="none" stroke="#d97706" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="50" cy="60" r="22" fill="#d97706" />
+      <circle cx="50" cy="30" r="16" fill="#d97706" />
+      <circle cx="30" cy="25" r="7" fill="#b45309" />
+      <circle cx="70" cy="25" r="7" fill="#b45309" />
+      <circle cx="50" cy="34" r="12" fill="#fde68a" />
+      <circle cx="44" cy="30" r="2.5" fill="#000" />
+      <circle cx="56" cy="30" r="2.5" fill="#000" />
+      <path d="M 45 40 Q 50 44 55 40" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M 38 45 Q 15 20 30 0 M 62 45 Q 85 20 70 0" fill="none" stroke="#d97706" stroke-width="8" stroke-linecap="round"/>
+    </svg>`;
+    const monkeyImg = new Image();
+    monkeyImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(monkeySvgStr);
+    
+    // UI Elements
+    const v0Slider = document.getElementById('v0-slider');
+    const v0Display = document.getElementById('v0-display');
+    const gSlider = document.getElementById('g-slider');
+    const gDisplay = document.getElementById('g-display');
+    
+    const btnFire = document.getElementById('btn-fire');
+    const btnReset = document.getElementById('btn-reset');
+    
+    const liveT = document.getElementById('live-t');
+    const liveD = document.getElementById('live-d');
+    const hudStatus = document.getElementById('status');
+
+    // Canvas scaling. 10 px = 1 meter approximately
+    const M2PX = 11;
+    const padX = 100;
+    const padY = 200; // Origin bottom-left
+    
+    // Gun position
+    const gunX = 0; 
+    const gunY = 6; 
+    
+    // Monkey position
+    const monkeyX = 100; 
+    const monkeyY = 80; 
+    
+    // Aim angle
+    const dx = monkeyX - gunX;
+    const dy = monkeyY - gunY;
+    const aimAngle = Math.atan2(dy, dx); 
+    
+    let isRunning = false;
+    let t = 0; // seconds
+    const dt = 0.016; 
+    const timeSpeed = 1.0; 
+    
+    // State
+    let v0 = parseFloat(v0Slider.value);
+    let g = parseFloat(gSlider.value);
+    
+    let bullet = { x: gunX, y: gunY, vx: 0, vy: 0, active: false, path: [] };
+    let monkey = { x: monkeyX, y: monkeyY, vy: 0, active: false };
+    let collision = false;
+
+    // Events
+    v0Slider.addEventListener('input', (e) => {
+        v0 = parseFloat(e.target.value);
+        v0Display.textContent = v0.toFixed(0);
+    });
+
+    gSlider.addEventListener('input', (e) => {
+        g = parseFloat(e.target.value);
+        gDisplay.textContent = g.toFixed(1);
+    });
+
+    btnFire.addEventListener('click', () => {
+        if(isRunning || collision) resetSim();
+        
+        bullet.active = true;
+        monkey.active = true;
+        
+        bullet.vx = v0 * Math.cos(aimAngle);
+        bullet.vy = v0 * Math.sin(aimAngle);
+        monkey.vy = 0; // free fall
+        
+        isRunning = true;
+        collision = false;
+        
+        hudStatus.textContent = "飛行中";
+        hudStatus.style.color = "#22c55e";
+    });
+
+    function resetSim() {
+        isRunning = false;
+        t = 0;
+        bullet = { x: gunX, y: gunY, vx: 0, vy: 0, active: false, path: [] };
+        monkey = { x: monkeyX, y: monkeyY, vy: 0, active: false };
+        collision = false;
+        
+        hudStatus.textContent = "待命";
+        hudStatus.style.color = "#0ea5e9";
+        liveT.textContent = "0.00";
+        liveD.textContent = Math.sqrt(dx*dx + dy*dy).toFixed(1);
+    }
+    
+    btnReset.addEventListener('click', resetSim);
+
+    function drawScene() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        ctx.translate(padX, canvas.height - padY);
+        ctx.scale(M2PX, -M2PX); // y points UP
+        
+        // Ground
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-padX/M2PX, -padY/M2PX, canvas.width/M2PX, padY/M2PX);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 4/M2PX;
+        ctx.beginPath();
+        ctx.moveTo(-padX/M2PX, 0);
+        ctx.lineTo(canvas.width/M2PX, 0);
+        ctx.stroke();
+
+        // 畫距離標尺
+        ctx.fillStyle = '#64748b';
+        ctx.font = `${16/M2PX}px Inter`;
+        ctx.scale(1, -1);
+        for(let i=0; i<=120; i+=20) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 5/M2PX);
+            ctx.stroke();
+            if (i > 0) ctx.fillText(i + 'm', i - 10/M2PX, 20/M2PX);
+        }
+        ctx.scale(1, -1);
+        
+        // Tree trunk
+        ctx.fillStyle = '#451a03'; 
+        ctx.fillRect(monkeyX - 2, 0, 4, monkeyY + 2);
+        
+        // Tree leaves
+        ctx.fillStyle = '#064e3b';
+        ctx.beginPath();
+        ctx.arc(monkeyX, monkeyY + 4, 12, 0, Math.PI*2);
+        ctx.fill();
+
+        // Line of aim (Virtual gravity-free path)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2/M2PX;
+        ctx.setLineDash([1, 1]);
+        ctx.beginPath();
+        ctx.moveTo(gunX, gunY);
+        // extrapolate line to infinity
+        ctx.lineTo(gunX + 150*Math.cos(aimAngle), gunY + 150*Math.sin(aimAngle));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw Hunter (Vector SVG)
+        if (hunterImg.complete) {
+            ctx.save();
+            ctx.translate(gunX, gunY);
+            ctx.scale(1, -1);
+            // 肩膀對準 gunY，寬 8m，高 10m。
+            // 腳會剛好落在 gunY - 6 = 0 的地面上
+            ctx.drawImage(hunterImg, -4, -4, 8, 10);
+            ctx.restore();
+        } else {
+            // Gun Base fallback
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(gunX - 2, 0, 4, gunY);
+        }
+        
+        // Gun barrel
+        ctx.save();
+        ctx.translate(gunX, gunY);
+        ctx.rotate(aimAngle);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(-1, -1, 8, 2); 
+        ctx.restore();
+
+        // Bullet Path
+        if (bullet.path.length > 0) {
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 4/M2PX;
+            ctx.beginPath();
+            ctx.moveTo(bullet.path[0].x, bullet.path[0].y);
+            for(let i=1; i<bullet.path.length; i++) {
+                ctx.lineTo(bullet.path[i].x, bullet.path[i].y);
+            }
+            ctx.stroke();
+        }
+
+        // draw target virtual point and displacement delta Y due to gravity
+        if (bullet.active) {
+            const vx0 = v0 * Math.cos(aimAngle);
+            const vy0 = v0 * Math.sin(aimAngle);
+            const virtualX = gunX + vx0 * t;
+            const virtualY = gunY + vy0 * t; // No gravity position
+            
+            // Faint red line showing the drop \Delta y = 1/2 g t^2 for bullet
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; // neon red
+            ctx.lineWidth = 2/M2PX;
+            ctx.setLineDash([0.5, 0.5]);
+            ctx.beginPath();
+            ctx.moveTo(virtualX, virtualY);
+            ctx.lineTo(bullet.x, bullet.y);
+            ctx.stroke();
+            
+            // Red line for monkey drop
+            ctx.beginPath();
+            ctx.moveTo(monkeyX, monkeyY); // Original position point
+            ctx.lineTo(monkey.x, monkey.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw Virtual positions (where they would be without gravity)
+            ctx.beginPath();
+            ctx.arc(virtualX, virtualY, 1.5, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(monkeyX, monkeyY, 1.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // Draw Monkey (Vector SVG)
+        if (monkeyImg.complete) {
+            ctx.save();
+            ctx.translate(monkey.x, monkey.y);
+            ctx.scale(1, -1); // flip Y 正常繪製圖像
+            // 讓猴子的手(圖片頂端 y=-5)剛好在 monkeyY 上方 5m 的樹葉底下
+            ctx.drawImage(monkeyImg, -5, -5, 10, 10);
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#d97706'; 
+            ctx.beginPath();
+            ctx.arc(monkey.x, monkey.y, 3, 0, Math.PI*2);
+            ctx.fill();
+        }
+        
+        // Draw Bullet (yellow)
+        ctx.fillStyle = '#facc15'; 
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 1.5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 0.5/M2PX;
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+
+    const SUB_STEPS = 10;
+    function renderLoop() {
+        if (isRunning) {
+            const dt_sub = (dt * timeSpeed) / SUB_STEPS;
+            
+            for(let i=0; i<SUB_STEPS; i++) {
+                t += dt_sub;
+                
+                // Update bullet
+                bullet.vy -= g * dt_sub;
+                bullet.x += bullet.vx * dt_sub;
+                bullet.y += bullet.vy * dt_sub;
+                
+                // Update monkey
+                monkey.vy -= g * dt_sub;
+                monkey.y += monkey.vy * dt_sub;
+                
+                // Save path
+                if (i === 0) {
+                    bullet.path.push({x: bullet.x, y: bullet.y});
+                }
+                
+                // 當子彈抵達樹幹的 X 座標時停止
+                if (bullet.x >= monkey.x) {
+                    collision = true;
+                    isRunning = false;
+                    
+                    // 用物理公式倒推精確的擊中時間點，達到完美的圓心重合
+                    const exactTime = monkey.x / (v0 * Math.cos(aimAngle));
+                    t = exactTime;
+                    
+                    bullet.x = monkey.x;
+                    bullet.y = gunY + v0 * Math.sin(aimAngle) * exactTime - 0.5 * g * exactTime * exactTime;
+                    monkey.y = monkeyY - 0.5 * g * exactTime * exactTime;
+                    
+                    bullet.path.push({x: bullet.x, y: bullet.y});
+                    
+                    hudStatus.textContent = "擊中目標 (Hit!)";
+                    hudStatus.style.color = "#facc15";
+                    break;
+                }
+                
+                // Ground hit (Missed) or out of bounds
+                if (bullet.y < 0 || monkey.y < 0 || bullet.x > 130) {
+                    if (monkey.y < 0) monkey.y = 0;
+                    if (bullet.y < 0) bullet.y = 0;
+                    isRunning = false;
+                    
+                    hudStatus.textContent = "落地結束";
+                    if (!collision) hudStatus.style.color = "#ef4444";
+                    break;
+                }
+            }
+            
+            // HUD
+            liveT.textContent = t.toFixed(2);
+            liveD.textContent = Math.sqrt((bullet.x - monkey.x)**2 + (bullet.y - monkey.y)**2).toFixed(1);
+        }
+        
+        drawScene();
+        requestAnimationFrame(renderLoop);
+    }
+
+    // Start render loop
+    resetSim();
+    requestAnimationFrame(renderLoop);
+
+</script>
+</body>
+</html>
