@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勻速圓周運動互動模擬器 | Uniform Circular Motion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Light Theme Color Tokens */
+            --bg-color: #f0f2f5;
+            --panel-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(200, 205, 215, 0.4);
+            --text-primary: #1a1a2e;
+            --text-secondary: #64748b;
+            --accent-radius: #ef4444; /* 紅色 */
+            --accent-velocity: #10b981; /* 綠色 */
+            --accent-omega: #8b5cf6; /* 紫色 */
+            --accent-angle: #f59e0b; /* 橙色 */
+            --accent-orbit: #94a3b8; /* 鋼鐵藍 */
+            --accent-snapshot: rgba(100, 116, 139, 0.4); /* 快照虛線顏色 */
+            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Move upward */
+            padding-top: 40px; /* Add some space from the top */
+            overflow: hidden;
+        }
+
+        /* Strict Layout: 1100x650 */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            grid-template-rows: 1fr;
+            gap: 16px;
+            width: 1100px;
+            height: 650px;
+            padding: 24px;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Main Canvas Box */
+        .visualizer-box {
+            grid-row: 1 / 2;
+            grid-column: 1 / 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at center, #ffffff 0%, #f9fafb 100%);
+        }
+
+        .visualizer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .visualizer-header h1 {
+            font-weight: 700;
+            font-size: 1.4rem;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+        }
+
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            cursor: crosshair;
+        }
+
+        /* Control Panel Box */
+        .control-box {
+            grid-row: 1 / 2;
+            grid-column: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            gap: 12px; /* Reduced gap */
+            overflow-y: auto; /* Allow scrolling if content exceeds height */
+            padding-right: 8px; /* Room for scrollbar */
+        }
+
+        /* Custom Scrollbar */
+        .control-box::-webkit-scrollbar {
+            width: 4px;
+        }
+        .control-box::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 2px;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex-grow: 1;
+            height: 1px;
+            background: var(--glass-border);
+        }
+
+        /* Control Groups */
+        .control-group {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 16px;
+            padding: 12px; /* Slightly reduced padding */
+            border: 1px solid var(--glass-border);
+            margin-bottom: 0px;
+        }
+
+        .slider-wrapper {
+            margin-bottom: 12px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .slider-val {
+            font-weight: 700;
+            color: var(--accent-velocity);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border: 2px solid var(--accent-velocity);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+        }
+
+        /* Mode Toggle */
+        .mode-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .mode-btn {
+            background: white;
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .mode-btn.active {
+            background: var(--accent-velocity);
+            border-color: var(--accent-velocity);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Play/Pause Button */
+        .playback-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-play {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        .btn-play.paused {
+            background: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+        .btn-reset {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Snapshot Logic Buttons */
+        .snapshot-tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .tool-btn {
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-store {
+            background: #1e293b;
+            color: white;
+        }
+
+        .btn-store:hover {
+            background: #0f172a;
+        }
+
+        .btn-clear {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-clear:hover {
+            background: #e2e8f0;
+            color: #1a1a2e;
+        }
+
+        /* Dashboard Items */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .data-card {
+            background: white;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .data-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .data-value {
+            font-size: 1rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        /* Bottom Dashboard Box */
+        .dashboard-box {
+            grid-row: 2 / 3;
+            grid-column: 1 / 2;
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            justify-content: space-around;
+        }
+
+        .icon-symbol {
+            font-family: serif;
+            font-style: italic;
+            margin-right: 4px;
+        }
+
+        .physics-tip {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            background: rgba(16, 185, 129, 0.05);
+            padding: 12px;
+            border-radius: 12px;
+            border-left: 3px solid var(--accent-velocity);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 視覺展示區域 -->
+        <div class="glass-panel visualizer-box">
+            <div class="visualizer-header">
+                <h1>勻速圓周運動</h1>
+                <div id="math-derivation" style="font-family: serif; font-style: italic; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.03); padding: 5px 12px; border-radius: 20px;">
+                    θ = s / r = 0.00 / 1.50 = 0.00 rad
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">
+                    <span style="color: var(--accent-radius)">●</span> 半徑 (r) 
+                    <span style="color: var(--accent-velocity); margin-left:10px">→</span> 速度 (v)
+                    <span style="color: var(--accent-orbit); margin-left:10px">---</span> 鬼影球對比
+                </div>
+            </div>
+            <canvas id="canvas"></canvas>
+            
+            <!-- 底部角度拉桿 -->
+            <div style="padding: 10px 0 0 0; border-top: 1px solid var(--glass-border);">
+                <div class="slider-header" style="margin-bottom: 4px;">
+                    <label style="font-size: 0.75rem; color: var(--text-secondary);">角度位置調整</label>
+                    <span class="slider-val" id="ui-theta-scrub-val" style="color: var(--accent-angle); font-size: 0.8rem;">0.00π rad</span>
+                </div>
+                <input type="range" id="input-theta-scrub" min="0" max="6.283" value="0" step="0.001" style="accent-color: var(--accent-angle);">
+            </div>
+        </div>
+
+        <!-- 右側控制面板 (重排佈局) -->
+        <div class="glass-panel control-box">
+            <!-- 區塊 1: 物理參數設定 -->
+            <div class="control-group">
+                <div class="section-title">物理參數設定</div>
+                
+                <div class="slider-wrapper">
+                    <div class="slider-header">
+                        <label>軌道半徑 (r)</label>
+                        <span class="slider-val" id="ui-r-val" style="color: var(--accent-radius)">150</span>
+                    </div>
+                    <input type="range" id="input-r" min="50" max="230" value="150" step="1">
+                </div>
+
+                <div class="slider-header" style="margin-top: 20px;">
+                    <label>運動約束模式</label>
+                </div>
+                <div class="mode-toggle">
+                    <div id="mode-omega" class="mode-btn active">固定角速度 ω</div>
+                    <div id="mode-v" class="mode-btn">固定線速率 v</div>
+                </div>
+
+                <div class="slider-wrapper">
+                    <div class="slider-header">
+                        <label id="mag-label">角速度 (ω)</label>
+                        <span class="slider-val" id="ui-mag-val">1.0</span>
+                    </div>
+                    <input type="range" id="input-mag" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+            </div>
+
+            <!-- 區塊 2: 運行與顯示控制 -->
+            <div class="control-group">
+                <div class="section-title">模擬運行控制</div>
+                <div class="playback-controls">
+                    <button class="tool-btn btn-play" id="btn-play-pause">
+                        <span id="play-icon">⏸</span> <span id="play-text">運算中</span>
+                    </button>
+                    <button class="tool-btn btn-reset" id="btn-reset-theta">
+                        <span>🔄</span> 重置位移
+                    </button>
+                </div>
+                <button id="btn-toggle-unit" class="mode-btn" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.85rem;">
+                    切換長度/角度單位 (rad/deg)
+                </button>
+            </div>
+
+            <!-- 區塊 3: 輔助工具與觀察 -->
+            <div class="control-group">
+                <div class="section-title">對比工具與觀測</div>
+                <div class="snapshot-tools">
+                    <button class="tool-btn btn-store" id="btn-snap-store">
+                        <span>📷</span> 記錄快照
+                    </button>
+                    <button class="tool-btn btn-clear" id="btn-snap-clear">
+                        <span>🗑️</span> 清除快照
+                    </button>
+                </div>
+                
+                <div class="physics-tip" style="margin-top: 15px;">
+                    <strong>物理觀察：</strong><br>
+                    <span id="tip-text">在固定 ω 模式下，當半徑 r 增加時，粒子的切線速率 v 會隨之增加。</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 勻速圓周運動核心邏輯與 Canvas 渲染引擎
+         */
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 系統狀態變量
+        let state = {
+            r: 150,           // 畫布像素半徑 (100px = 1m)
+            omega: 1.0,       // 角速度 (rad/s)
+            v: 150,           // 線速率 (pixels/s, v = r * omega)
+            theta: 0,         // 當前角位移 (弧度)
+            mode: 'OMEGA',    // 模擬模式：'OMEGA' (固定角速度) 或 'V' (固定線速率)
+            lastTime: 0,      // 上一次更新的時間戳
+            pixelsPerMeter: 100, // 比例尺定義
+            snapshot: null,   // 儲存狀態快照： { r, v, omega, theta }
+            isPaused: false,  // 暫停狀態
+            displayUnit: 'rad' // 角度顯示單位：'rad' 或 'deg'
+        };
+
+        /**
+         * 將弧度轉換為以 π 為單位的字串
+         */
+        function formatPiRadian(rad) {
+            const piVal = (rad / Math.PI).toFixed(2);
+            return `${piVal}π rad`;
+        }
+
+        // 物理量色彩定義
+        const THEME = {
+            radius: '#ef4444',   // 紅色
+            velocity: '#10b981', // 綠色
+            omega: '#8b5cf6',    // 紫色
+            angle: '#f59e0b',    // 橙色
+            orbit: '#94a3b8',    // 鋼鐵藍
+            snapshot: 'rgba(148, 163, 184, 0.5)', // 快照虛線顏色
+            text: '#1a1a2e'
+        };
+
+        // DOM 元素引用
+        const inputR = document.getElementById('input-r');
+        const inputMag = document.getElementById('input-mag');
+        const uiRVal = document.getElementById('ui-r-val');
+        const uiMagVal = document.getElementById('ui-mag-val');
+        const modeOmegaBtn = document.getElementById('mode-omega');
+        const modeVBtn = document.getElementById('mode-v');
+        const magLabel = document.getElementById('mag-label');
+        const tipText = document.getElementById('tip-text');
+        const btnSnapStore = document.getElementById('btn-snap-store');
+        const btnSnapClear = document.getElementById('btn-snap-clear');
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const btnResetTheta = document.getElementById('btn-reset-theta');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+        const btnToggleUnit = document.getElementById('btn-toggle-unit');
+        const mathDerivation = document.getElementById('math-derivation');
+
+        // 數據儀表板元素引用
+        const dashR = document.getElementById('val-r');
+        const dashOmega = document.getElementById('val-omega');
+        const dashV = document.getElementById('val-v');
+        const dashPeriod = document.getElementById('val-period');
+        const dashS = document.getElementById('val-s');
+        const dashThetaCombined = document.getElementById('val-theta-combined');
+        const inputThetaScrub = document.getElementById('input-theta-scrub');
+        const uiThetaScrubVal = document.getElementById('ui-theta-scrub-val');
+
+        /**
+         * 初始化應用程式
+         * 負責設置事件監聽器並啟動動畫循環
+         */
+        function init() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // 半徑滑桿監聽
+            inputR.addEventListener('input', (e) => {
+                state.r = parseFloat(e.target.value);
+                uiRVal.textContent = state.r;
+                updatePhysicsFromUI();
+            });
+
+            // 數值強度滑桿監聽 (調節 ω 或 v)
+            inputMag.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (state.mode === 'OMEGA') {
+                    state.omega = val;
+                } else {
+                    state.v = val * state.pixelsPerMeter; 
+                }
+                uiMagVal.textContent = val.toFixed(1);
+                updatePhysicsFromUI();
+                updateDashboard();
+            });
+
+            // 模式切換按鈕
+            modeOmegaBtn.addEventListener('click', () => setMode('OMEGA'));
+            modeVBtn.addEventListener('click', () => setMode('V'));
+
+            // 快照按鈕監聽
+            btnSnapStore.addEventListener('click', storeSnapshot);
+            btnSnapClear.addEventListener('click', clearSnapshot);
+
+            // 播放/暫停監聽
+            btnPlayPause.addEventListener('click', togglePlayPause);
+            
+            // 重置位移監聽
+            btnResetTheta.addEventListener('click', () => {
+                state.theta = 0;
+            });
+
+            // 單位切換監聽
+            btnToggleUnit.addEventListener('click', () => {
+                state.displayUnit = state.displayUnit === 'rad' ? 'deg' : 'rad';
+                btnToggleUnit.textContent = state.displayUnit === 'rad' ? '切換長度/角度單位 (目前：rad)' : '切換長度/角度單位 (目前：deg)';
+                updateDashboard();
+            });
+
+            // 角度滑桿監聽
+            inputThetaScrub.addEventListener('input', handleThetaScrub);
+            inputThetaScrub.addEventListener('mousedown', () => {
+                state.isPausedBeforeScrub = state.isPaused;
+                state.isPaused = true;
+            });
+            inputThetaScrub.addEventListener('mouseup', () => {
+                if (!state.isPausedBeforeScrub) state.isPaused = false;
+                togglePlayPause(); // 更新 UI 狀態
+                togglePlayPause(); // 恢復原始狀態 (hack to sync UI)
+            });
+
+            // 啟動動畫
+            requestAnimationFrame(animate);
+        }
+
+        /**
+         * 切換播放/暫停狀態
+         */
+        function togglePlayPause() {
+            state.isPaused = !state.isPaused;
+            if (state.isPaused) {
+                btnPlayPause.classList.add('paused');
+                playIcon.textContent = '▶';
+                playText.textContent = '已暫停';
+            } else {
+                btnPlayPause.classList.remove('paused');
+                playIcon.textContent = '⏸';
+                playText.textContent = '運算中';
+            }
+        }
+
+        /**
+         * 記錄當前物理狀態快照，用於對比
+         */
+        function storeSnapshot() {
+            state.snapshot = {
+                r: state.r,
+                v: state.v,
+                omega: state.omega,
+                theta: state.theta % (2 * Math.PI)
+            };
+        }
+
+        // 角度滑桿控制
+        function handleThetaScrub(e) {
+            state.theta = parseFloat(e.target.value);
+            updateDashboard();
+        }
+
+        /**
+         * 清除已儲存的狀態快照
+         */
+        function clearSnapshot() {
+            state.snapshot = null;
+        }
+
+        /**
+         * 調整畫布尺寸以匹配容器大小
+         */
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            // 考慮到下方有 slider，canvas 需要減去 slider 區域的高度
+            const sliderAreaHeight = 50; 
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = (rect.height - sliderAreaHeight - 60) * window.devicePixelRatio; 
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        /**
+         * 設定模擬模式 (固定 ω 或 固定 v)
+         */
+        function setMode(mode) {
+            state.mode = mode;
+            if (mode === 'OMEGA') {
+                modeOmegaBtn.classList.add('active');
+                modeVBtn.classList.remove('active');
+                magLabel.textContent = '角速度 (ω)';
+                inputMag.min = 0.1;
+                inputMag.max = 5.0;
+                inputMag.value = state.omega.toFixed(1);
+                uiMagVal.textContent = state.omega.toFixed(1);
+                uiMagVal.style.color = 'var(--accent-omega)';
+                tipText.innerHTML = '在<b>固定 ω</b> 模式下，當半徑 r 增加時，粒子的切線速率 v 會隨之增加。';
+            } else {
+                modeVBtn.classList.add('active');
+                modeOmegaBtn.classList.remove('active');
+                magLabel.textContent = '線速率 (v)';
+                inputMag.min = 0.5;
+                inputMag.max = 10.0;
+                const vMeter = state.v / state.pixelsPerMeter;
+                inputMag.value = vMeter.toFixed(1);
+                uiMagVal.textContent = vMeter.toFixed(1);
+                uiMagVal.style.color = 'var(--accent-velocity)';
+                tipText.innerHTML = '在<b>固定 v</b> 模式下，當半徑 r 增加時，角速度 ω 必須減小，旋轉感變慢。';
+            }
+            updatePhysicsFromUI();
+        }
+
+        /**
+         * 根據使用者輸入更新物理狀態
+         */
+        function updatePhysicsFromUI() {
+            if (state.mode === 'OMEGA') {
+                state.v = state.r * state.omega;
+            } else {
+                state.omega = state.v / state.r;
+            }
+            updateDashboard();
+        }
+
+        /**
+         * 更新儀表板數據顯示
+         */
+        function updateDashboard() {
+            // 已根據使用者要求移除底部儀表板的所有數字顯示，僅保留物理量符號與單位。
+        }
+
+        /**
+         * 動態每一幀的更新函數
+         */
+        function animate(time) {
+            const dt = (time - state.lastTime) / 1000;
+            state.lastTime = time;
+
+            if (!state.isPaused && dt > 0 && dt < 0.1) { 
+                state.theta += state.omega * dt;
+                
+                // 動態更新快照球的位移 (如果存在)
+                if (state.snapshot) {
+                    state.snapshot.theta += state.snapshot.omega * dt;
+                }
+            }
+
+            // 同步角度滑桿
+            const normalizedTheta = state.theta % (2 * Math.PI);
+            inputThetaScrub.value = normalizedTheta;
+            if (state.displayUnit === 'rad') {
+                uiThetaScrubVal.textContent = formatPiRadian(normalizedTheta);
+            } else {
+                uiThetaScrubVal.textContent = (normalizedTheta * 180 / Math.PI).toFixed(1) + '°';
+            }
+
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        /**
+         * 渲染主畫布內容
+         */
+        function draw() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const centerX = w / 2;
+            const centerY = h / 2;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. 繪製快照對比層 (如果存在)
+            if (state.snapshot) {
+                drawSnapshot(state.snapshot, centerX, centerY);
+            }
+
+            // 2. 繪製中心原點
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#334155';
+            ctx.fill();
+
+            // 3. 繪製當前圓周運動軌道 (虛線)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, state.r, 0, Math.PI * 2);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([8, 8]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 4. 加強當前移動的弧線路徑 (角度指示弧)
+            const currentTheta = state.theta % (2 * Math.PI);
+            
+            // A. 中心角度指示弧 (Angle Indicator)
+            const arcRadius = 40;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, arcRadius, 0, currentTheta);
+            ctx.lineTo(centerX, centerY);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.15)'; // 半透明橙色
+            ctx.fill();
+            ctx.strokeStyle = THEME.angle;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // B. 角度標註 θ
+            const labelTheta = currentTheta / 2;
+            const lx = centerX + (arcRadius + 25) * Math.cos(labelTheta);
+            const ly = centerY + (arcRadius + 25) * Math.sin(labelTheta);
+            ctx.font = 'bold 14px serif';
+            ctx.fillStyle = THEME.angle;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            let thetaStr = '';
+            if (state.displayUnit === 'rad') {
+                thetaStr = formatPiRadian(currentTheta);
+            } else {
+                thetaStr = `${(currentTheta * 180 / Math.PI).toFixed(1)}°`;
+            }
+            ctx.fillText(`θ = ${thetaStr}`, lx, ly);
+
+            // C. 外圈軌道進度條
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, state.r, 0, currentTheta);
+            ctx.strokeStyle = THEME.angle;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // 更新數學推導文字 (如果有需要同步)
+            const rMeter = state.r / state.pixelsPerMeter;
+            const arcLength = rMeter * currentTheta;
+            mathDerivation.innerHTML = `θ = s / r = ${arcLength.toFixed(2)} / ${rMeter.toFixed(2)} = ${state.displayUnit === 'rad' ? formatPiRadian(currentTheta) : (currentTheta * 180 / Math.PI).toFixed(1) + '°'}`;
+
+            // 5. 計算質點位置
+            const px = centerX + state.r * Math.cos(state.theta);
+            const py = centerY + state.r * Math.sin(state.theta);
+
+            // 6. 繪製當前半徑向量 r (實線)
+            drawArrow(centerX, centerY, px, py, THEME.radius, 'r', 3, false);
+
+            // 7. 繪製當前切線速度向量 v (實線)
+            const vLen = state.v * 0.5; 
+            const vx = px + vLen * Math.cos(state.theta + Math.PI / 2);
+            const vy = py + vLen * Math.sin(state.theta + Math.PI / 2);
+            drawArrow(px, py, vx, vy, THEME.velocity, 'v', 3, false);
+
+            // 8. 繪製運動質點
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(px, py, 10, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(0,0,0,0.1)';
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        /**
+         * 繪製儲存的狀態快照 (以虛線呈現)
+         */
+        function drawSnapshot(snap, cx, cy) {
+            // A. 快照軌道
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, snap.r, 0, Math.PI * 2);
+            ctx.strokeStyle = THEME.snapshot;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // B. 計算快照質點當前位置 (動態運行中)
+            const spx = cx + snap.r * Math.cos(snap.theta);
+            const spy = cy + snap.r * Math.sin(snap.theta);
+
+            // C. 繪製快照運動質點 (虛線半透明)
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(spx, spy, 10, 0, Math.PI * 2);
+            ctx.strokeStyle = THEME.snapshot;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+
+            // D. 快照軌道描述 (不顯示箭頭，僅顯示質點位置)
+            ctx.setLineDash([]);
+        }
+
+        /**
+         * 繪製高品質箭頭
+         */
+        function drawArrow(x1, y1, x2, y2, color, label, width, isDashed = false) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const length = Math.sqrt(dx * dx + dy * dy);
+
+            if (length < 1) return;
+
+            const headlen = Math.min(12, length * 0.3);
+            const angle = Math.atan2(dy, dx);
+
+            ctx.save();
+            ctx.strokeStyle = ctx.fillStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            if (isDashed) ctx.setLineDash([4, 4]);
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2 - headlen * Math.cos(angle) * 0.8, y2 - headlen * Math.sin(angle) * 0.8);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            if (label) {
+                ctx.font = 'italic bold 20px "Times New Roman", serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const offset = 26;
+                const tx = x2 + offset * Math.cos(angle);
+                const ty = y2 + offset * Math.sin(angle);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'white';
+                ctx.strokeText(label, tx, ty);
+                ctx.fillText(label, tx, ty);
+            }
+            ctx.restore();
+        }
+
+        init();
+    </script>
+</body>
+</html>
