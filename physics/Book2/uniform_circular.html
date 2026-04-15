@@ -1,887 +1,735 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勻速圓周運動互動模擬器 | Uniform Circular Motion</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>圓周運動物理模擬器 - iPad 優化版</title>
+    <!-- MathJax for LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
-            /* Light Theme Color Tokens */
-            --bg-color: #f0f2f5;
-            --panel-bg: rgba(255, 255, 255, 0.75);
-            --glass-border: rgba(200, 205, 215, 0.4);
-            --text-primary: #1a1a2e;
-            --text-secondary: #64748b;
-            --accent-radius: #ef4444; /* 紅色 */
-            --accent-velocity: #10b981; /* 綠色 */
-            --accent-omega: #8b5cf6; /* 紫色 */
-            --accent-angle: #f59e0b; /* 橙色 */
-            --accent-orbit: #94a3b8; /* 鋼鐵藍 */
-            --accent-snapshot: rgba(100, 116, 139, 0.4); /* 快照虛線顏色 */
-            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-font-smoothing: antialiased;
+            --glass-bg: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --primary-accent: #00d2ff;
+            --force-color: #ff4757;
+            --velocity-color: #2ed573;
+            --text-color: #ffffff;
+            --card-inner-bg: rgba(0, 0, 0, 0.2);
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            font-family: var(--font-family);
-            height: 100vh;
+            margin: 0;
+            padding: 0;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Move upward */
-            padding-top: 40px; /* Add some space from the top */
+            align-items: flex-start;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #2a5298 0%, #1e3c72 100%);
+            font-family: 'PingFang HK', 'Helvetica Neue', sans-serif;
+            color: var(--text-color);
             overflow: hidden;
         }
 
-        /* Strict Layout: 1100x650 */
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            grid-template-rows: 1fr;
-            gap: 16px;
+        /* iPad Air 規格容器: 1100 * 650, 居中且置頂 */
+        #app-container {
             width: 1100px;
             height: 650px;
-            padding: 24px;
-            background: white;
-            border-radius: 32px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--glass-border);
+            /* 移除額外邊距，確保 650px 高度完全符合 viewport */
             position: relative;
-        }
-
-        .glass-panel {
-            background: var(--panel-bg);
+            background: var(--glass-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: var(--card-shadow);
-            padding: 20px;
-            position: relative;
-        }
-
-        /* Main Canvas Box */
-        .visualizer-box {
-            grid-row: 1 / 2;
-            grid-column: 1 / 2;
-            height: 100%;
+            border-radius: 30px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
             display: flex;
             flex-direction: column;
-            background: radial-gradient(circle at center, #ffffff 0%, #f9fafb 100%);
+            padding: 16px;
+            /* 稍微縮減內邊距以騰出空間 */
+            box-sizing: border-box;
+            gap: 16px;
+            /* 統一間隔 */
+            overflow: hidden;
+            /* 強制限制所有內部元素在圓角框內 */
         }
 
-        .visualizer-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
+        /* 上方畫布區域 - 統一為 Bento Card 風格 */
+        .canvas-section {
+            flex: 1;
+            min-height: 0;
+            background: rgba(255, 255, 255, 0.05);
+            /* 毛玻璃底色 */
+            border-radius: 20px;
+            position: relative;
+            border: 1px solid var(--glass-border);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
         }
 
-        .visualizer-header h1 {
-            font-weight: 700;
-            font-size: 1.4rem;
-            letter-spacing: -0.5px;
-            color: var(--text-primary);
+        /* 畫布內容器（深色區域），確保模擬視覺清晰 */
+        .canvas-inner {
+            width: 100%;
+            height: 100%;
+            background: var(--card-inner-bg);
+            border-radius: 12px;
+            /* 內縮圓角 */
+            position: relative;
+            overflow: hidden;
         }
 
         canvas {
-            flex-grow: 1;
+            display: block;
             width: 100%;
             height: 100%;
-            border-radius: 12px;
-            cursor: crosshair;
         }
 
-        /* Control Panel Box */
-        .control-box {
-            grid-row: 1 / 2;
-            grid-column: 2 / 3;
+        /* 下方 Bento Box 功能區 */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: 240px 1fr 240px;
+            gap: 16px;
+            /* 統一 Gap */
+            height: 210px;
+            /* 增加高度確保內部按鈕與文字不擠壓 */
+        }
+
+        .bento-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            /* 統一圓角 */
+            padding: 15px;
+            border: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
-            gap: 12px; /* Reduced gap */
-            overflow-y: auto; /* Allow scrolling if content exceeds height */
-            padding-right: 8px; /* Room for scrollbar */
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            /* 確保內容不超出卡片 */
         }
 
-        /* Custom Scrollbar */
-        .control-box::-webkit-scrollbar {
-            width: 4px;
-        }
-        .control-box::-webkit-scrollbar-thumb {
-            background: var(--glass-border);
-            border-radius: 2px;
-        }
-
-        .section-title {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--text-secondary);
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 1rem;
+            color: var(--primary-accent);
             text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            letter-spacing: 1px;
         }
 
-        .section-title::after {
-            content: '';
-            flex-grow: 1;
-            height: 1px;
-            background: var(--glass-border);
-        }
-
-        /* Control Groups */
-        .control-group {
-            background: rgba(0, 0, 0, 0.02);
-            border-radius: 16px;
-            padding: 12px; /* Slightly reduced padding */
-            border: 1px solid var(--glass-border);
-            margin-bottom: 0px;
-        }
-
-        .slider-wrapper {
-            margin-bottom: 12px;
-        }
-
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
+        p {
+            margin: 2px 0;
             font-size: 0.85rem;
-            font-weight: 600;
+            line-height: 1.3;
+            opacity: 0.8;
         }
 
-        .slider-val {
-            font-weight: 700;
-            color: var(--accent-velocity);
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            outline: none;
-            -webkit-appearance: none;
-            appearance: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: white;
-            border: 2px solid var(--accent-velocity);
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s;
-        }
-
-        /* Mode Toggle */
-        .mode-toggle {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        /* 按鈕優化 */
+        .controls {
+            display: flex;
+            flex-direction: column;
             gap: 8px;
-            margin-bottom: 12px;
         }
 
-        .mode-btn {
-            background: white;
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
+        button {
             padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s;
-            text-align: center;
-        }
-
-        .mode-btn.active {
-            background: var(--accent-velocity);
-            border-color: var(--accent-velocity);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-
-        /* Play/Pause Button */
-        .playback-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .btn-play {
-            background: #10b981;
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-        .btn-play.paused {
-            background: #f59e0b;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
-        }
-        .btn-reset {
-            background: #f1f5f9;
-            color: #64748b;
-            border: 1px solid #e2e8f0;
-        }
-
-        /* Snapshot Logic Buttons */
-        .snapshot-tools {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .tool-btn {
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            cursor: pointer;
             border: none;
-            transition: all 0.2s;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 5px;
         }
 
-        .btn-store {
-            background: #1e293b;
+        .btn-primary {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
             color: white;
         }
 
-        .btn-store:hover {
-            background: #0f172a;
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4757, #ff6b81);
+            color: white;
         }
 
-        .btn-clear {
-            background: #f1f5f9;
-            color: #64748b;
-            border: 1px solid #e2e8f0;
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
         }
 
-        .btn-clear:hover {
-            background: #e2e8f0;
-            color: #1a1a2e;
+        .btn-anim {
+            background: linear-gradient(135deg, #f1c40f, #e67e22);
+            color: white;
         }
 
-        /* Dashboard Items */
-        .dashboard-grid {
+        button:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        /* 物理公式顯大 */
+        .formula-card {
+            align-items: center;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        #math-formula {
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        /* 圖例 */
+        .legend-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
             gap: 10px;
+            font-size: 0.85rem;
         }
 
-        .data-card {
-            background: white;
-            border: 1px solid var(--glass-border);
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* 狀態標籤 - 更加 Bento 化 */
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            padding: 6px 14px;
             border-radius: 12px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 10;
+            color: var(--primary-accent);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
-
-        .data-label {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-        }
-
-        .data-value {
-            font-size: 1rem;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            color: var(--text-primary);
-        }
-
-        /* Bottom Dashboard Box */
-        .dashboard-box {
-            grid-row: 2 / 3;
-            grid-column: 1 / 2;
-            display: flex;
-            flex-direction: row;
-            gap: 16px;
-            justify-content: space-around;
-        }
-
-        .icon-symbol {
-            font-family: serif;
-            font-style: italic;
-            margin-right: 4px;
-        }
-
-        .physics-tip {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            background: rgba(16, 185, 129, 0.05);
-            padding: 12px;
-            border-radius: 12px;
-            border-left: 3px solid var(--accent-velocity);
-        }
-
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <!-- 視覺展示區域 -->
-        <div class="glass-panel visualizer-box">
-            <div class="visualizer-header">
-                <h1>勻速圓周運動</h1>
-                <div id="math-derivation" style="font-family: serif; font-style: italic; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.03); padding: 5px 12px; border-radius: 20px;">
-                    θ = s / r = 0.00 / 1.50 = 0.00 rad
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">
-                    <span style="color: var(--accent-radius)">●</span> 半徑 (r) 
-                    <span style="color: var(--accent-velocity); margin-left:10px">→</span> 速度 (v)
-                    <span style="color: var(--accent-orbit); margin-left:10px">---</span> 鬼影球對比
-                </div>
-            </div>
-            <canvas id="canvas"></canvas>
-            
-            <!-- 底部角度拉桿 -->
-            <div style="padding: 10px 0 0 0; border-top: 1px solid var(--glass-border);">
-                <div class="slider-header" style="margin-bottom: 4px;">
-                    <label style="font-size: 0.75rem; color: var(--text-secondary);">角度位置調整</label>
-                    <span class="slider-val" id="ui-theta-scrub-val" style="color: var(--accent-angle); font-size: 0.8rem;">0.00π rad</span>
-                </div>
-                <input type="range" id="input-theta-scrub" min="0" max="6.283" value="0" step="0.001" style="accent-color: var(--accent-angle);">
+
+    <div id="app-container">
+        <!-- 上方：模擬動態區 (大 Bento Box) -->
+        <div class="canvas-section">
+            <div class="canvas-inner">
+                <div id="status" class="status-badge">狀態：穩定圓周運動中</div>
+                <canvas id="simCanvas"></canvas>
             </div>
         </div>
 
-        <!-- 右側控制面板 (重排佈局) -->
-        <div class="glass-panel control-box">
-            <!-- 區塊 1: 物理參數設定 -->
-            <div class="control-group">
-                <div class="section-title">物理參數設定</div>
-                
-                <div class="slider-wrapper">
-                    <div class="slider-header">
-                        <label>軌道半徑 (r)</label>
-                        <span class="slider-val" id="ui-r-val" style="color: var(--accent-radius)">150</span>
-                    </div>
-                    <input type="range" id="input-r" min="50" max="230" value="150" step="1">
-                </div>
-
-                <div class="slider-header" style="margin-top: 20px;">
-                    <label>運動約束模式</label>
-                </div>
-                <div class="mode-toggle">
-                    <div id="mode-omega" class="mode-btn active">固定角速度 ω</div>
-                    <div id="mode-v" class="mode-btn">固定線速率 v</div>
-                </div>
-
-                <div class="slider-wrapper">
-                    <div class="slider-header">
-                        <label id="mag-label">角速度 (ω)</label>
-                        <span class="slider-val" id="ui-mag-val">1.0</span>
-                    </div>
-                    <input type="range" id="input-mag" min="0.1" max="5.0" value="1.0" step="0.1">
-                </div>
+        <!-- 下方：Bento Box 控制中心 -->
+        <div class="bento-grid">
+            <!-- 控制欄 -->
+            <div class="bento-card controls">
+                <button class="btn-primary" onclick="togglePlay()" id="playPauseBtn">暫停模擬 (顯示位移)</button>
+                <button class="btn-danger" onclick="cutString()" id="cutBtn">切斷向心力 (切線飛出)</button>
+                <button class="btn-anim" onclick="playCentrifugalAnim()" id="cfAnimBtn">離心現象動畫 (車廂與乘客)</button>
+                <button class="btn-reset" onclick="resetSim()">重置模擬</button>
             </div>
 
-            <!-- 區塊 2: 運行與顯示控制 -->
-            <div class="control-group">
-                <div class="section-title">模擬運行控制</div>
-                <div class="playback-controls">
-                    <button class="tool-btn btn-play" id="btn-play-pause">
-                        <span id="play-icon">⏸</span> <span id="play-text">運算中</span>
-                    </button>
-                    <button class="tool-btn btn-reset" id="btn-reset-theta">
-                        <span>🔄</span> 重置位移
-                    </button>
+            <!-- 物理圖像與公式核心 -->
+            <div class="bento-card formula-card">
+                <h2>物理運動規律</h2>
+                <div id="math-formula">
+                    $$ F_c = \frac{mv^2}{r} \quad \vec{v} \perp \vec{F_c} $$
                 </div>
-                <button id="btn-toggle-unit" class="mode-btn" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.85rem;">
-                    切換長度/角度單位 (rad/deg)
-                </button>
+                <p style="margin-top:10px; text-align:center;">當 \( F_c = 0 \)，則 \( \vec{a} = 0 \)，物體沿 \( \vec{v} \)
+                    方向直線運動</p>
             </div>
 
-            <!-- 區塊 3: 輔助工具與觀察 -->
-            <div class="control-group">
-                <div class="section-title">對比工具與觀測</div>
-                <div class="snapshot-tools">
-                    <button class="tool-btn btn-store" id="btn-snap-store">
-                        <span>📷</span> 記錄快照
-                    </button>
-                    <button class="tool-btn btn-clear" id="btn-snap-clear">
-                        <span>🗑️</span> 清除快照
-                    </button>
-                </div>
-                
-                <div class="physics-tip" style="margin-top: 15px;">
-                    <strong>物理觀察：</strong><br>
-                    <span id="tip-text">在固定 ω 模式下，當半徑 r 增加時，粒子的切線速率 v 會隨之增加。</span>
+            <!-- 視覺參考 -->
+            <div class="bento-card">
+                <h2>圖例說明</h2>
+                <div class="legend-grid">
+                    <div class="legend-item">
+                        <div class="indicator" style="background: var(--velocity-color); color: var(--velocity-color);">
+                        </div>
+                        <span>瞬時速度 \( v \) (切線方向)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="indicator" style="background: #f1c40f; color: #f1c40f;"></div>
+                        <span>預期位置 (慣性)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="indicator" style="background: #ff9f43; color: #ff9f43;"></div>
+                        <span>離心推力 (向外落差)</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        /**
-         * 勻速圓周運動核心邏輯與 Canvas 渲染引擎
-         */
+        <script>
+            const canvas = document.getElementById('simCanvas');
+            const ctx = canvas.getContext('2d');
+            const statusBadge = document.getElementById('status');
 
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+            let isRunning = true;
+            let isCut = false;
+            let isCentrifugalAnim = false;
+            let anim_t = 0;
+            const max_anim_t = 18; // 稍微加長動畫時間，讓紅點位移更明顯，箭頭更好畫
+            let animStartAngle = 0;
 
-        // 系統狀態變量
-        let state = {
-            r: 150,           // 畫布像素半徑 (100px = 1m)
-            omega: 1.0,       // 角速度 (rad/s)
-            v: 150,           // 線速率 (pixels/s, v = r * omega)
-            theta: 0,         // 當前角位移 (弧度)
-            mode: 'OMEGA',    // 模擬模式：'OMEGA' (固定角速度) 或 'V' (固定線速率)
-            lastTime: 0,      // 上一次更新的時間戳
-            pixelsPerMeter: 100, // 比例尺定義
-            snapshot: null,   // 儲存狀態快照： { r, v, omega, theta }
-            isPaused: false,  // 暫停狀態
-            displayUnit: 'rad' // 角度顯示單位：'rad' 或 'deg'
-        };
+            let angle = 0;
+            const radius = 130;
+            const speed = 0.025;
 
-        /**
-         * 將弧度轉換為以 π 為單位的字串
-         */
-        function formatPiRadian(rad) {
-            const piVal = (rad / Math.PI).toFixed(2);
-            return `${piVal}π rad`;
-        }
-
-        // 物理量色彩定義
-        const THEME = {
-            radius: '#ef4444',   // 紅色
-            velocity: '#10b981', // 綠色
-            omega: '#8b5cf6',    // 紫色
-            angle: '#f59e0b',    // 橙色
-            orbit: '#94a3b8',    // 鋼鐵藍
-            snapshot: 'rgba(148, 163, 184, 0.5)', // 快照虛線顏色
-            text: '#1a1a2e'
-        };
-
-        // DOM 元素引用
-        const inputR = document.getElementById('input-r');
-        const inputMag = document.getElementById('input-mag');
-        const uiRVal = document.getElementById('ui-r-val');
-        const uiMagVal = document.getElementById('ui-mag-val');
-        const modeOmegaBtn = document.getElementById('mode-omega');
-        const modeVBtn = document.getElementById('mode-v');
-        const magLabel = document.getElementById('mag-label');
-        const tipText = document.getElementById('tip-text');
-        const btnSnapStore = document.getElementById('btn-snap-store');
-        const btnSnapClear = document.getElementById('btn-snap-clear');
-        const btnPlayPause = document.getElementById('btn-play-pause');
-        const btnResetTheta = document.getElementById('btn-reset-theta');
-        const playIcon = document.getElementById('play-icon');
-        const playText = document.getElementById('play-text');
-        const btnToggleUnit = document.getElementById('btn-toggle-unit');
-        const mathDerivation = document.getElementById('math-derivation');
-
-        // 數據儀表板元素引用
-        const dashR = document.getElementById('val-r');
-        const dashOmega = document.getElementById('val-omega');
-        const dashV = document.getElementById('val-v');
-        const dashPeriod = document.getElementById('val-period');
-        const dashS = document.getElementById('val-s');
-        const dashThetaCombined = document.getElementById('val-theta-combined');
-        const inputThetaScrub = document.getElementById('input-theta-scrub');
-        const uiThetaScrubVal = document.getElementById('ui-theta-scrub-val');
-
-        /**
-         * 初始化應用程式
-         * 負責設置事件監聽器並啟動動畫循環
-         */
-        function init() {
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-
-            // 半徑滑桿監聽
-            inputR.addEventListener('input', (e) => {
-                state.r = parseFloat(e.target.value);
-                uiRVal.textContent = state.r;
-                updatePhysicsFromUI();
-            });
-
-            // 數值強度滑桿監聽 (調節 ω 或 v)
-            inputMag.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value);
-                if (state.mode === 'OMEGA') {
-                    state.omega = val;
-                } else {
-                    state.v = val * state.pixelsPerMeter; 
-                }
-                uiMagVal.textContent = val.toFixed(1);
-                updatePhysicsFromUI();
-                updateDashboard();
-            });
-
-            // 模式切換按鈕
-            modeOmegaBtn.addEventListener('click', () => setMode('OMEGA'));
-            modeVBtn.addEventListener('click', () => setMode('V'));
-
-            // 快照按鈕監聽
-            btnSnapStore.addEventListener('click', storeSnapshot);
-            btnSnapClear.addEventListener('click', clearSnapshot);
-
-            // 播放/暫停監聽
-            btnPlayPause.addEventListener('click', togglePlayPause);
-            
-            // 重置位移監聽
-            btnResetTheta.addEventListener('click', () => {
-                state.theta = 0;
-            });
-
-            // 單位切換監聽
-            btnToggleUnit.addEventListener('click', () => {
-                state.displayUnit = state.displayUnit === 'rad' ? 'deg' : 'rad';
-                btnToggleUnit.textContent = state.displayUnit === 'rad' ? '切換長度/角度單位 (目前：rad)' : '切換長度/角度單位 (目前：deg)';
-                updateDashboard();
-            });
-
-            // 角度滑桿監聽
-            inputThetaScrub.addEventListener('input', handleThetaScrub);
-            inputThetaScrub.addEventListener('mousedown', () => {
-                state.isPausedBeforeScrub = state.isPaused;
-                state.isPaused = true;
-            });
-            inputThetaScrub.addEventListener('mouseup', () => {
-                if (!state.isPausedBeforeScrub) state.isPaused = false;
-                togglePlayPause(); // 更新 UI 狀態
-                togglePlayPause(); // 恢復原始狀態 (hack to sync UI)
-            });
-
-            // 啟動動畫
-            requestAnimationFrame(animate);
-        }
-
-        /**
-         * 切換播放/暫停狀態
-         */
-        function togglePlayPause() {
-            state.isPaused = !state.isPaused;
-            if (state.isPaused) {
-                btnPlayPause.classList.add('paused');
-                playIcon.textContent = '▶';
-                playText.textContent = '已暫停';
-            } else {
-                btnPlayPause.classList.remove('paused');
-                playIcon.textContent = '⏸';
-                playText.textContent = '運算中';
-            }
-        }
-
-        /**
-         * 記錄當前物理狀態快照，用於對比
-         */
-        function storeSnapshot() {
-            state.snapshot = {
-                r: state.r,
-                v: state.v,
-                omega: state.omega,
-                theta: state.theta % (2 * Math.PI)
+            let obj = {
+                x: 0, y: 0,
+                vx: 0, vy: 0,
+                history: []
             };
-        }
 
-        // 角度滑桿控制
-        function handleThetaScrub(e) {
-            state.theta = parseFloat(e.target.value);
-            updateDashboard();
-        }
+            // Camera state
+            let currentZoom = 1;
+            let camX = 0;
+            let camY = 0;
 
-        /**
-         * 清除已儲存的狀態快照
-         */
-        function clearSnapshot() {
-            state.snapshot = null;
-        }
-
-        /**
-         * 調整畫布尺寸以匹配容器大小
-         */
-        function resizeCanvas() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            // 考慮到下方有 slider，canvas 需要減去 slider 區域的高度
-            const sliderAreaHeight = 50; 
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = (rect.height - sliderAreaHeight - 60) * window.devicePixelRatio; 
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        }
-
-        /**
-         * 設定模擬模式 (固定 ω 或 固定 v)
-         */
-        function setMode(mode) {
-            state.mode = mode;
-            if (mode === 'OMEGA') {
-                modeOmegaBtn.classList.add('active');
-                modeVBtn.classList.remove('active');
-                magLabel.textContent = '角速度 (ω)';
-                inputMag.min = 0.1;
-                inputMag.max = 5.0;
-                inputMag.value = state.omega.toFixed(1);
-                uiMagVal.textContent = state.omega.toFixed(1);
-                uiMagVal.style.color = 'var(--accent-omega)';
-                tipText.innerHTML = '在<b>固定 ω</b> 模式下，當半徑 r 增加時，粒子的切線速率 v 會隨之增加。';
-            } else {
-                modeVBtn.classList.add('active');
-                modeOmegaBtn.classList.remove('active');
-                magLabel.textContent = '線速率 (v)';
-                inputMag.min = 0.5;
-                inputMag.max = 10.0;
-                const vMeter = state.v / state.pixelsPerMeter;
-                inputMag.value = vMeter.toFixed(1);
-                uiMagVal.textContent = vMeter.toFixed(1);
-                uiMagVal.style.color = 'var(--accent-velocity)';
-                tipText.innerHTML = '在<b>固定 v</b> 模式下，當半徑 r 增加時，角速度 ω 必須減小，旋轉感變慢。';
+            function init() {
+                resize();
+                resetSim();
+                animate();
             }
-            updatePhysicsFromUI();
-        }
 
-        /**
-         * 根據使用者輸入更新物理狀態
-         */
-        function updatePhysicsFromUI() {
-            if (state.mode === 'OMEGA') {
-                state.v = state.r * state.omega;
-            } else {
-                state.omega = state.v / state.r;
-            }
-            updateDashboard();
-        }
+            function resize() {
+                // 取得畫布容器的實際寬高
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
 
-        /**
-         * 更新儀表板數據顯示
-         */
-        function updateDashboard() {
-            // 已根據使用者要求移除底部儀表板的所有數字顯示，僅保留物理量符號與單位。
-        }
-
-        /**
-         * 動態每一幀的更新函數
-         */
-        function animate(time) {
-            const dt = (time - state.lastTime) / 1000;
-            state.lastTime = time;
-
-            if (!state.isPaused && dt > 0 && dt < 0.1) { 
-                state.theta += state.omega * dt;
-                
-                // 動態更新快照球的位移 (如果存在)
-                if (state.snapshot) {
-                    state.snapshot.theta += state.snapshot.omega * dt;
+                // 如果在暫停狀態下調整視窗大小，強制重繪畫面避免出現空白
+                if (!isRunning && typeof drawFrame === 'function') {
+                    drawFrame();
                 }
             }
 
-            // 同步角度滑桿
-            const normalizedTheta = state.theta % (2 * Math.PI);
-            inputThetaScrub.value = normalizedTheta;
-            if (state.displayUnit === 'rad') {
-                uiThetaScrubVal.textContent = formatPiRadian(normalizedTheta);
-            } else {
-                uiThetaScrubVal.textContent = (normalizedTheta * 180 / Math.PI).toFixed(1) + '°';
+            function resetSim() {
+                isCut = false;
+                isRunning = true;
+                isCentrifugalAnim = false;
+                angle = 0;
+
+                // 確保初始位置正確設定
+                const rect = canvas.parentElement.getBoundingClientRect();
+                obj.x = (rect.width / 2) + radius;
+                obj.y = (rect.height / 2);
+
+                camX = rect.width / 2;
+                camY = rect.height / 2;
+                currentZoom = 1;
+
+                obj.history = [];
+                statusBadge.innerText = "狀態：穩定圓周運動中";
+                statusBadge.style.borderColor = "var(--primary-accent)";
+                statusBadge.style.color = "white";
+                document.getElementById('playPauseBtn').innerText = "暫停模擬 (顯示離心力)";
+                document.getElementById('cutBtn').disabled = false;
+                document.getElementById('cutBtn').style.opacity = "1";
+                document.getElementById('cfAnimBtn').disabled = false;
+                document.getElementById('cfAnimBtn').style.opacity = "1";
             }
 
-            draw();
-            requestAnimationFrame(animate);
-        }
+            function togglePlay() {
+                isRunning = !isRunning;
+                isCentrifugalAnim = false; // 取消動畫狀態
+                document.getElementById('playPauseBtn').innerText = isRunning ? "暫停模擬 (顯示離心力)" : "繼續模擬";
 
-        /**
-         * 渲染主畫布內容
-         */
-        function draw() {
-            const w = canvas.width / window.devicePixelRatio;
-            const h = canvas.height / window.devicePixelRatio;
-            const centerX = w / 2;
-            const centerY = h / 2;
-
-            ctx.clearRect(0, 0, w, h);
-
-            // 1. 繪製快照對比層 (如果存在)
-            if (state.snapshot) {
-                drawSnapshot(state.snapshot, centerX, centerY);
+                if (!isRunning && !isCut) {
+                    statusBadge.innerText = "狀態：已暫停 (觀察離心力 / 慣性力)";
+                    statusBadge.style.borderColor = "#f1c40f";
+                    statusBadge.style.color = "#f1c40f";
+                } else if (!isCut) {
+                    statusBadge.innerText = "狀態：穩定圓周運動中";
+                    statusBadge.style.borderColor = "var(--primary-accent)";
+                    statusBadge.style.color = "white";
+                }
             }
 
-            // 2. 繪製中心原點
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#334155';
-            ctx.fill();
+            function cutString() {
+                if (isCut) return;
+                isCut = true;
+                statusBadge.innerText = "狀態：向心力消失，遵循慣性定律";
+                statusBadge.style.borderColor = "var(--force-color)";
+                statusBadge.style.color = "var(--force-color)";
 
-            // 3. 繪製當前圓周運動軌道 (虛線)
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, state.r, 0, Math.PI * 2);
-            ctx.strokeStyle = '#cbd5e1';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([8, 8]);
-            ctx.stroke();
-            ctx.setLineDash([]);
+                document.getElementById('cutBtn').disabled = true;
+                document.getElementById('cutBtn').style.opacity = "0.3";
+                document.getElementById('cfAnimBtn').disabled = true;
+                document.getElementById('cfAnimBtn').style.opacity = "0.3";
 
-            // 4. 加強當前移動的弧線路徑 (角度指示弧)
-            const currentTheta = state.theta % (2 * Math.PI);
-            
-            // A. 中心角度指示弧 (Angle Indicator)
-            const arcRadius = 40;
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.arc(centerX, centerY, arcRadius, 0, currentTheta);
-            ctx.lineTo(centerX, centerY);
-            ctx.fillStyle = 'rgba(245, 158, 11, 0.15)'; // 半透明橙色
-            ctx.fill();
-            ctx.strokeStyle = THEME.angle;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // B. 角度標註 θ
-            const labelTheta = currentTheta / 2;
-            const lx = centerX + (arcRadius + 25) * Math.cos(labelTheta);
-            const ly = centerY + (arcRadius + 25) * Math.sin(labelTheta);
-            ctx.font = 'bold 14px serif';
-            ctx.fillStyle = THEME.angle;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            let thetaStr = '';
-            if (state.displayUnit === 'rad') {
-                thetaStr = formatPiRadian(currentTheta);
-            } else {
-                thetaStr = `${(currentTheta * 180 / Math.PI).toFixed(1)}°`;
+                // 計算切線速度向量 (保持真實比例 px/frame)
+                obj.vx = -Math.sin(angle) * (radius * speed);
+                obj.vy = Math.cos(angle) * (radius * speed);
             }
-            ctx.fillText(`θ = ${thetaStr}`, lx, ly);
 
-            // C. 外圈軌道進度條
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, state.r, 0, currentTheta);
-            ctx.strokeStyle = THEME.angle;
-            ctx.lineWidth = 4;
-            ctx.stroke();
+            function playCentrifugalAnim() {
+                if (isCut) return; // 切斷狀態下不播放
+                isRunning = false;
+                isCentrifugalAnim = true;
+                anim_t = 0;
+                animStartAngle = angle;
 
-            // 更新數學推導文字 (如果有需要同步)
-            const rMeter = state.r / state.pixelsPerMeter;
-            const arcLength = rMeter * currentTheta;
-            mathDerivation.innerHTML = `θ = s / r = ${arcLength.toFixed(2)} / ${rMeter.toFixed(2)} = ${state.displayUnit === 'rad' ? formatPiRadian(currentTheta) : (currentTheta * 180 / Math.PI).toFixed(1) + '°'}`;
-
-            // 5. 計算質點位置
-            const px = centerX + state.r * Math.cos(state.theta);
-            const py = centerY + state.r * Math.sin(state.theta);
-
-            // 6. 繪製當前半徑向量 r (實線)
-            drawArrow(centerX, centerY, px, py, THEME.radius, 'r', 3, false);
-
-            // 7. 繪製當前切線速度向量 v (實線)
-            const vLen = state.v * 0.5; 
-            const vx = px + vLen * Math.cos(state.theta + Math.PI / 2);
-            const vy = py + vLen * Math.sin(state.theta + Math.PI / 2);
-            drawArrow(px, py, vx, vy, THEME.velocity, 'v', 3, false);
-
-            // 8. 繪製運動質點
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(px, py, 10, 0, Math.PI * 2);
-            ctx.fillStyle = 'white';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(0,0,0,0.1)';
-            ctx.fill();
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        /**
-         * 繪製儲存的狀態快照 (以虛線呈現)
-         */
-        function drawSnapshot(snap, cx, cy) {
-            // A. 快照軌道
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.arc(cx, cy, snap.r, 0, Math.PI * 2);
-            ctx.strokeStyle = THEME.snapshot;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            // B. 計算快照質點當前位置 (動態運行中)
-            const spx = cx + snap.r * Math.cos(snap.theta);
-            const spy = cy + snap.r * Math.sin(snap.theta);
-
-            // C. 繪製快照運動質點 (虛線半透明)
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(spx, spy, 10, 0, Math.PI * 2);
-            ctx.strokeStyle = THEME.snapshot;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.restore();
-
-            // D. 快照軌道描述 (不顯示箭頭，僅顯示質點位置)
-            ctx.setLineDash([]);
-        }
-
-        /**
-         * 繪製高品質箭頭
-         */
-        function drawArrow(x1, y1, x2, y2, color, label, width, isDashed = false) {
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            const length = Math.sqrt(dx * dx + dy * dy);
-
-            if (length < 1) return;
-
-            const headlen = Math.min(12, length * 0.3);
-            const angle = Math.atan2(dy, dx);
-
-            ctx.save();
-            ctx.strokeStyle = ctx.fillStyle = color;
-            ctx.lineWidth = width;
-            ctx.lineCap = 'round';
-            if (isDashed) ctx.setLineDash([4, 4]);
-
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2 - headlen * Math.cos(angle) * 0.8, y2 - headlen * Math.sin(angle) * 0.8);
-            ctx.stroke();
-
-            ctx.setLineDash([]);
-            ctx.beginPath();
-            ctx.moveTo(x2, y2);
-            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
-            ctx.closePath();
-            ctx.fill();
-
-            if (label) {
-                ctx.font = 'italic bold 20px "Times New Roman", serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const offset = 26;
-                const tx = x2 + offset * Math.cos(angle);
-                const ty = y2 + offset * Math.sin(angle);
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = 'white';
-                ctx.strokeText(label, tx, ty);
-                ctx.fillText(label, tx, ty);
+                statusBadge.innerText = "狀態：播放離心現象動畫 (觀察內部紅點)";
+                statusBadge.style.borderColor = "#f1c40f";
+                statusBadge.style.color = "#f1c40f";
+                document.getElementById('playPauseBtn').innerText = "恢復模擬";
             }
-            ctx.restore();
-        }
 
-        init();
-    </script>
+            // 修改 drawArrow：升級極短距離的繪製邏輯，確保三角形不變形
+            function drawArrow(x, y, vx, vy, color, headlen = 16, endOffset = 0) {
+                let len = Math.hypot(vx, vy);
+                if (len <= endOffset + 1) return; // 如果距離太短則不畫
+
+                // 將向量縮短 endOffset 的距離，確保箭頭停在目標邊緣
+                const drawLen = len - endOffset;
+                const ratio = drawLen / len;
+                const actualVx = vx * ratio;
+                const actualVy = vy * ratio;
+
+                // 根據縮放調整線寬與箭頭大小，保持視覺一致性 (除以 currentZoom)
+                const currentHeadlen = Math.min(headlen, Math.max(4, drawLen * 0.7)) / currentZoom;
+                const currentLineWidth = Math.min(4, Math.max(1.5, drawLen * 0.25)) / currentZoom;
+
+                const endX = x + actualVx;
+                const endY = y + actualVy;
+                const a = Math.atan2(actualVy, actualVx);
+
+                // 將箭身末端往回縮 (setback)，確保完全被三角形箭頭覆蓋，不會從尖端穿出
+                const setback = currentHeadlen * 0.75;
+                const lineEndX = endX - setback * Math.cos(a);
+                const lineEndY = endY - setback * Math.sin(a);
+
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(lineEndX, lineEndY);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = currentLineWidth; // 使用動態線寬
+                ctx.lineCap = 'butt'; // 改為平頭避免圓弧端點超出
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - currentHeadlen * Math.cos(a - Math.PI / 7), endY - currentHeadlen * Math.sin(a - Math.PI / 7));
+                ctx.lineTo(endX - currentHeadlen * Math.cos(a + Math.PI / 7), endY - currentHeadlen * Math.sin(a + Math.PI / 7));
+                ctx.closePath();
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+
+            function animate() {
+                // 1. 物理狀態更新 (僅在運行時計算)
+                if (isRunning) {
+                    if (!isCut) {
+                        // 圓周運動狀態
+                        angle += speed;
+                        obj.x = (canvas.width / 2) + radius * Math.cos(angle);
+                        obj.y = (canvas.height / 2) + radius * Math.sin(angle);
+
+                        obj.history.push({ x: obj.x, y: obj.y });
+                        if (obj.history.length > 80) obj.history.shift();
+                    } else {
+                        // 切線直線運動狀態 (移除乘數以保持原速率)
+                        obj.x += obj.vx;
+                        obj.y += obj.vy;
+
+                        obj.history.push({ x: obj.x, y: obj.y });
+                        if (obj.history.length > 80) obj.history.shift();
+                    }
+                } else if (isCentrifugalAnim) {
+                    // 離心現象慢動作動畫更新
+                    if (anim_t < max_anim_t) {
+                        anim_t += 0.12; // 更慢的慢動作播放
+                    }
+                    angle = animStartAngle + speed * anim_t;
+                    obj.x = (canvas.width / 2) + radius * Math.cos(angle);
+                    obj.y = (canvas.height / 2) + radius * Math.sin(angle);
+
+                    obj.history.push({ x: obj.x, y: obj.y });
+                    if (obj.history.length > 80) obj.history.shift();
+                }
+
+                // 2. 攝影機縮放與追蹤邏輯 (調低權重讓過渡更平滑絲滑)
+                const targetZoom = isCentrifugalAnim ? 2.5 : 1.0;
+                currentZoom += (targetZoom - currentZoom) * 0.05;
+
+                const targetCamX = isCentrifugalAnim ? obj.x : canvas.width / 2;
+                const targetCamY = isCentrifugalAnim ? obj.y : canvas.height / 2;
+                camX += (targetCamX - camX) * 0.05;
+                camY += (targetCamY - camY) * 0.05;
+
+                // 3. 畫面繪製
+                drawFrame();
+
+                requestAnimationFrame(animate);
+            }
+
+            function drawFrame() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                ctx.save();
+                // 應用攝影機變換：以畫布中心為基準縮放，並追蹤目標
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.scale(currentZoom, currentZoom);
+                ctx.translate(-camX, -camY);
+
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+
+                // 1. 繪製參考圓心
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 6, 0, Math.PI * 2);
+                ctx.fillStyle = varColor('--primary-accent');
+                ctx.fill();
+
+                if (!isCut) {
+                    // 繪製軌跡虛線
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+                    ctx.setLineDash([8, 8]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // 將 vx 和 vy 提早計算，讓後方的動畫與靜態位移都能使用
+                    const vx = -Math.sin(angle);
+                    const vy = Math.cos(angle);
+
+                    if (!isCentrifugalAnim) {
+                        // 繪製受力線 (繩子)
+                        ctx.beginPath();
+                        ctx.moveTo(centerX, centerY);
+                        ctx.lineTo(obj.x, obj.y);
+                        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+                        ctx.lineWidth = 2 / currentZoom;
+                        ctx.stroke();
+
+                        // 繪製向量
+                        // 向心力 (向內)
+                        drawArrow(obj.x, obj.y, (centerX - obj.x) * 0.6, (centerY - obj.y) * 0.6, varColor('--force-color'));
+
+                        // 速度 (切線) - 統一箭頭長度視覺
+                        const vScale = 80;
+                        drawArrow(obj.x, obj.y, vx * vScale, vy * vScale, varColor('--velocity-color'));
+                    }
+
+                    // === 新增：暫停時對比「慣性位移」與「實際距離」以解釋離心力來源 ===
+                    if (!isRunning && !isCentrifugalAnim) {
+                        const futureFrames = 35; // 誇張化時間間隔，讓差距明顯可見
+
+                        // 1. 慣性預測位置 P1 (如果沒有向心力，沿切線走)
+                        const p1_x = obj.x + vx * (radius * speed) * futureFrames;
+                        const p1_y = obj.y + vy * (radius * speed) * futureFrames;
+
+                        // 2. 計算 P1 距離圓心的角度，用以精確找出對應的「徑向」圓周位置 P_arc
+                        // 這樣差距箭頭就會完美地從圓心向外指
+                        const angleP1 = Math.atan2(p1_y - centerY, p1_x - centerX);
+                        const parc_x = centerX + radius * Math.cos(angleP1);
+                        const parc_y = centerY + radius * Math.sin(angleP1);
+
+                        // 繪製從圓心到 P1 的徑向輔助虛線，強調「向外」的視覺
+                        ctx.beginPath();
+                        ctx.moveTo(centerX, centerY);
+                        ctx.lineTo(p1_x, p1_y);
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+                        ctx.lineWidth = 1 / currentZoom;
+                        ctx.setLineDash([4 / currentZoom, 4 / currentZoom]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        // 繪製慣性位移線 (原切線方向)
+                        ctx.beginPath();
+                        ctx.moveTo(obj.x, obj.y);
+                        ctx.lineTo(p1_x, p1_y);
+                        ctx.strokeStyle = varColor('--velocity-color');
+                        ctx.lineWidth = 2 / currentZoom;
+                        ctx.setLineDash([6 / currentZoom, 6 / currentZoom]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        // 繪製 P1: 慣性幽靈球 (黃色)
+                        ctx.beginPath();
+                        ctx.arc(p1_x, p1_y, 10, 0, Math.PI * 2);
+                        ctx.strokeStyle = "#f1c40f";
+                        ctx.stroke();
+
+                        // 繪製 P_arc: 實際半徑位置的幽靈球 (白色)
+                        ctx.beginPath();
+                        ctx.arc(parc_x, parc_y, 10, 0, Math.PI * 2);
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+                        ctx.stroke();
+
+                        // 繪製從 P_arc 到 P1 的徑向差距箭頭 (橘黃色) - 完美向外指向
+                        drawArrow(parc_x, parc_y, p1_x - parc_x, p1_y - parc_y, "#ff9f43");
+
+                        // --- 智能文字排版：文字簡化並貼近對應元素，防止重疊 ---
+                        ctx.font = `bold ${13 / currentZoom}px 'PingFang HK', sans-serif`;
+
+                        // 1. 預期位置 (黃色文字，放在 P1 外側)
+                        // 利用角度判斷，自動將文字往外緣推
+                        ctx.fillStyle = "#f1c40f";
+                        ctx.textAlign = Math.cos(angleP1) >= 0 ? "left" : "right";
+                        ctx.textBaseline = Math.sin(angleP1) >= 0 ? "top" : "bottom";
+                        const textOffset = 15 / currentZoom;
+                        ctx.fillText("預期位置", p1_x + Math.cos(angleP1) * textOffset, p1_y + Math.sin(angleP1) * textOffset);
+
+                        // 2. 實際位置 (白色文字，放在 P_arc 內側，朝向圓心)
+                        // 方向與預期位置剛好相反，保證一內一外絕不重疊
+                        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                        ctx.textAlign = Math.cos(angleP1) >= 0 ? "right" : "left";
+                        ctx.textBaseline = Math.sin(angleP1) >= 0 ? "bottom" : "top";
+                        ctx.fillText("實際位置", parc_x - Math.cos(angleP1) * textOffset, parc_y - Math.sin(angleP1) * textOffset);
+
+                        // 3. 離心推力 (橘黃色文字，放在差距箭頭的旁邊)
+                        // 將文字沿著切線方向 (轉 90 度) 推移，避免擋住徑向的箭頭
+                        const midX = (p1_x + parc_x) / 2;
+                        const midY = (p1_y + parc_y) / 2;
+                        const tangX = Math.cos(angleP1 + Math.PI / 2);
+                        const tangY = Math.sin(angleP1 + Math.PI / 2);
+
+                        ctx.fillStyle = "#ff9f43";
+                        ctx.textAlign = tangX >= 0 ? "left" : "right";
+                        ctx.textBaseline = tangY >= 0 ? "top" : "bottom";
+                        ctx.fillText("離心推力", midX + tangX * (12 / currentZoom), midY + tangY * (12 / currentZoom));
+
+                        // 恢復預設對齊，以免影響其他繪圖
+                        ctx.textAlign = "left";
+                        ctx.textBaseline = "alphabetic";
+                    }
+
+                } else {
+                    // 切線直線運動狀態向量
+                    // 保持與圓周運動相同的箭頭長度 vScale = 80
+                    const vScale = 80;
+                    const currentSpeed = Math.hypot(obj.vx, obj.vy);
+                    const unitVx = obj.vx / currentSpeed;
+                    const unitVy = obj.vy / currentSpeed;
+
+                    drawArrow(obj.x, obj.y, unitVx * vScale, unitVy * vScale, varColor('--velocity-color'));
+
+                    // 顯示原本的圓形路徑作為對比
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+                    ctx.stroke();
+                }
+
+                // 繪製淡出軌跡
+                ctx.beginPath();
+                if (obj.history.length > 0) {
+                    ctx.moveTo(obj.history[0].x, obj.history[0].y);
+                    for (let i = 1; i < obj.history.length; i++) {
+                        ctx.lineTo(obj.history[i].x, obj.history[i].y);
+                    }
+                }
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+                ctx.lineWidth = 2 / currentZoom;
+                ctx.stroke();
+
+                // === 計算內部紅點 (乘客) 的位置與軌跡參數 ===
+                let dotX = obj.x;
+                let dotY = obj.y;
+                let startX, startY, tangent_vx, tangent_vy, maxDotX, maxDotY;
+
+                if (isCentrifugalAnim) {
+                    // 在動畫中，紅點遵循起點的切線慣性運動
+                    startX = centerX + radius * Math.cos(animStartAngle);
+                    startY = centerY + radius * Math.sin(animStartAngle);
+                    tangent_vx = -Math.sin(animStartAngle) * (radius * speed);
+                    tangent_vy = Math.cos(animStartAngle) * (radius * speed);
+
+                    dotX = startX + tangent_vx * anim_t;
+                    dotY = startY + tangent_vy * anim_t;
+
+                    // 計算綠色虛線的最遠點
+                    maxDotX = startX + tangent_vx * max_anim_t;
+                    maxDotY = startY + tangent_vy * max_anim_t;
+                }
+
+                // 1. 繪製主角球體 (車廂) - 半徑加大至 22 讓內部點更清楚，並加上微透效果
+                ctx.save();
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = "white";
+                ctx.beginPath();
+                ctx.arc(obj.x, obj.y, 22, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.fill();
+                ctx.restore();
+
+                // 2. 繪製內部紅點 (乘客)
+                ctx.beginPath();
+                ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+                ctx.fillStyle = "#ff4757"; // 紅色
+                ctx.fill();
+
+                // 3. 將綠色切線慣性軌跡移至【最上層】，壓過車廂與紅點
+                if (isCentrifugalAnim) {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(maxDotX, maxDotY);
+                    ctx.strokeStyle = varColor('--velocity-color'); // 使用速度(切線)的綠色
+                    ctx.globalAlpha = 0.9; // 提高不透明度，在最上層更顯眼
+                    ctx.lineWidth = 2.5 / currentZoom;
+                    ctx.setLineDash([5 / currentZoom, 5 / currentZoom]); // 虛線效果
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1.0;
+                }
+
+                // 4. 離心動畫結束後的說明標籤與完美黃色小箭頭
+                if (isCentrifugalAnim && anim_t >= max_anim_t) {
+                    // 使用縮小的箭頭頭部 (headlen = 10)，並提早 6px 結束以精準貼齊紅點邊緣
+                    drawArrow(obj.x, obj.y, dotX - obj.x, dotY - obj.y, "#f1c40f", 10, 6);
+
+                    ctx.fillStyle = "#f1c40f";
+                    // 增加字體大小，視覺上約佔畫布 1/4 寬度，並根據縮放調整
+                    const fontSize = 24 / currentZoom;
+                    ctx.font = `bold ${fontSize}px 'PingFang HK', sans-serif`;
+                    
+                    const align = dotX > centerX ? "left" : "right";
+                    ctx.textAlign = align;
+                    // 進一步加大偏移量（100 單位），確保大字體完全不與車廂重疊
+                    const offset = (dotX > centerX ? 100 : -100) / currentZoom;
+
+                    ctx.fillText("紅點(乘客)因慣性而偏離車廂中心", obj.x + offset, obj.y - (fontSize * 0.7));
+                    ctx.fillText("這就是「離心力」的本質！", obj.x + offset, obj.y + (fontSize * 0.7));
+                    ctx.textAlign = "left";
+                }
+
+                ctx.restore(); // 結束縮放變換
+            }
+
+            function varColor(name) {
+                return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            }
+
+            // 啟動
+            window.onload = init;
+            // 監聽窗口大小改變
+            window.addEventListener('resize', resize);
+
+        </script>
+
 </body>
+
 </html>
