@@ -561,7 +561,9 @@
                 fever: 'rgba(251, 191, 36, 0.08)',
                 domain: 'rgba(34, 211, 238, 0.05)'
             },
-            domainRadius: 70
+            domainRadius: 70,
+            showVectors: true,
+            vectorScale: 0.15
         };
 
         let state = {
@@ -609,7 +611,10 @@
             sprite: new Image(),
             facingX: 1,
             transitionAnim: 0, // 1 to 0 flash
-            arenaScale: 1     // 0.8 to 1 scale-in
+            arenaScale: 1,     // 0.8 to 1 scale-in
+            timeScale: 1.0,
+            lastMiss: null,    // Stores {pos, vel, type} for ghost path
+            bulletTimeAlpha: 0 // For screen effect
         };
         state.sprite.src = 'assets/aris_cartoon_v7.png';
 
@@ -745,13 +750,42 @@
             if (rect.width > 0) { canvas.width = rect.width * dpr; canvas.height = rect.height * dpr; ctx.scale(dpr, dpr); }
         }
 
-        function update(dt) {
+        function update(dtOriginal) {
+            const dt = dtOriginal * state.timeScale;
             if (dt <= 0) return;
 
             // Hit-stop logic
             if (state.hitStop > 0) {
-                state.hitStop -= dt;
-                return; // Pause update while hit-stopping
+                state.hitStop -= dtOriginal;
+                return; 
+            }
+
+            // Bullet Time Logic (Tutorial Only)
+            if (state.isTutorial && state.isSpinning && !state.isReleased) {
+                let bestAlignment = false;
+                for (const t of state.targets) {
+                    // Check if ball velocity points towards target
+                    const b = state.ballPos;
+                    const bVel = state.ballVel;
+                    const dx = t.x - b.x; const dy = t.y - b.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const dot = (bVel.x * dx + bVel.y * dy) / (dist * Math.sqrt(bVel.x * bVel.x + bVel.y * bVel.y));
+                    
+                    if (dot > 0.998) { // Very precise alignment
+                        bestAlignment = true;
+                        break;
+                    }
+                }
+                if (bestAlignment) {
+                    state.timeScale = Math.max(0.2, state.timeScale - dtOriginal * 5);
+                    state.bulletTimeAlpha = Math.min(0.3, state.bulletTimeAlpha + dtOriginal * 2);
+                } else {
+                    state.timeScale = Math.min(1.0, state.timeScale + dtOriginal * 3);
+                    state.bulletTimeAlpha = Math.max(0, state.bulletTimeAlpha - dtOriginal * 4);
+                }
+            } else {
+                state.timeScale = 1.0;
+                state.bulletTimeAlpha = Math.max(0, state.bulletTimeAlpha - dtOriginal * 4);
             }
 
             state.time += dt;
@@ -888,6 +922,27 @@
                 }
                 // Out of bounds reset (Perfectly outside canvas borders)
                 if (state.ballPos.x > 825 || state.ballPos.x < -25 || state.ballPos.y > 675 || state.ballPos.y < -25) {
+                    // Capture Miss
+                    if (state.targets.length > 0) {
+                        const target = state.targets[0]; // Simplest diagnostic
+                        const dx = target.x - state.releasePos.x;
+                        const dy = target.y - state.releasePos.y;
+                        const angleToTarget = Math.atan2(dy, dx);
+                        const releaseAngle = Math.atan2(state.ballVel.y, state.ballVel.x);
+                        let diff = releaseAngle - angleToTarget;
+                        while(diff > Math.PI) diff -= Math.PI * 2;
+                        while(diff < -Math.PI) diff += Math.PI * 2;
+
+                        state.lastMiss = {
+                            pos: { ...state.releasePos },
+                            vel: { ...state.ballVel },
+                            type: Math.abs(diff) < 0.2 ? 'close' : (diff > 0 ? 'late' : 'early'),
+                            time: 3.0
+                        };
+
+                        if (state.lastMiss.type === 'late') showDialogue("釋放太晚了！旋轉慣性讓球偏向右側。");
+                        else if (state.lastMiss.type === 'early') showDialogue("釋放太早了！記住球會沿切線飛出。");
+                    }
                     prepareNextShot();
                 }
             }
@@ -902,6 +957,11 @@
             }
             state.orbTrail.forEach(t => t.life -= 0.05); // Fade out
             state.orbTrail = state.orbTrail.filter(t => t.life > 0);
+
+            if (state.lastMiss && state.lastMiss.time > 0) {
+                state.lastMiss.time -= dtOriginal;
+                if (state.lastMiss.time <= 0) state.lastMiss = null;
+            }
 
             state.explosions.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
             state.explosions = state.explosions.filter(p => p.life > 0);
@@ -1000,6 +1060,54 @@
             ctx.restore();
 
             if (state.isFeverMode) { ctx.fillStyle = config.colors.fever; ctx.fillRect(0, 0, 800, 650); }
+
+            // BULLET TIME SCREEN EFFECT
+            if (state.bulletTimeAlpha > 0) {
+                ctx.save();
+                ctx.fillStyle = `rgba(34, 211, 238, ${state.bulletTimeAlpha})`;
+                ctx.fillRect(0, 0, 800, 650);
+                // Radial focus
+                const focus = ctx.createRadialGradient(state.playerX, state.playerY, 0, state.playerX, state.playerY, 400);
+                focus.addColorStop(0, 'transparent');
+                focus.addColorStop(1, 'rgba(0,0,0,0.4)');
+                ctx.fillStyle = focus;
+                ctx.fillRect(0, 0, 800, 650);
+                ctx.restore();
+            }
+
+            // DRAW MISCONCEPTION GHOST PATH
+            if (state.lastMiss && state.lastMiss.time > 0) {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, state.lastMiss.time) * 0.5;
+                
+                // Correct Tangent Path (Greenish)
+                ctx.strokeStyle = '#4ade80'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(state.lastMiss.pos.x, state.lastMiss.pos.y);
+                const vMag = Math.sqrt(state.lastMiss.vel.x**2 + state.lastMiss.vel.y**2);
+                ctx.lineTo(state.lastMiss.pos.x + (state.lastMiss.vel.x/vMag)*800, state.lastMiss.pos.y + (state.lastMiss.vel.y/vMag)*800);
+                ctx.stroke();
+
+                // Misconception: Curved Path (Gray)
+                ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.moveTo(state.lastMiss.pos.x, state.lastMiss.pos.y);
+                // Draw a spiral-like curve to simulate the "it keeps turning" myth
+                for (let t = 0; t < 20; t++) {
+                    const time = t * 0.1;
+                    const spiralAngle = Math.atan2(state.lastMiss.vel.y, state.lastMiss.vel.x) + time * 0.5;
+                    const dist = vMag * time;
+                    ctx.lineTo(state.lastMiss.pos.x + Math.cos(spiralAngle) * dist, state.lastMiss.pos.y + Math.sin(spiralAngle) * dist);
+                }
+                ctx.stroke();
+
+                ctx.fillStyle = '#fff'; ctx.font = '12px Inter';
+                ctx.fillText("正確切線路徑", state.lastMiss.pos.x + 20, state.lastMiss.pos.y - 10);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText("直覺錯誤(路徑彎曲)", state.lastMiss.pos.x + 20, state.lastMiss.pos.y + 25);
+                
+                ctx.restore();
+            }
 
             // SPIRIT ORBIT (Restored & Improved) - Boundary of Aris's Will
             if (state.isSpinning && !state.isReleased) {
@@ -1263,6 +1371,49 @@
 
             state.explosions.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI); ctx.fill(); });
             ctx.globalAlpha = 1;
+
+            // PHYSICS VECTORS (Velocity & Force)
+            if (config.showVectors && state.isSpinning && !state.isReleased) {
+                const b = state.ballPos;
+                const v = state.ballVel;
+                const vs = config.vectorScale;
+
+                // Velocity Vector (Tangent)
+                ctx.save();
+                ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                ctx.lineTo(b.x + v.x * vs, b.y + v.y * vs);
+                ctx.stroke();
+                // Arrowhead
+                const angle = Math.atan2(v.y, v.x);
+                ctx.translate(b.x + v.x * vs, b.y + v.y * vs);
+                ctx.rotate(angle);
+                ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-10,-5); ctx.lineTo(-10,5); ctx.closePath(); ctx.fillStyle='#4ade80'; ctx.fill();
+                ctx.restore();
+
+                // Centripetal Force Vector (Radial)
+                const fx = (state.playerX - b.x);
+                const fy = (state.playerY - b.y);
+                ctx.save();
+                ctx.strokeStyle = '#f43f5e'; ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                ctx.lineTo(b.x + fx, b.y + fy);
+                ctx.stroke();
+                // Arrowhead
+                const fAngle = Math.atan2(fy, fx);
+                ctx.translate(b.x + fx * 0.8, b.y + fy * 0.8);
+                ctx.rotate(fAngle);
+                ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-10,-5); ctx.lineTo(-10,5); ctx.closePath(); ctx.fillStyle='#f43f5e'; ctx.fill();
+                ctx.restore();
+
+                // Label
+                ctx.fillStyle = '#4ade80'; ctx.font = 'bold 12px Inter';
+                ctx.fillText(`速度 v: ${Math.round(Math.sqrt(v.x**2+v.y**2)/10)} m/s`, b.x + 20, b.y - 20);
+                ctx.fillStyle = '#f43f5e';
+                ctx.fillText(`向心力 Fc`, b.x + 20, b.y - 5);
+            }
 
             if (state.isFeverMode) {
                 ctx.fillStyle = config.colors.special; ctx.font = '800 40px Inter'; ctx.textAlign = 'center';
