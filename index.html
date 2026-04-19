@@ -4,281 +4,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>物理模擬實驗室</title>
+    <title>物理模擬實驗室 | Physics Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@300;400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --sub-accent: #85c1e9;
-            --bg-color: #f4f7f6;
-            --card-bg: #ffffff;
-            --text-color: #333333;
+            --bg-color: #f1f5f9; /* Slate 100 - Main Background */
+            --accent-primary: #0ea5e9;
+            --accent-secondary: #6366f1;
+            --accent-tertiary: #d946ef;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.06);
+            --text-main: #0f172a;
+            --text-dim: #64748b;
+            --card-radius: 20px;
+            --sidebar-width: 260px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+            --sidebar-bg: #ffffff;
+            --search-bg: #e2e8f0; /* Slate 200 */
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
         }
 
         body {
-            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
             margin: 0;
             padding: 0;
+            font-family: 'Outfit', 'Inter', "Microsoft JhengHei", sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.6;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Background */
+        body::before {
+            content: '';
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            background:
+                radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(217, 70, 239, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(56, 189, 248, 0.05) 0px, transparent 50%);
+            z-index: -1;
+        }
+
+        /* Main Container - Responsive Webpage Style */
+        .app-container {
+            width: 100%;
+            max-width: 1440px;
+            min-height: 100vh;
+            display: flex;
+            background: transparent;
+            position: relative;
+        }
+
+        /* Sidebar Navigation - Sticky */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            border-right: 1px solid var(--glass-border);
+            padding: 40px 20px;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            gap: 12px;
+            background: var(--sidebar-bg);
+            z-index: 10;
         }
 
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 2rem 1rem;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        .brand {
+            margin-bottom: 40px;
+            padding: 0 10px;
         }
 
-        header h1 {
+        .brand h1 {
+            font-size: 24px;
+            font-weight: 600;
             margin: 0;
-            font-size: 2.5rem;
-            letter-spacing: 2px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        header p {
-            margin-top: 10px;
-            font-size: 1.1rem;
-            opacity: 0.9;
+        .nav-item {
+            padding: 12px 18px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 15px;
+            color: var(--text-dim);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid transparent;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            flex: 1;
-            width: 100%;
-            box-sizing: border-box;
+        .nav-item:hover {
+            color: var(--text-main);
+            background: rgba(0, 0, 0, 0.03);
         }
 
-        /* Collapsible book sections */
-        .book-details {
-            background: var(--card-bg);
+        .nav-item.active {
+            color: var(--accent-primary);
+            background: white;
+            border-color: var(--glass-border);
+            box-shadow: var(--shadow);
+            font-weight: 600;
+        }
+
+        .sidebar a:hover {
+            color: var(--accent-primary) !important;
+            text-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+        }
+
+        .sidebar-footer {
+            padding: 20px 18px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 11px;
+            color: var(--text-dim);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            line-height: 1.4;
+        }
+
+        .sidebar-footer .footer-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-footer .github-link {
+            font-weight: 600;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        /* Sidebar Sub-items */
+        .sidebar-sub-list {
+            margin-left: 30px;
+            margin-top: -5px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .nav-item.active+.sidebar-sub-list {
+            max-height: 500px;
+            margin-top: 5px;
+        }
+
+        .sub-nav-item {
+            font-size: 13px;
+            color: var(--text-dim);
+            padding: 8px 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        .book-details[open] {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .book-summary {
-            background: white;
-            padding: 15px 20px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
             cursor: pointer;
-            list-style: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 5px solid var(--accent-color);
-            transition: background-color 0.2s;
-        }
-
-        .book-summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .book-summary:hover {
-            background: #f8fbfc;
-        }
-
-        .book-summary::after {
-            content: "▼";
-            font-size: 1rem;
-            color: var(--accent-color);
-            transition: transform 0.3s ease;
-        }
-
-        .book-details[open]>.book-summary::after {
-            transform: rotate(180deg);
-        }
-
-        .book-details[open]>.book-summary {
-            border-bottom: 1px solid #eee;
-        }
-
-        .book-content {
-            padding: 20px;
-            background: #fafcfd;
-        }
-
-        /* Subtopic sections */
-        .subtopic-details {
-            margin-bottom: 15px;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            background: white;
+            transition: var(--transition);
+            white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .subtopic-summary {
-            font-size: 1.2rem;
-            padding: 10px 15px;
-            border-left: 4px solid var(--sub-accent);
-            color: var(--primary-color);
-            background: white;
-            cursor: pointer;
-            list-style: none;
+        .sub-nav-item:hover {
+            color: var(--accent-primary);
+            background: rgba(14, 165, 233, 0.05);
+        }
+
+        /* Sidebar Sections */
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 0 18px 10px;
+            opacity: 0.8;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            padding: 40px 60px;
+            background: transparent;
+        }
+
+        /* Top Bar & Search */
+        .top-bar {
+            margin-bottom: 40px;
+            display: flex;
+            gap: 24px;
             align-items: center;
-            transition: background-color 0.2s;
+            position: sticky;
+            top: 40px;
+            z-index: 5;
         }
 
-        .subtopic-summary::-webkit-details-marker {
-            display: none;
+        .search-container {
+            flex: 1;
+            position: relative;
         }
 
-        .subtopic-summary:hover {
-            background: #fdfefe;
+        #search-input {
+            width: 100%;
+            background: var(--search-bg);
+            border: 1px solid transparent;
+            border-radius: 20px;
+            padding: 18px 20px 18px 55px;
+            color: var(--text-main);
+            font-size: 16px;
+            transition: var(--transition);
         }
 
-        .subtopic-summary::after {
-            content: "▼";
-            font-size: 0.9rem;
-            color: var(--sub-accent);
-            transition: transform 0.3s ease;
-        }
-
-        .subtopic-details[open]>.subtopic-summary::after {
-            transform: rotate(180deg);
-        }
-
-        .subtopic-content {
-            padding: 20px;
+        #search-input:focus {
             background: white;
-            border-top: 1px solid #eee;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
         }
 
-        .simulation-grid {
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 20px;
+        }
+
+        /* Simulation Grid (Bento) */
+        .bento-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-auto-rows: min-content;
+            gap: 30px;
+            padding-bottom: 60px;
         }
 
         .sim-card {
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
+            background: var(--glass-bg);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            border: 1px solid #eee;
-        }
-
-        .sim-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-image {
-            height: 180px;
-            width: 100%;
-            background-color: #e0e6ed;
-            overflow: hidden;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .card-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            transition: transform 0.3s;
-        }
-
-        .sim-card:hover .card-image img {
-            transform: scale(1.05);
-        }
-
-        .card-content {
-            padding: 15px;
-            flex-grow: 1;
-        }
-
-        .card-content h3 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: var(--primary-color);
-            font-size: 1.15rem;
-        }
-
-        .card-content p {
-            font-size: 0.9rem;
-            color: #666;
-            margin: 0;
-            line-height: 1.5;
-        }
-
-        .card-action {
-            padding: 12px 15px;
-            background-color: #fafafa;
-            border-top: 1px solid #eee;
-            text-align: right;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: var(--accent-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-        }
-
-        .btn:hover {
-            background-color: #2980b9;
-        }
-
-        .expand-controls {
-            margin-bottom: 15px;
-            text-align: right;
-        }
-
-        .expand-controls button {
-            background: none;
-            border: 1px solid var(--accent-color);
-            color: var(--accent-color);
-            padding: 5px 15px;
-            border-radius: 4px;
+            gap: 16px;
+            transition: var(--transition);
             cursor: pointer;
-            margin-left: 10px;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .expand-controls button:hover {
-            background: var(--accent-color);
-            color: white;
-        }
-
-        footer {
-            text-align: center;
-            padding: 2rem;
-            background-color: var(--primary-color);
-            color: white;
-            margin-top: auto;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease backwards;
+            min-height: 320px;
+            box-shadow: var(--shadow);
         }
 
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(20px);
             }
 
             to {
@@ -286,32 +294,187 @@
                 transform: translateY(0);
             }
         }
+
+        .sim-card:hover {
+            background: white;
+            border-color: var(--accent-primary);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sim-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .sim-card:hover::after {
+            opacity: 1;
+        }
+
+        .sim-image {
+            width: 100%;
+            height: 160px;
+            border-radius: 14px;
+            background: #f1f5f9;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sim-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .sim-card:hover .sim-image img {
+            transform: scale(1.08);
+        }
+
+        .sim-info h3 {
+            margin: 0;
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .sim-info p {
+            margin: 10px 0 0;
+            font-size: 14px;
+            color: var(--text-dim);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .enter-btn {
+            background: #f1f5f9;
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .sim-card:hover .enter-btn {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        /* Subtopic Header */
+        .subtopic-header {
+            grid-column: 1 / -1;
+            padding: 14px 20px;
+            margin-top: 25px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .subtopic-header span {
+            color: var(--text-dim);
+            font-weight: 400;
+            font-size: 14px;
+            margin-left: auto;
+        }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 120px 0;
+            color: var(--text-dim);
+        }
+
+        .empty-state i {
+            font-size: 50px;
+            margin-bottom: 24px;
+            display: block;
+            opacity: 0.5;
+        }
+
+        /* Status Indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
     </style>
 </head>
 
 <body>
 
-    <header>
-        <h1>物理模擬實驗室</h1>
-        <p>配合教科書的互動式物理實驗與視覺化演示</p>
-    </header>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="brand">
+                <h1>物理實驗室</h1>
+                <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">Physics Simulation Hub</div>
+            </div>
 
-    <div class="container" id="app-container">
-        <div class="expand-controls">
-            <button onclick="toggleAll(true)">展開全部</button>
-            <button onclick="toggleAll(false)">折疊全部</button>
+            <div id="sidebar-nav-container" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; padding-right:5px; flex: 1;">
+                <!-- Nav items will be injected by JS -->
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="footer-top">
+                    <span>&copy; 2026 物理模擬專案</span>
+                    <a href="https://github.com/LS404-123/Physics-simulation" target="_blank" class="github-link">Github</a>
+                </div>
+                <div style="opacity: 0.7; font-size: 10px; letter-spacing: 0.5px; margin-top: 4px;">
+                    BHNKC - LTSA 
+                </div>
+            </div>
         </div>
-        <div id="library-content">
-            <p style="text-align:center; color:#666;">載入中...</p>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="搜尋物理概念或實驗名稱...">
+                </div>
+                <div style="font-size: 14px; font-weight: 500;">
+                    <span class="status-dot"></span> 系統已就緒
+                </div>
+            </div>
+
+            <div class="bento-grid" id="sim-grid">
+                <!-- Cards will be injected by JS -->
+            </div>
         </div>
     </div>
 
-    <footer>
-        <p>&copy; 2026 物理模擬專案。</p>
-    </footer>
-
     <script>
-        const DEFAULT_IMAGE = "https://placehold.co/600x400/e0e6ed/2c3e50?text=Physics+Sim";
+        const DEFAULT_IMAGE = "https://placehold.co/600x400/f1f5f9/0ea5e9?text=Physics";
 
         const libraryData = [
             {
@@ -421,64 +584,159 @@
             }
         ];
 
-        function toggleAll(expand) {
-            document.querySelectorAll('details').forEach(details => {
-                if (expand) {
-                    details.setAttribute('open', '');
-                } else {
-                    details.removeAttribute('open');
-                }
+        let currentCategory = 'all';
+        let searchQuery = '';
+
+        const simGrid = document.getElementById('sim-grid');
+        const searchInput = document.getElementById('search-input');
+        const sidebarNav = document.getElementById('sidebar-nav-container');
+
+        function renderSidebar() {
+            let html = '';
+
+            // Section 1: Overview
+            html += `
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">概覽</div>
+                    <div class="nav-item ${currentCategory === 'all' ? 'active' : ''}" data-category="all">
+                        <span>🏠 全部模擬</span>
+                    </div>
+                </div>
+            `;
+
+            // Section 2: Textbook Books
+            const bookCats = libraryData.filter(cat => cat.category.includes('第'));
+            if (bookCats.length > 0) {
+                html += `<div class="sidebar-section"><div class="sidebar-section-title">課程教材</div>`;
+                bookCats.forEach(cat => html += generateNavItem(cat));
+                html += `</div>`;
+            }
+
+            // Section 3: Advanced
+            const advancedCats = libraryData.filter(cat => cat.category.includes('困難'));
+            if (advancedCats.length > 0) {
+                html += `<div class="sidebar-section"><div class="sidebar-section-title">進階挑戰</div>`;
+                advancedCats.forEach(cat => html += generateNavItem(cat));
+                html += `</div>`;
+            }
+
+            // Section 4: Game
+            const gameCats = libraryData.filter(cat => cat.category.includes('遊戲'));
+            if (gameCats.length > 0) {
+                html += `<div class="sidebar-section"><div class="sidebar-section-title">互動遊戲</div>`;
+                gameCats.forEach(cat => html += generateNavItem(cat));
+                html += `</div>`;
+            }
+
+            sidebarNav.innerHTML = html;
+
+            document.querySelectorAll('.sidebar .nav-item').forEach(nav => {
+                nav.onclick = () => {
+                    currentCategory = nav.getAttribute('data-category');
+                    renderSidebar();
+                    renderLibrary();
+                };
             });
         }
 
-        function renderLibrary() {
-            try {
-                const container = document.getElementById('library-content');
-                if (!container) return;
+        function generateNavItem(cat) {
+            const isActive = cat.category === currentCategory;
+            const icon = cat.category.includes('第') ? '📘' : (cat.category.includes('困難') ? '🏆' : '🎮');
+            return `
+                <div class="nav-item ${isActive ? 'active' : ''}" data-category="${cat.category}">
+                    <span>${icon} ${cat.category}</span>
+                </div>
+                <div class="sidebar-sub-list" style="max-height: ${isActive ? '500px' : '0'}">
+                    ${cat.subtopics.map(sub => `
+                        <div class="sub-nav-item" onclick="event.stopPropagation(); jumpToSubtopic('${cat.category}', '${sub.name}')">
+                            • ${sub.name}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
 
-                container.innerHTML = libraryData.map((section, bIndex) => `
-                    <details class="book-details" ${bIndex === 0 ? 'open' : ''}>
-                        <summary class="book-summary">${section.category}</summary>
-                        <div class="book-content">
-                            ${section.subtopics.map((sub, sIndex) => `
-                                <details class="subtopic-details" open>
-                                    <summary class="subtopic-summary">${sub.name}</summary>
-                                    <div class="subtopic-content">
-                                        <div class="simulation-grid">
-                                            ${sub.items.map(item => {
-                    const imageUrl = item.image ? item.image : DEFAULT_IMAGE;
-                    return `
-                                                    <div class="sim-card">
-                                                        <div class="card-image">
-                                                            <img src="${imageUrl}" 
-                                                                 alt="${item.title}" 
-                                                                 loading="lazy"
-                                                                 onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}'">
-                                                        </div>
-                                                        <div class="card-content">
-                                                            <h3>${item.title}</h3>
-                                                            <p>${item.desc}</p>
-                                                        </div>
-                                                        <div class="card-action">
-                                                            <a href="${item.link}" class="btn">進入模擬</a>
-                                                        </div>
-                                                    </div>
-                                                `;
-                }).join('')}
+        function jumpToSubtopic(cat, subName) {
+            currentCategory = cat;
+            renderSidebar();
+            renderLibrary();
+
+            setTimeout(() => {
+                const headers = document.querySelectorAll('.subtopic-header');
+                for (let header of headers) {
+                    if (header.textContent.includes(subName)) {
+                        header.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        header.style.color = 'var(--accent-tertiary)';
+                        setTimeout(() => header.style.color = '', 2000);
+                        break;
+                    }
+                }
+            }, 100);
+        }
+
+        function renderLibrary() {
+            simGrid.innerHTML = '';
+            let html = '';
+            let totalMatch = 0;
+
+            libraryData.forEach(cat => {
+                if (currentCategory === 'all' || cat.category === currentCategory) {
+                    cat.subtopics.forEach(sub => {
+                        const filteredItems = sub.items.filter(item => {
+                            if (!searchQuery) return true;
+                            return item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+                        });
+
+                        if (filteredItems.length > 0) {
+                            totalMatch += filteredItems.length;
+                            html += `<div class="subtopic-header">
+                                ${sub.name} <span>(${filteredItems.length})</span>
+                            </div>`;
+
+                            filteredItems.forEach((item, idx) => {
+                                const imgUrl = item.image || DEFAULT_IMAGE;
+                                html += `
+                                    <div class="sim-card" onclick="window.location.href='${item.link}'" style="animation-delay: ${idx * 30}ms">
+                                        <div class="sim-image">
+                                            <img src="${imgUrl}" alt="${item.title}" onerror="this.src='${DEFAULT_IMAGE}'">
+                                        </div>
+                                        <div class="sim-info">
+                                            <h3>${item.title}</h3>
+                                            <p>${item.desc || '配合教科書內容的互動式演示。'}</p>
+                                        </div>
+                                        <div class="card-footer">
+                                            <span class="enter-btn">選取實驗</span>
                                         </div>
                                     </div>
-                                </details>
-                            `).join('')}
-                        </div>
-                    </details>
-                `).join('');
-            } catch (err) {
-                console.error("Rendering Error:", err);
-                document.getElementById('library-content').innerHTML = "<p style='color:red; text-align:center;'>程式執行錯誤，請查看 Console。</p>";
+                                `;
+                            });
+                        }
+                    });
+                }
+            });
+
+            if (totalMatch === 0) {
+                simGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i>🔭</i>
+                        <p>找不到符合 "${searchQuery}" 的模擬實驗</p>
+                    </div>
+                `;
+            } else {
+                simGrid.innerHTML = html;
             }
         }
 
-        document.addEventListener('DOMContentLoaded', renderLibrary);
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderLibrary();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            renderLibrary();
+        });
     </script>
 </body>
 
