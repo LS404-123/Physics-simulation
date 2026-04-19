@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阿爾斯：向心之光 | Aris: Centripetal Light</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+TC:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Hades Underworld Palette */
+            --bg-color: #0d0115;
+            --box-bg: rgba(26, 11, 46, 0.7);
+            --glass-border: rgba(147, 51, 234, 0.3);
+            --accent-primary: #f97316;
+            --accent-cyan: #22d3ee;
+            --accent-blood: #f43f5e;
+            --accent-green: #4ade80;
+            --accent-gold: #fbbf24;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            --star-rail-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(88, 28, 135, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(30, 58, 138, 0.15) 0%, transparent 40%);
+            color: var(--text-main);
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 1100px;
+            height: 650px;
+            display: grid;
+            grid-template-columns: 800px 1fr;
+            grid-template-rows: 1fr;
+            gap: 12px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .bento-box {
+            background: var(--box-bg);
+            backdrop-filter: blur(16px);
+            border: var(--star-rail-border);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--panel-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .bento-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 10px;
+            height: 10px;
+            border-top: 2px solid var(--accent-cyan);
+            border-left: 2px solid var(--accent-cyan);
+            opacity: 0.5;
+        }
+
+        #canvas-box {
+            grid-column: 1;
+            grid-row: 1;
+            padding: 0;
+            background: radial-gradient(circle at 50% 80%, #1a0b2e 0%, #0d0115 100%);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #level-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            letter-spacing: 2px;
+            font-weight: 800;
+            z-index: 5;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+
+        .boundary-badge {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: rgba(13, 1, 21, 0.85);
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: #f43f5e;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+            z-index: 10;
+        }
+
+        .pulse-icon {
+            width: 8px;
+            height: 8px;
+            background: #f43f5e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #f43f5e;
+            animation: boundary-pulse 1.5s infinite;
+        }
+
+        @keyframes boundary-pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        #formula-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-gold);
+            z-index: 5;
+            font-size: 1.1rem;
+            color: #fff;
+            backdrop-filter: blur(4px);
+        }
+
+        .dialogue-text-layer {
+            position: absolute;
+            bottom: 11px;
+            /* 修正：匹配 Canvas 對話框的底部位置 (626 - 615) */
+            /* 根據畫布中心 480, 高 650 微調 */
+            left: 480px;
+            /* 畫布對話框中心 */
+            transform: translateX(-50%);
+            width: 550px;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            text-align: left;
+            color: #fff;
+            font-size: 1.05rem;
+            /* 稍微縮小以容納更多文本 */
+            line-height: 1.6;
+            padding: 20px 130px 20px 50px;
+            /* 左側 50px 避開阿爾斯，右側 130px 避開按鈕 */
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            font-weight: 400;
+            text-wrap: balance;
+            word-break: keep-all;
+        }
+
+
+
+
+        /* 針對 KaTeX 在覆蓋層內的微調 */
+        .dialogue-text-layer .katex {
+            font-size: 1.2em;
+            color: var(--accent-cyan);
+        }
+
+
+        #control-box {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 24px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            white-space: nowrap;
+        }
+
+        .instruction {
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mode-info {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+            border-left: 2px solid var(--accent-primary);
+            padding-left: 12px;
+            margin: 10px 0;
+            text-wrap: balance;
+            word-break: keep-all;
+        }
+
+        .mode-info strong {
+            color: var(--text-main);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+
+        .stat-value {
+            font-size: 1rem;
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+        /* Range Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-cyan);
+            border: 3px solid var(--bg-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        input[type="range"]:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            filter: saturate(0.2);
+        }
+
+        input[type="range"]:disabled::-webkit-slider-thumb {
+            cursor: not-allowed;
+            box-shadow: none;
+            background: var(--text-dim);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 14px 28px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .btn .corner-tl,
+        .btn .corner-br {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: rgba(34, 211, 238, 0.6);
+            border-style: solid;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            pointer-events: none;
+        }
+
+        .btn .corner-tl {
+            top: -2px;
+            left: -2px;
+            border-width: 2px 0 0 2px;
+        }
+
+        .btn .corner-br {
+            bottom: -2px;
+            right: -2px;
+            border-width: 0 2px 2px 0;
+        }
+
+        .btn:hover {
+            background: rgba(34, 211, 238, 0.1);
+            border-color: rgba(34, 211, 238, 0.3);
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+            color: var(--accent-cyan);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #7e22ce);
+            border: none;
+            margin-top: auto;
+        }
+
+        .btn-primary .corner-tl,
+        .btn-primary .corner-br {
+            border-color: var(--accent-gold);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            font-size: 0.8rem;
+        }
+
+        #story-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5000;
+        }
+
+        .story-content {
+            background: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.2);
+        }
+
+        .story-content h2 {
+            color: #22d3ee;
+            margin-top: 0;
+            font-weight: 800;
+        }
+
+        .story-content p {
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin: 20px 0;
+            text-wrap: balance;
+            word-break: keep-all;
+        }
+
+        .accept-btn {
+            background: linear-gradient(135deg, #a855f7, #22d3ee);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
+            transition: all 0.2s, box-shadow 0.2s;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .accept-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(34, 211, 238, 0.4);
+        }
+
+        /* Stage 3 雙滑桿佈局優化 */
+        .dual-control .control-group {
+            margin-bottom: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+
+        /* 大師成就彈窗樣式 */
+        #congrats-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .congrats-show {
+            display: flex !important;
+            opacity: 1 !important;
+        }
+
+        .congrats-content {
+            background: rgba(15, 15, 25, 0.8);
+            backdrop-filter: blur(25px);
+            border: 2px solid var(--accent-gold);
+            border-radius: 24px;
+            padding: 50px;
+            max-width: 650px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 100px rgba(251, 191, 36, 0.15);
+            animation: modalPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalPop {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .congrats-title {
+            font-size: 2.2rem;
+            background: linear-gradient(to right, var(--accent-gold), #fff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            font-weight: 900;
+        }
+
+        .congrats-body {
+            color: #cbd5e1;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 35px;
+            text-wrap: balance;
+            word-break: keep-all;
+        }
+
+        .master-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        .congrats-btn {
+            background: var(--accent-gold);
+            color: #000;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 900;
+            transition: all 0.3s;
+        }
+
+        .congrats-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <!-- KaTeX for ultra-fast physics formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false});"></script>
+
+</head>
+
+<body>
+    <div id="story-modal">
+        <div class="story-content bento-box">
+            <span class="physics-badge">冥界解謎</span>
+            <h2>阿爾斯：向心之光</h2>
+            <p>
+                靈魂的引力正在失衡。阿爾斯，你必須利用「打滑」的藝術，<br>
+                將迷失的靈魂引導回它們的淨化之穴。<br><br>
+                在<b>固態磨盤</b>中，越外面越難抓緊；<br>
+                在<b>幽冥激流</b>中，調整速度能尋找穩定的歸宿。
+            </p>
+            <button class="accept-btn" onclick="closeStory()">開始修復</button>
+        </div>
+    </div>
+
+    <div id="congrats-modal">
+        <div class="congrats-content">
+            <div class="master-badge">恭喜通關</div>
+            <div class="congrats-title">虛空導航宗師</div>
+            <div class="congrats-body">
+                「恭喜！你已經掌握了向心力方程式的精髓。從旋轉圓盤的線性成長 ($r\omega^2$) 到幽冥激流中的反比平衡 ($v^2/r$)，你展現了卓越的物理直覺。Aris
+                隊長正式授予你『虛空引導者』稱號，所有迷失靈魂都將因你的技術而找到回路。」
+            </div>
+            <button class="congrats-btn" onclick="location.reload()">重新開始使命</button>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div id="canvas-box" class="bento-box">
+            <div id="level-indicator">STAGE 1 / 3</div>
+            <div id="formula-display" class="formula-box">$$ F_c = m r \omega^2 $$</div>
+            <canvas id="gameCanvas"></canvas>
+            <div id="dialogue-overlay" class="dialogue-text-layer"></div>
+        </div>
+
+
+
+
+        <aside id="control-box" class="bento-box">
+            <h1>靈能座標儀</h1>
+            <p class="instruction">利用打滑引導靈魂</p>
+
+            <div id="stage-info" class="mode-info">
+                <strong>當前模式：旋轉圓盤</strong><br>
+                <span>找出最大安全半徑，讓靈魂滑入洞中。</span>
+            </div>
+
+            <div class="control-group">
+                <label class="stat-label">初始半徑 ($r$)</label>
+                <input type="range" id="radiusSlider" min="50" max="250" value="100">
+                <span id="radiusVal" class="stat-value">100m</span>
+            </div>
+
+            <div class="control-group" id="omega-group">
+                <label class="stat-label">角速度 ($\omega$)</label>
+                <input type="range" id="omegaSlider" min="0" max="10" step="0.1" value="1.5">
+                <span id="omegaVal" class="stat-value">1.5 rad/s</span>
+            </div>
+
+
+            <div class="control-group" id="v-group" style="display: none;">
+                <label class="stat-label">流速 ($v$)</label>
+                <input type="range" id="vSlider" min="50" max="500" step="10" value="200">
+                <span id="speedVal" class="stat-value">200 m/s</span>
+            </div>
+
+
+            <button id="actionBtn" class="btn btn-primary">
+                <span class="corner-tl"></span>
+                啟動儀式
+                <span class="corner-br"></span>
+            </button>
+
+            <button id="resetBtn" class="btn btn-secondary">
+                重置位置
+            </button>
+            <button id="restartAllBtn" class="btn btn-secondary"
+                style="margin-top: 10px; background: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.3); color: #f43f5e;">
+                回到第一關
+            </button>
+        </aside>
+
+    </div>
+
+    <script>
+        /**
+         * @file centrifugal_ghost.js
+         * @description 圓周運動解謎：向心之光 (Centripetal Light) 核心邏輯
+         */
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+
+        const CONFIG = {
+            centerX: 400,
+            centerY: 380, // 上移競技場中心
+            maxRadius: 280,
+            orbRadius: 10,
+            colors: {
+                arena: 'rgba(34, 211, 238, 0.2)',
+                arenaGrid: 'rgba(34, 211, 238, 0.25)',
+                orb: '#fbbf24',
+                target: '#22d3ee',
+                obstacle: '#f43f5e',
+                river: 'rgba(34, 211, 238, 0.15)',
+                obsidian: '#110c1f'
+            }
+        };
+
+        const START_THETA = (180 + 35) * Math.PI / 180; // 從負 X 軸順時針 35 度 (215 度)
+        const R_BOUND = { min: 40, max: 180 }; // 放寬起始半徑範圍
+        const TIME_SCALE = 0.5; // 模擬速度縮放 (慢動作)
+
+        let state = {
+            level: 1,
+            time: 0,
+            lastTimestamp: 0,
+            simulationRunning: false,
+            isDragging: false,
+            omega: 1.5,
+            v: 250,
+            orb: { r: 80, theta: START_THETA, vr: 0, slipping: false, active: true },
+            target: { r: 240, theta: 5.2, size: 35 },
+            obstacles: [],
+            mode: 'omega',
+            sprite: new Image(),
+            dialogue: "觀察圓盤旋轉，利用慣性讓法球『甩』入目標吧。",
+            trajectory: [], // 紀錄法球路徑
+            ritualArcs: [], // 儀式動態弧線系統
+            launchR: 0      // 紀錄發射瞬間的佈署半徑
+        };
+
+        state.sprite.src = 'aris_cartoon_v7.png';
+
+        // ==========================================
+        // 4. 教學與敘事文本字典 (Narrative & Tutorial Dictionaries)
+        // ==========================================
+
+        const STORY_RECORDS = {
+            INTRO: "各位隊員，我是 Aris 隊長。我們已進入固態運轉區。角速度 $\\omega$ 已被鎖定，現在只能透過調整起始半徑 $r$ 來改變慣性趨勢。準備出發！",
+            S1_WIN: "導航成功！圓盤航段已完成。前方進入『幽冥激流』，那裡的流速 $v$ 已固定，穩定半徑 $r$ 的分布將與圓盤完全不同。",
+            S2_WIN: "完美的軌道切換。我們已進入虛空邊境，這裡的所有參數都將由你親自掌控。避開礁石，保持航線穩定。",
+            GAME_COMPLETE: "任務圓滿達成！所有靈魂信號已成功導回現實維度。操作員，這是一次精彩的協作。",
+            FAIL_RETRY: "警告：法球失去能量。Aris 隊長建議調校起始半徑 $r$ 的部署位置。"
+        };
+
+        const DYNAMIC_MESSAGES = {
+            LAUNCH: "能量球已釋放，觀測導航路徑中...",
+            SLIP_START: "警告：法球突破靜摩擦極限！向心力不足，開始向外滑行！",
+            DISK_OUT: "半徑 $r$ 的增加正導致所需的向心拉力劇烈上升，法球正在加速偏離！",
+            STABLE_REACH: "偵測到平衡信號。在此半徑 $r$ 下，法球與激流達成了穩定的引力共振。",
+            SPEED_OUT: "當前半徑 $r$ 太過內圈，導致轉向所需的向心力超標！法球正在滑向邊緣。",
+            IN_HOLE: "目標鎖定！能量已精準匯入虛空閘口。",
+            DIAGNOSIS_STUCK: "「目前的半徑 $r$ 產生的慣性不足以突破摩擦力。試著把球放遠一點一點，利用槓桿效應增強甩出力！」",
+            DIAGNOSIS_OVERSHOOT: "「起始半徑 $r$ 太外面了！剛起發就產生了過強的慣性。建議往內圈撤一點，從更穩定的位置出發。」",
+            DIAGNOSIS_TIMING: "「物理規律正確，但角度 $r$ 的時機偏了。雖然成功產生了位移，但方位沒對準。請微調出發位置。」",
+            DIAGNOSIS_RIVER_V: "「激流中的邏輯不同：想讓球停在遠處需要更大的半徑來降低負擔，想停在近處則須挑戰更急的內圈轉彎。」",
+            DIAGNOSIS_REEF: "「哎呀，撞到了！雖然半徑策略大致正確，但路徑重疊了。請微調 $r$ 的數值來改變軌道偏轉率。」",
+            DIAGNOSIS_OOB: "「半徑過小導致轉向所需力道失控，法球已被甩飛。請往外圍移動以獲取更平緩的轉向空間。」",
+            // Stage 2 專用精準診斷
+            S2_OBSTACLE: "「哎呀！雖然軌道正確，但路徑重合了。請微調 $r$ 來錯開障礙物。」",
+            S2_OVERSHOOT_INNER: "「法球最終停在了外圈。可能是因為起始半徑選得太靠內，產生的向外速度過大，缺乏向內拉扯的空間。」",
+            S2_OVERSHOOT_OUTER: "「法球最終超出了目標位置。雖然起始點偏外，但環境流速仍將你推得太遠，建議精確微調起始半徑。」",
+            S2_UNDERSHOOT_OUTER: "「法球太早回到了平衡軌道，導致未能觸及目標。你的穩定性很高，但需要往內圈靠一點來獲取推力。」",
+            S2_UNDERSHOOT_INNER: "「法球太早失去了向外的速度。雖然在內圈啟動，但可能尚未達到足以跨越距離的偏移率。請再嘗試調校起始點。」"
+        };
+
+
+        function getSuccessSummary(level, state) {
+            if (level === 1) {
+                return "操作精確。你證明了在固定角速度下，越大的半徑 $r$ 會產生越大的慣性。藉由這個原理，我們成功將法球引導至外圈信號塔。";
+            } else if (level === 2) {
+                return "令人印象深刻。你理解了激流的特性：在固定速度 $v$ 下，外圈的高半徑才是獲取穩定的關鍵。這與圓盤模式完全相反。";
+            } else if (level === 3) {
+                return "極致導航。在複雜的礁石區中，你成功利用 $v, \\omega$ 與 $r$ 的協作繞過了所有障礙。虛空航行已無人能及。";
+            }
+            return "精確的引導！靈魂回到了它該去的地方。";
+        }
+
+        function updateDialogueUI() {
+            const diaOverlay = document.getElementById('dialogue-overlay');
+            if (!diaOverlay) return;
+
+            // 將標題也整合進 HTML 層以避免 Canvas 重疊
+            let htmlContent = "";
+            if (state.resultStatus) {
+                const titleColor = state.resultStatus === 'success' ? '#22d3ee' : '#f43f5e';
+                htmlContent += `<div style="color: ${titleColor}; font-weight: bold; font-size: 1.2rem; margin-bottom: 4px;">${state.resultTitle}</div>`;
+            }
+            htmlContent += `<div>${state.dialogue}</div>`;
+
+            diaOverlay.innerHTML = htmlContent;
+
+            if (window.renderMathInElement) {
+                renderMathInElement(diaOverlay, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+
+
+
+
+        // 擴充 state 以追蹤教學狀態
+        state.failCount = 0;
+        state.lastSlippingState = false;
+        state.resultStatus = null; // null, 'success', 'fail'
+        state.resultTitle = "";
+
+
+        // Preload other critical images if any
+        const assetsToPreload = [
+            'assets/aris_ghost_sprite_v3.png',
+            'assets/aris_icon_v6.png'
+        ];
+        assetsToPreload.forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
+
+        function initLevel(num) {
+            state.level = num;
+            state.simulationRunning = false;
+            state.resultStatus = null; // 重置結算狀態
+            state.trajectory = [];    // 清除舊軌跡
+            const rSlider = document.getElementById('radiusSlider');
+            rSlider.min = R_BOUND.min;
+            rSlider.max = R_BOUND.max;
+            // 重置法球位置至起始角度，半徑讀取滑桿或預設
+            const rStart = parseFloat(rSlider.value) || 80;
+            state.orb = { r: rStart, theta: START_THETA, vr: 0, slipping: false, active: true };
+
+            const levelInd = document.getElementById('level-indicator');
+            const stageInfo = document.getElementById('stage-info');
+            const omegaGroup = document.getElementById('omega-group');
+            const vGroup = document.getElementById('v-group');
+            const oSlider = document.getElementById('omegaSlider');
+            const vSlider = document.getElementById('vSlider');
+            const formula = document.getElementById('formula-display');
+            const actionBtn = document.getElementById('actionBtn');
+
+            actionBtn.innerText = "啟動任務";
+            actionBtn.disabled = false;
+
+            // 預設重置所有控制項為可用，各關卡再行鎖定
+            oSlider.disabled = false;
+            vSlider.disabled = false;
+
+            const cBox = document.getElementById('control-box');
+            if (num === 3) cBox.classList.add('dual-control');
+            else cBox.classList.remove('dual-control');
+
+            if (num === 1) {
+                state.mode = 'omega';
+                state.dialogue = STORY_RECORDS.INTRO;
+                levelInd.innerText = "STAGE 1 / 3";
+                stageInfo.innerHTML = "<strong>當前模式：固態磨盤 </strong><br><span>[環境監測：$\\omega$ 已鎖定] 半徑 $r$ 越大，慣性甩動力越強。調整 $r$ 找出打滑的臨界點。</span>";
+                omegaGroup.style.display = "flex";
+                vGroup.style.display = "none";
+
+                // 鎖定變數：Stage 1 固定角速度 1.8
+                state.omega = 1.8;
+                oSlider.value = 1.8;
+                oSlider.disabled = true;
+                document.getElementById('omegaVal').innerText = "1.8 rad/s (環境鎖定)";
+
+                katex.render("F_c = m r \\omega^2", formula, { displayMode: true, throwOnError: false });
+                state.target = { r: 246, theta: 5.4, size: 35 };
+                state.obstacles = [];
+            } else if (num === 2) {
+                state.mode = 'speed';
+                state.dialogue = STORY_RECORDS.S1_WIN;
+                levelInd.innerText = "STAGE 2 / 3";
+                stageInfo.innerHTML = "<strong>當前模式：幽冥激流 </strong><br><span>[環境監測：$v$ 已鎖定] 激流特性：半徑 $r$ 越大反而越穩定。調整起始半徑來控制偏移率。</span>";
+                omegaGroup.style.display = "none";
+                vGroup.style.display = "flex";
+
+                // 鎖定變數：Stage 2 固定流速 250
+                state.v = 250;
+                vSlider.value = 250;
+                vSlider.disabled = true;
+                document.getElementById('speedVal').innerText = "250 m/s (環境鎖定)";
+
+                katex.render("F_c = \\frac{mv^2}{r}", formula, { displayMode: true, throwOnError: false });
+                state.target = { r: 206, theta: 5.8, size: 35 };
+                state.obstacles = [
+                    { r: 140, theta: 4.8, size: 25 }
+                ];
+            } else if (num === 3) {
+                state.mode = 'composite';
+                state.dialogue = STORY_RECORDS.S2_WIN;
+                levelInd.innerText = "STAGE 3 / 3";
+                stageInfo.innerHTML = "<strong>當前模式：虛空邊境 (Hybrid)</strong><br><span>警告：變數解鎖。請自行平衡軌道速度與半徑，繞過複雜礁石。</span>";
+                omegaGroup.style.display = "flex";
+                vGroup.style.display = "flex";
+
+                // 解鎖變數：Stage 3 自由調整
+                oSlider.disabled = false;
+                vSlider.disabled = false;
+                // 恢復顯示
+                document.getElementById('omegaVal').innerText = state.omega.toFixed(1) + " rad/s";
+                document.getElementById('speedVal').innerText = state.v + " m/s";
+
+                katex.render("F_c = ?", formula, { displayMode: true, throwOnError: false });
+                state.target = { r: 263, theta: 5.5, size: 40 };
+                state.obstacles = [
+                    { r: 180, theta: 4.2, size: 20 },
+                    { r: 220, theta: 5.0, size: 20 }
+                ];
+            }
+
+            // 渲染側邊欄中的 LaTeX (明確指定 delimiters)
+            if (stageInfo && window.renderMathInElement) {
+                renderMathInElement(stageInfo, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+
+            updateDialogueUI();
+        }
+
+
+
+        function drawGrid(ctx) {
+            // 繪製多層次動態弧線系統 (Ritual Shards)
+            ctx.lineWidth = 1.2;
+            state.ritualArcs.forEach(arc => {
+                ctx.strokeStyle = `rgba(168, 85, 247, ${arc.opacity})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, arc.r, arc.theta, arc.theta + arc.length, false);
+                ctx.stroke();
+            });
+        }
+
+        function drawArena(ctx) {
+            // 0. 全域背景環境 (Hades Atmosphere)
+            const globalGrad = ctx.createRadialGradient(
+                CONFIG.centerX, CONFIG.centerY, 0,
+                CONFIG.centerX, CONFIG.centerY, CONFIG.maxRadius * 1.5
+            );
+            globalGrad.addColorStop(0, '#1a1133');
+            globalGrad.addColorStop(1, '#0d0115');
+            ctx.fillStyle = globalGrad;
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+            // 0.1 冥界菱形地磚 (Diamond Grid)
+            ctx.save();
+            ctx.strokeStyle = 'rgba(244, 63, 94, 0.08)'; // 極淡的血紅色格線
+            ctx.lineWidth = 1;
+            const gridSize = 45;
+            const canvasW = canvas.width / dpr;
+            const canvasH = canvas.height / dpr;
+
+            // 繪製順時針 45 度線
+            for (let x = -canvasH; x < canvasW; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x + canvasH, canvasH);
+                ctx.stroke();
+            }
+            // 繪製逆時針 45 度線
+            for (let x = 0; x < canvasW + canvasH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x - canvasH, canvasH);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(CONFIG.centerX, CONFIG.centerY);
+
+            // 1. 背景質感與邊框 (不再全體旋轉，保持祭壇穩定)
+            if (state.level === 1 || (state.level === 3 && state.mode === 'omega')) {
+                // 半圓黑曜石磨盤
+                const obsidianGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, CONFIG.maxRadius);
+                obsidianGrad.addColorStop(0, '#1a1b26');
+                obsidianGrad.addColorStop(0.8, '#0d0115');
+                obsidianGrad.addColorStop(1, '#000000');
+
+                ctx.beginPath();
+                ctx.arc(0, 0, CONFIG.maxRadius, Math.PI, 0, false);
+                ctx.lineTo(0, 0);
+                ctx.fillStyle = obsidianGrad;
+                ctx.fill();
+
+                // 強化的發光鑲邊
+                ctx.strokeStyle = 'rgba(147, 51, 234, 0.4)';
+                ctx.lineWidth = 6;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = 'rgba(168, 85, 247, 1)';
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            } else {
+                // 半圓幽冥激流
+                ctx.beginPath();
+                ctx.arc(0, 0, CONFIG.maxRadius, Math.PI, 0, false);
+                ctx.lineTo(0, 0);
+                ctx.fillStyle = CONFIG.colors.river;
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(34, 211, 238, 0.8)';
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // 1.1 設定半圓裁剪遮罩 - 確保所有儀式元素 (如弧線) 不會溢出到下方 UI 區
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(0, 0, CONFIG.maxRadius, Math.PI, 0, false);
+            ctx.lineTo(0, 0);
+            ctx.clip();
+
+            // 2. 繪製格線 (內部已被裁剪)
+            drawGrid(ctx);
+
+            // 3. 繪製目標 (Soul Vortex)
+            const tx = Math.cos(state.target.theta) * state.target.r;
+            const ty = Math.sin(state.target.theta) * state.target.r;
+
+            ctx.save();
+            ctx.translate(tx, ty);
+
+            // 漩渦核心發光
+            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, state.target.size);
+            grad.addColorStop(0, 'rgba(34, 211, 238, 0.4)');
+            grad.addColorStop(0.7, 'rgba(34, 211, 238, 0.1)');
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, state.target.size, 0, Math.PI * 2); ctx.fill();
+
+            // 旋轉粒子感 (Soul Trails)
+            ctx.strokeStyle = CONFIG.colors.target;
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 3; i++) {
+                ctx.save();
+                ctx.rotate((Date.now() / 1000 + i * 2) % (Math.PI * 2));
+                ctx.beginPath();
+                ctx.arc(0, 0, (state.target.size / 2) * (1 - i * 0.2), 0, Math.PI * 0.8);
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.restore();
+
+            // 4. 繪製障礙物 (Void Obsidian Shards)
+            state.obstacles.forEach(obs => {
+                const ox = Math.cos(obs.theta) * obs.r;
+                const oy = Math.sin(obs.theta) * obs.r;
+                ctx.save();
+                ctx.translate(ox, oy);
+
+                ctx.fillStyle = CONFIG.colors.obstacle;
+                ctx.shadowBlur = 12; ctx.shadowColor = CONFIG.colors.obstacle;
+
+                // 繪製多邊形碎石感
+                ctx.beginPath();
+                const pts = 6;
+                for (let i = 0; i < pts; i++) {
+                    const angle = (i / pts) * Math.PI * 2;
+                    const r = obs.size * (0.8 + Math.random() * 0.4); // 這裡在 loop 中重繪會閃爍，稍後改為固定隨機
+                    // 為了避免閃爍，使用 obs.r 作為種子
+                    const rStable = obs.size * (0.8 + ((Math.sin(obs.r * 10 + i) + 1) / 2) * 0.4);
+                    const px = Math.cos(angle) * rStable;
+                    const py = Math.sin(angle) * rStable;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 5. 繪製起始封印柱 (Start Seal Gate)
+            // 繪製不可放置區 (0 到 min) 與 (max 到 maxRadius)
+            ctx.save();
+            ctx.rotate(START_THETA);
+
+            // 背景封印線 (淡色)
+            ctx.strokeStyle = 'rgba(244, 63, 94, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(CONFIG.maxRadius, 0); ctx.stroke();
+
+            // 實體封印柱 (主要入口段)
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 8; // 加粗
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#f43f5e';
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(R_BOUND.min, 0);
+            ctx.moveTo(R_BOUND.max, 0); ctx.lineTo(CONFIG.maxRadius, 0);
+            ctx.stroke();
+
+            // 加一層內發光線條
+            ctx.strokeStyle = '#fca5a5';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(R_BOUND.min, 0);
+            ctx.moveTo(R_BOUND.max, 0); ctx.lineTo(CONFIG.maxRadius, 0);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 在開放區段畫一個淡淡的引導線
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(R_BOUND.min, 0); ctx.lineTo(R_BOUND.max, 0); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.setLineDash([]);
+
+            // 標註
+            ctx.fillStyle = '#ff0000';
+            ctx.font = 'bold 12px serif';
+
+            // 繪製第一段文字 (0-min 段)
+            ctx.save();
+            ctx.translate(R_BOUND.min / 2, 12);
+            ctx.rotate(Math.PI);
+            ctx.textAlign = 'center';
+            ctx.fillText("SEALED", 0, 0);
+            ctx.restore();
+
+            // 繪製第二段文字 (max-outer 段)
+            ctx.save();
+            ctx.translate(R_BOUND.max + (CONFIG.maxRadius - R_BOUND.max) / 2, 12);
+            ctx.rotate(Math.PI);
+            ctx.textAlign = 'center';
+            ctx.fillText("SEALED", 0, 0);
+            ctx.restore();
+
+            ctx.restore(); // 結束 Seal Gate 的旋轉座標系
+            ctx.restore(); // 結束 1.1 的裁剪遮罩 (Clip Mask)
+            ctx.restore(); // 結束整體的 translate 座標系
+        }
+
+        /**
+         * 通用 Canvas 文本排版與自動縮放字體函數
+         */
+        function fillWrappedTextWithAutoFit(ctx, text, x, y, maxWidth, maxHeight, baseSize = 18) {
+            let fontSize = baseSize;
+            const minSize = 12;
+            const lineHeightRatio = 1.45;
+
+            while (fontSize >= minSize) {
+                ctx.font = `700 ${fontSize}px "Noto Sans TC", sans-serif`;
+                const words = text.split(''); // 支援中文字元分割
+                let lines = [];
+                let currentLine = '';
+
+                for (let char of words) {
+                    let testLine = currentLine + char;
+                    let metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && currentLine.length > 0) {
+                        lines.push(currentLine);
+                        currentLine = char;
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine);
+
+                const totalHeight = lines.length * (fontSize * lineHeightRatio);
+
+                if (totalHeight <= maxHeight || fontSize === minSize) {
+                    // 開始繪製
+                    lines.forEach((line, index) => {
+                        ctx.fillText(line, x, y + index * (fontSize * lineHeightRatio));
+                    });
+                    return { fontSize, linesCount: lines.length };
+                }
+                fontSize--;
+            }
+        }
+
+        function drawUISection(ctx) {
+            ctx.save();
+            const uiY = 410; // 配合競技場上移
+
+            // 繪製背景遮罩
+            const bgGrad = ctx.createLinearGradient(0, uiY, 0, 650);
+            bgGrad.addColorStop(0, 'transparent');
+            bgGrad.addColorStop(0.3, 'rgba(13, 1, 21, 0.6)');
+            bgGrad.addColorStop(1, 'rgba(13, 1, 21, 0.98)');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, uiY, 800, 240);
+
+            // 分隔線
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(30, uiY + 5); ctx.lineTo(770, uiY + 5); ctx.stroke();
+
+            // 1. 繪製 Aris 角色 (巨大化並移至左側)
+            if (state.sprite.complete && state.sprite.naturalWidth > 0) {
+                ctx.save();
+                const scale = 0.45; // 大幅放大
+                const imgW = state.sprite.width * scale;
+                const imgH = state.sprite.height * scale;
+                // 定位在左側，底部稍微切出邊界以增加存在感
+                ctx.translate(140, 670);
+                ctx.drawImage(state.sprite, -imgW / 2, -imgH, imgW, imgH);
+                ctx.restore();
+            }
+
+            // 2. 繪製對話框 (拓寬並增高)
+            ctx.save();
+            ctx.translate(480, 545);
+
+            const bw = 550; // 拓寬
+            const bh = 140; // 增高
+            const x = -bw / 2;
+            const y = -bh / 2;
+            const r = 16;
+
+            // 手動圓角矩形
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + bw - r, y);
+            ctx.quadraticCurveTo(x + bw, y, x + bw, y + r);
+            ctx.lineTo(x + bw, y + bh - r);
+            ctx.quadraticCurveTo(x + bw, y + bh, x + bw - r, y + bh);
+            ctx.lineTo(x + r, y + bh);
+            ctx.quadraticCurveTo(x, y + bh, x, y + bh - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+
+            ctx.fillStyle = 'rgba(26, 11, 46, 0.95)';
+            ctx.fill();
+
+            // 根據結果調整邊框顏色
+            if (state.resultStatus === 'success') {
+                ctx.strokeStyle = 'rgba(34, 211, 238, 1)';
+                ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(34, 211, 238, 0.5)';
+            } else if (state.resultStatus === 'fail') {
+                ctx.strokeStyle = 'rgba(244, 63, 94, 1)';
+                ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(244, 63, 94, 0.5)';
+            } else {
+                ctx.strokeStyle = 'rgba(147, 51, 234, 0.8)';
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 3. 繪製虛擬交互按鈕 (僅在結算時)
+            if (state.resultStatus) {
+                const btnW = 100; // 縮小寬度
+                const btnH = 34;  // 縮小高度
+                const btnX = bw / 2 - btnW - 30;
+                const btnY = bh / 2 - btnH - 20;
+
+                const isHover = state.btnHover;
+                const btnBaseColor = state.resultStatus === 'success' ? '#22d3ee' : '#f43f5e';
+
+                ctx.save();
+                ctx.translate(btnX, btnY);
+
+                // 繪製按鈕背景 (根據懸停狀態調整透明度)
+                ctx.beginPath();
+                ctx.roundRect(0, 0, btnW, btnH, 8);
+                ctx.stroke();
+
+                // 按鈕文字
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(state.resultStatus === 'success' ? "下場試煉" : "重新開始", btnW / 2, btnH / 2);
+
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        function drawOrb(ctx) {
+            if (!state.orb.active) return;
+            ctx.save();
+
+            // 1. 同樣設定結界遮罩，確保法球與軌跡不溢出
+            ctx.translate(CONFIG.centerX, CONFIG.centerY);
+            ctx.beginPath();
+            ctx.arc(0, 0, CONFIG.maxRadius + 5, Math.PI, 0, false);
+            ctx.lineTo(0, 0);
+            ctx.clip();
+
+            // 2. 繪製軌跡 (Trajectory)
+            if (state.trajectory.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([2, 5]);
+
+                const startX = state.trajectory[0].r * Math.cos(state.trajectory[0].theta);
+                const startY = state.trajectory[0].r * Math.sin(state.trajectory[0].theta);
+                ctx.moveTo(startX, startY);
+                for (let i = 1; i < state.trajectory.length; i++) {
+                    const px = state.trajectory[i].r * Math.cos(state.trajectory[i].theta);
+                    const py = state.trajectory[i].r * Math.sin(state.trajectory[i].theta);
+                    ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 3. 繪製法球
+            const ox = Math.cos(state.orb.theta) * state.orb.r;
+            const oy = Math.sin(state.orb.theta) * state.orb.r;
+            ctx.fillStyle = CONFIG.colors.orb;
+            ctx.shadowBlur = 15; ctx.shadowColor = state.orb.slipping ? '#f97316' : '#fbbf24';
+            ctx.beginPath(); ctx.arc(ox, oy, CONFIG.orbRadius, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+        }
+
+        function update(dt) {
+            if (!state.simulationRunning || !state.orb.active) return;
+            const m = 1.0; const mu_s = 0.35; const mu_k = 0.15; const g = 1000;
+            const F_max = m * g * mu_s;
+
+            // 圓盤旋轉增量
+            let deltaTheta = 0;
+
+            if (state.mode === 'omega') {
+                deltaTheta = state.omega * dt;
+                state.orb.theta += deltaTheta;
+                const Fc_req = m * state.orb.r * Math.pow(state.omega, 2);
+                if (Fc_req > F_max) {
+                    state.orb.slipping = true;
+                    state.orb.vr += ((Fc_req - (m * g * mu_k)) / m) * dt;
+                } else {
+                    state.orb.slipping = false;
+                    // 用動摩擦力平滑減速，而非瞬間歸零
+                    if (state.orb.vr > 0) {
+                        state.orb.vr -= mu_k * g * dt;
+                        if (state.orb.vr < 0) state.orb.vr = 0;
+                    }
+                }
+                state.orb.r += state.orb.vr * dt;
+            } else {
+                const curOmega = state.v / state.orb.r;
+                deltaTheta = curOmega * dt;
+                state.orb.theta += deltaTheta;
+                const Fc_req = (m * Math.pow(state.v, 2)) / state.orb.r;
+                if (Fc_req > F_max) {
+                    state.orb.slipping = true;
+                    state.orb.vr += ((Fc_req - (m * g * mu_k)) / m) * dt;
+                } else {
+                    state.orb.slipping = false;
+                    // 同樣用動摩擦力平滑減速
+                    if (state.orb.vr > 0) {
+                        state.orb.vr -= mu_k * g * dt;
+                        if (state.orb.vr < 0) state.orb.vr = 0;
+                    }
+                }
+                state.orb.r += state.orb.vr * dt;
+            }
+
+            state.arenaTheta += deltaTheta;
+
+            // 更新各別儀式弧線的差速運動
+            state.ritualArcs.forEach(arc => {
+                arc.theta += arc.speed * dt;
+            });
+
+            // 邊界判定：如果超出右側邊界 (2π)
+            if (state.orb.theta >= Math.PI * 2) {
+                state.orb.theta = Math.PI * 2;
+                endSim("法球飛出了半圓範圍。嘗試更精確的時機吧。", false);
+            }
+
+            checkCollisions();
+
+            // --- 動態對話監聽邏輯 ---
+            // 偵測打滑瞬間
+            if (state.orb.slipping && !state.lastSlippingState) {
+                state.dialogue = DYNAMIC_MESSAGES.SLIP_START;
+                updateDialogueUI();
+            }
+            state.lastSlippingState = state.orb.slipping;
+
+            // 關卡特有的動態解釋
+            if (state.simulationRunning && state.orb.active) {
+                if (state.level === 1 && state.orb.slipping && state.orb.vr > 50) {
+                    state.dialogue = DYNAMIC_MESSAGES.DISK_OUT;
+                    updateDialogueUI();
+                } else if (state.level === 2) {
+                    if (state.orb.slipping) {
+                        state.dialogue = DYNAMIC_MESSAGES.SPEED_OUT;
+                        updateDialogueUI();
+                    } else if (Math.abs(state.orb.vr) < 5 && state.orb.r > 50) {
+                        state.dialogue = DYNAMIC_MESSAGES.STABLE_REACH;
+                        updateDialogueUI();
+                    }
+                }
+            }
+
+            // 紀錄軌跡 (紀錄帶有圓盤角度的座標快照)
+            state.trajectory.push({ r: state.orb.r, theta: state.orb.theta, arenaTheta: state.arenaTheta });
+        }
+
+
+        function checkCollisions() {
+            if (state.orb.r > CONFIG.maxRadius + 20) endSim("信號丟失！能量球脫離導航範圍。", false);
+            const ox = state.orb.r * Math.cos(state.orb.theta);
+            const oy = state.orb.r * Math.sin(state.orb.theta);
+            const tx = state.target.r * Math.cos(state.target.theta);
+            const ty = state.target.r * Math.sin(state.target.theta);
+            const distTarget = Math.sqrt(Math.pow(ox - tx, 2) + Math.pow(oy - ty, 2));
+
+            if (distTarget < state.target.size / 2) endSim("匹配成功。目標信號已併入路徑節點。", true);
+
+            state.obstacles.forEach(obs => {
+                const obsX = obs.r * Math.cos(obs.theta);
+                const obsY = obs.r * Math.sin(obs.theta);
+                const d = Math.sqrt(Math.pow(ox - obsX, 2) + Math.pow(oy - obsY, 2));
+                if (d < obs.size + CONFIG.orbRadius) endSim("警告！能量球與礁石發生硬性碰撞。航行終止。", false);
+            });
+        }
+
+        function endSim(msg, success) {
+            state.simulationRunning = false;
+            state.orb.active = false;
+
+            // 取得基於物理表現的診斷反饋
+            const feedback = getDetailedFeedback(success, msg);
+
+            if (!success) {
+                state.failCount++;
+                state.dialogue = feedback;
+            } else {
+                state.failCount = 0;
+                state.dialogue = getSuccessSummary(state.level, state);
+            }
+
+            updateDialogueUI();
+
+            state.resultStatus = success ? 'success' : 'fail';
+            state.resultTitle = success ? "🎯 信號匹配成功" : "❌ 航行任務失敗";
+
+            // Stage 3 通關慶祝
+            if (success && state.level === 3) {
+                setTimeout(() => {
+                    document.getElementById('congrats-modal').classList.add('congrats-show');
+                }, 1500);
+            }
+        }
+
+        function getDetailedFeedback(success, originalMsg) {
+            if (success) return "精確的引導！靈魂回到了它該去的地方。";
+
+            // 判斷失敗原因的物理邏輯
+            if (state.level === 1) {
+                if (!state.orb.slipping) return DYNAMIC_MESSAGES.DIAGNOSIS_STUCK;
+                if (state.orb.r > CONFIG.maxRadius) return DYNAMIC_MESSAGES.DIAGNOSIS_OVERSHOOT;
+                // 判斷是否是因為 theta 不對 (假設半徑已經接近 target.r)
+                if (Math.abs(state.orb.r - state.target.r) < 40) return DYNAMIC_MESSAGES.DIAGNOSIS_TIMING;
+            } else if (state.level === 2) {
+                if (originalMsg.includes("礁石")) return DYNAMIC_MESSAGES.S2_OBSTACLE;
+
+                const threshold = state.target.r * 0.75; // 設定判斷內外圈的門檻值
+                const isInnerStart = state.launchR < threshold;
+                const isOvershoot = state.orb.r > state.target.r + 15;
+                const isUndershoot = state.orb.r < state.target.r - 15;
+
+                if (isOvershoot) {
+                    return isInnerStart ? DYNAMIC_MESSAGES.S2_OVERSHOOT_INNER : DYNAMIC_MESSAGES.S2_OVERSHOOT_OUTER;
+                } else if (isUndershoot) {
+                    return isInnerStart ? DYNAMIC_MESSAGES.S2_UNDERSHOOT_INNER : DYNAMIC_MESSAGES.S2_UNDERSHOOT_OUTER;
+                }
+                return DYNAMIC_MESSAGES.DIAGNOSIS_RIVER_V;
+            } else if (state.level === 3) {
+                if (originalMsg.includes("礁石")) return DYNAMIC_MESSAGES.DIAGNOSIS_REEF;
+                if (Math.abs(state.orb.vr) < 5) return DYNAMIC_MESSAGES.DIAGNOSIS_RIVER_V;
+            }
+
+            return originalMsg; // 預設回傳原本的物理原因 (如撞擊或出界)
+        }
+
+
+
+
+
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function loop(timestamp) {
+            const dt = Math.min((timestamp - state.lastTimestamp) / 1000, 0.1) * TIME_SCALE;
+            state.lastTimestamp = timestamp;
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            update(dt);
+            drawArena(ctx);
+            drawOrb(ctx);
+            drawUISection(ctx);
+            requestAnimationFrame(loop);
+        }
+
+        function bindUI() {
+            const rSlider = document.getElementById('radiusSlider');
+            const oSlider = document.getElementById('omegaSlider');
+            const vSlider = document.getElementById('vSlider');
+            const actionBtn = document.getElementById('actionBtn');
+            const resetBtn = document.getElementById('resetBtn');
+
+            rSlider.oninput = () => {
+                if (!state.simulationRunning) {
+                    state.orb.r = parseFloat(rSlider.value);
+                    state.trajectory = []; // 調整半徑時清除舊軌跡
+                    document.getElementById('radiusVal').innerText = rSlider.value + "m";
+                }
+            };
+            oSlider.oninput = () => { state.omega = parseFloat(oSlider.value); document.getElementById('omegaVal').innerText = state.omega.toFixed(1) + " rad/s"; state.mode = 'omega'; };
+            vSlider.oninput = () => { state.v = parseFloat(vSlider.value); document.getElementById('speedVal').innerText = state.v + " m/s"; state.mode = 'speed'; };
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (state.simulationRunning) return;
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX - rect.left) * (canvas.width / dpr / rect.width);
+                const my = (e.clientY - rect.top) * (canvas.height / dpr / rect.height);
+
+                // 檢查是否點擊在法球附近
+                const ox = CONFIG.centerX + Math.cos(state.orb.theta) * state.orb.r;
+                const oy = CONFIG.centerY + Math.sin(state.orb.theta) * state.orb.r;
+                const d = Math.sqrt(Math.pow(mx - ox, 2) + Math.pow(my - oy, 2));
+
+                if (d < 30) {
+                    state.isDragging = true;
+                    canvas.style.cursor = 'grabbing';
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX - rect.left) * (canvas.width / dpr / rect.width);
+                const my = (e.clientY - rect.top) * (canvas.height / dpr / rect.height);
+
+                // 1. 處理法球拖拽
+                if (state.isDragging && !state.simulationRunning) {
+                    const rawR = Math.sqrt(Math.pow(mx - CONFIG.centerX, 2) + Math.pow(my - CONFIG.centerY, 2));
+                    const limitedR = Math.max(R_BOUND.min, Math.min(rawR, R_BOUND.max));
+                    state.orb.r = limitedR;
+                    state.trajectory = []; // 手動拖拽時清除舊軌跡
+                    rSlider.value = limitedR;
+                    document.getElementById('radiusVal').innerText = Math.round(limitedR) + "m";
+                    return;
+                }
+
+                // 2. 處理畫布按鈕 Hover
+                if (state.resultStatus) {
+                    const dialogCenterX = 480, dialogCenterY = 545;
+                    const bw = 550, bh = 140, btnW = 100, btnH = 34;
+                    const absBtnX = dialogCenterX + (bw / 2 - btnW - 30);
+                    const absBtnY = dialogCenterY + (bh / 2 - btnH - 20);
+
+                    if (mx >= absBtnX && mx <= absBtnX + btnW && my >= absBtnY && my <= absBtnY + btnH) {
+                        state.btnHover = true;
+                        canvas.style.cursor = 'pointer';
+                    } else {
+                        state.btnHover = false;
+                        if (!state.isDragging) canvas.style.cursor = 'default';
+                    }
+                }
+            });
+
+
+            window.addEventListener('mouseup', () => {
+                state.isDragging = false;
+                canvas.style.cursor = 'default';
+            });
+
+            canvas.addEventListener('click', (e) => {
+                if (!state.resultStatus) return;
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX - rect.left) * (canvas.width / dpr / rect.width);
+                const my = (e.clientY - rect.top) * (canvas.height / dpr / rect.height);
+
+                // 判定是否點擊在對話框內的按鈕區域
+                // 對話框中心在 (480, 545), bw=550, bh=140
+                // 按鈕相對於對話框中心偏移: btnX = bw/2 - 140 - 25, btnY = bh/2 - 45 - 15
+                // 計算絕對座標：
+                const dialogCenterX = 480;
+                const dialogCenterY = 545;
+                const bw = 550, bh = 140;
+                const btnW = 100, btnH = 34; // 同步縮小判定範圍
+
+                const absBtnX = dialogCenterX + (bw / 2 - btnW - 30);
+                const absBtnY = dialogCenterY + (bh / 2 - btnH - 20);
+
+                if (mx >= absBtnX && mx <= absBtnX + btnW && my >= absBtnY && my <= absBtnY + btnH) {
+
+                    if (state.resultStatus === 'success' && state.level < 3) {
+                        initLevel(state.level + 1);
+                    } else {
+                        initLevel(state.level);
+                    }
+                }
+            });
+
+            actionBtn.onclick = () => {
+                if (!state.simulationRunning) {
+                    state.simulationRunning = true;
+                    state.orb.active = true;
+                    state.launchR = state.orb.r; // 紀錄發射瞬間的半徑，用於診斷
+                    state.resultStatus = null; // 開始模擬前清除舊結算
+                    state.dialogue = DYNAMIC_MESSAGES.LAUNCH;
+                    updateDialogueUI();
+                    actionBtn.innerText = "航行中...";
+                    actionBtn.disabled = true;
+                }
+            };
+
+
+            resetBtn.onclick = () => { initLevel(state.level); };
+            document.getElementById('restartAllBtn').onclick = () => initLevel(1);
+        }
+
+
+        window.closeStory = function () {
+            document.getElementById('story-modal').style.opacity = '0';
+            setTimeout(() => document.getElementById('story-modal').remove(), 500);
+            resize(); initLevel(1); state.lastTimestamp = performance.now(); requestAnimationFrame(loop);
+        };
+
+        document.addEventListener('DOMContentLoaded', () => { resize(); bindUI(); });
+        window.addEventListener('resize', resize);
+    </script>
+</body>
+
+</html>
