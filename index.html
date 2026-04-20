@@ -96,6 +96,7 @@
             margin: 0;
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             -webkit-background-clip: text;
+            background-clip: text; /* 標準屬性 */
             -webkit-text-fill-color: transparent;
         }
 
@@ -352,6 +353,7 @@
             line-height: 1.6;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2; /* 標準屬性 */
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -551,7 +553,8 @@
                     {
                         name: "2.7 圓周運動",
                         items: [
-                            { title: "圓周運動模擬", desc: "", link: "physics/Book2/uniform_circular.html", image: "screenshot/book2/uniform_circular.png" }
+                            { title: "圓周運動模擬", desc: "", link: "physics/Book2/uniform_circular.html", image: "screenshot/book2/uniform_circular.png" },
+                            { title: "車輛轉彎與打滑", desc: "探討車輛在不同天氣及速度下的圓周運動穩定性。", link: "physics/Book2/car_circular_motion.html", image: "screenshot/book2/car_circular_motion.png" }
                         ]
                     }
                 ]
