@@ -12,7 +12,8 @@
         rel="stylesheet">
     <style>
         :root {
-            --bg-color: #f1f5f9; /* Slate 100 - Main Background */
+            --bg-color: #f1f5f9;
+            /* Slate 100 - Main Background */
             --accent-primary: #0ea5e9;
             --accent-secondary: #6366f1;
             --accent-tertiary: #d946ef;
@@ -25,7 +26,8 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
             --sidebar-bg: #ffffff;
-            --search-bg: #e2e8f0; /* Slate 200 */
+            --search-bg: #e2e8f0;
+            /* Slate 200 */
         }
 
         * {
@@ -96,7 +98,8 @@
             margin: 0;
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             -webkit-background-clip: text;
-            background-clip: text; /* 標準屬性 */
+            background-clip: text;
+            /* 標準屬性 */
             -webkit-text-fill-color: transparent;
         }
 
@@ -353,7 +356,8 @@
             line-height: 1.6;
             display: -webkit-box;
             -webkit-line-clamp: 2;
-            line-clamp: 2; /* 標準屬性 */
+            line-clamp: 2;
+            /* 標準屬性 */
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -442,17 +446,19 @@
                 <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">Physics Simulation Hub</div>
             </div>
 
-            <div id="sidebar-nav-container" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; padding-right:5px; flex: 1;">
+            <div id="sidebar-nav-container"
+                style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; padding-right:5px; flex: 1;">
                 <!-- Nav items will be injected by JS -->
             </div>
 
             <div class="sidebar-footer">
                 <div class="footer-top">
                     <span>&copy; 2026 物理模擬專案</span>
-                    <a href="https://github.com/LS404-123/Physics-simulation" target="_blank" class="github-link">Github</a>
+                    <a href="https://github.com/LS404-123/Physics-simulation" target="_blank"
+                        class="github-link">Github</a>
                 </div>
                 <div style="opacity: 0.7; font-size: 10px; letter-spacing: 0.5px; margin-top: 4px;">
-                    BHNKC - LTSA 
+                    BHNKC - LTSA
                 </div>
             </div>
         </div>
@@ -554,7 +560,8 @@
                         name: "2.7 圓周運動",
                         items: [
                             { title: "圓周運動模擬", desc: "", link: "physics/Book2/uniform_circular.html", image: "screenshot/book2/uniform_circular.png" },
-                            { title: "車輛轉彎與打滑", desc: "探討車輛在不同天氣及速度下的圓周運動穩定性。", link: "physics/Book2/car_circular_motion.html", image: "screenshot/book2/car_circular_motion.png" }
+                            { title: "車輛轉彎與打滑", desc: "探討車輛在不同天氣及速度下的圓周運動穩定性。", link: "physics/Book2/car_circular_motion.html", image: "screenshot/book2/car_circular_motion.png" },
+                            { title: "無摩擦斜坡圓周運動", desc: "分析在斜坡上的物體如何僅靠正向力維持圓周運動。", link: "physics/Book2/banked_curve_no_friction.html", image: "https://placehold.co/600x400/0f172a/f472b6?text=Banked+Curve" }
                         ]
                     }
                 ]

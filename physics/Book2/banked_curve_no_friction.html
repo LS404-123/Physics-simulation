@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斜坡圓周運動 - 物理實驗室</title>
+    <!-- KaTeX for LaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError : false
+    });"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-blue: #0ea5e9;
+            --accent-red: #ef4444;
+            --accent-pink: #f472b6;
+            --accent-green: #10b981;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --card-radius: 20px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', 'Inter', "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* 改為頂部對齊 */
+            min-height: 100vh;
+            overflow-y: auto; /* 允許垂直捲動 */
+        }
+
+        /* iPad Air Layout: 1100x650 */
+        .app-container {
+            width: 1100px;
+            min-height: 650px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            grid-template-rows: 1fr auto;
+            gap: 20px;
+            padding: 20px 20px 0 20px;
+            box-sizing: border-box;
+        }
+
+        .bento-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Canvas Box */
+        .canvas-box {
+            grid-area: 1 / 1 / 2 / 2;
+            padding: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Control Box */
+        .control-box {
+            grid-area: 1 / 2 / 3 / 3;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Theory Box */
+        .theory-box {
+            grid-area: 2 / 1 / 3 / 2;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 14px;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent-blue);
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .data-value {
+            font-weight: 600;
+            font-family: 'Monaco', monospace;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--accent-blue), #3b82f6);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: transparent;
+            color: var(--text-main);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .theory-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .formula-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            border-left: 3px solid var(--accent-blue);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Simulation Area -->
+        <div class="bento-card canvas-box">
+            <canvas id="simCanvas"></canvas>
+            <div style="position: absolute; top: 20px; left: 20px; pointer-events: none;">
+                <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(135deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">斜坡圓周運動模擬</h1>
+            </div>
+        </div>
+
+        <!-- Control Area -->
+        <div class="bento-card control-box">
+            <h2>⚙️ 模擬控制</h2>
+
+            <div class="control-group">
+                <label>
+                    <span>斜坡角度 $\theta$:</span>
+                </label>
+                <input type="range" id="theta-slider" min="5" max="60" value="20">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>軌道半徑 $r$ (m):</span>
+                </label>
+                <input type="range" id="r-slider" min="20" max="150" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>車速 $v$ (m/s):</span>
+                </label>
+                <input type="range" id="v-slider" min="5" max="40" value="15">
+            </div>
+
+            <div style="margin-top: 10px;">
+                <button class="btn-secondary" id="ideal-speed-btn">設定為理想速度</button>
+            </div>
+
+            <hr style="width: 100%; border: none; border-top: 1px solid var(--glass-border); margin: 10px 0;">
+
+            <h2>📊 力學平衡比較</h2>
+            <div class="data-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span>所需向心力 $F_c$ (N):</span>
+                <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                    <div id="fc-bar" style="width: 0%; height: 100%; background: var(--accent-green); transition: width 0.3s;"></div>
+                </div>
+            </div>
+            <div class="data-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span>正向力水平分力 $R \sin \theta$ (N):</span>
+                <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                    <div id="rx-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s;"></div>
+                </div>
+            </div>
+            <div class="data-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span>物體重量 $W (mg)$ (N):</span>
+                <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                    <div id="w-bar" style="width: 0%; height: 100%; background: var(--accent-red); transition: width 0.3s;"></div>
+                </div>
+            </div>
+
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn-primary" id="start-btn">開始動畫</button>
+                <button class="btn-secondary" id="reset-btn">重置</button>
+            </div>
+        </div>
+
+        <!-- Theory & Visualization Box -->
+        <div class="bento-card theory-box">
+            <h2>📖 物理原理與視覺化</h2>
+            <div class="theory-grid">
+                <div class="formula-card">
+                    <b>垂直方向平衡：</b>
+                    <p style="margin: 5px 0;">$$ R \cos \theta = mg $$</p>
+                    <small>正向力的垂直分量抵消重量</small>
+                </div>
+                <div class="formula-card">
+                    <b>水平方向（提供向心力）：</b>
+                    <p style="margin: 5px 0;">$$ R \sin \theta = \frac{mv^2}{r} $$</p>
+                    <small>正向力的水平分量作為向心力</small>
+                </div>
+            </div>
+            <div class="toggle-group" style="margin-top: 10px;">
+                <button class="toggle-btn" id="toggle-comp-btn">顯示正向力分量</button>
+                <button class="toggle-btn" id="toggle-fric-btn">顯示摩擦力</button>
+                <button class="toggle-btn" id="toggle-fric-comp-btn">顯示摩擦力分量</button>
+                <button class="toggle-btn" id="toggle-net-btn">顯示合力</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const thetaSlider = document.getElementById('theta-slider');
+        const rSlider = document.getElementById('r-slider');
+        const vSlider = document.getElementById('v-slider');
+        const thetaVal = document.getElementById('theta-val');
+        const rVal = document.getElementById('r-val');
+        const vVal = document.getElementById('v-val');
+        const idealSpeedBtn = document.getElementById('ideal-speed-btn');
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const toggleCompBtn = document.getElementById('toggle-comp-btn');
+        const toggleFricBtn = document.getElementById('toggle-fric-btn');
+        const toggleFricCompBtn = document.getElementById('toggle-fric-comp-btn');
+        const toggleNetBtn = document.getElementById('toggle-net-btn');
+
+        const g = 9.81;
+        const mass = 100; // 假設物體質量 100kg
+        let theta = 20 * Math.PI / 180;
+        let radius = 50;
+        let speed = 15;
+        let isRunning = false;
+        let animationTime = 0;
+        let showComponents = false;
+        let showFriction = false;
+        let showFricComponents = false;
+        let showNetForce = false;
+
+        function updateValues() {
+            theta = thetaSlider.value * Math.PI / 180;
+            radius = parseFloat(rSlider.value);
+            speed = parseFloat(vSlider.value);
+
+            const fc = (mass * speed * speed) / radius;
+            const weight = mass * g;
+            const r = weight / Math.cos(theta);
+            const rx = r * Math.sin(theta);
+
+            // 更新力學條 (以 5000N 為最大參考值)
+            const maxForce = 5000;
+            document.getElementById('fc-bar').style.width = Math.min(100, (fc / maxForce) * 100) + '%';
+            document.getElementById('rx-bar').style.width = Math.min(100, (rx / maxForce) * 100) + '%';
+            document.getElementById('w-bar').style.width = Math.min(100, (weight / maxForce) * 100) + '%';
+        }
+
+        idealSpeedBtn.onclick = () => {
+            const idealV = Math.sqrt(radius * g * Math.tan(theta));
+            vSlider.value = idealV.toFixed(1);
+            updateValues();
+        };
+
+        toggleCompBtn.onclick = () => {
+            showComponents = !showComponents;
+            toggleCompBtn.classList.toggle('active');
+        };
+
+        toggleFricBtn.onclick = () => {
+            showFriction = !showFriction;
+            toggleFricBtn.classList.toggle('active');
+        };
+
+        toggleFricCompBtn.onclick = () => {
+            showFricComponents = !showFricComponents;
+            toggleFricCompBtn.classList.toggle('active');
+        };
+
+        toggleNetBtn.onclick = () => {
+            showNetForce = !showNetForce;
+            toggleNetBtn.classList.toggle('active');
+        };
+
+        startBtn.onclick = () => {
+            isRunning = !isRunning;
+            startBtn.innerText = isRunning ? '暫停動畫' : '開始動畫';
+        };
+
+        resetBtn.onclick = () => {
+            isRunning = false;
+            animationTime = 0;
+            startBtn.innerText = '開始動畫';
+            draw();
+        };
+
+        thetaSlider.oninput = rSlider.oninput = vSlider.oninput = updateValues;
+
+        /**
+         * 繪製帶有標籤的物理向量箭頭
+         */
+        function drawArrow(ctx, x1, y1, x2, y2, color, label, width = 3, opacity = 1.0) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            if (length < 2) return;
+
+            const angle = Math.atan2(dy, dx);
+            const headlen = Math.min(15, length * 0.3);
+
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.strokeStyle = ctx.fillStyle = color;
+            ctx.lineWidth = width;
+
+            // 僅在完全不透明時顯示發光效果
+            if (opacity === 1.0) {
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = color;
+            } else {
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2 - headlen * Math.cos(angle) * 0.5, y2 - headlen * Math.sin(angle) * 0.5);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            if (label) {
+                ctx.font = 'italic bold 20px "Times New Roman", serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.8)';
+                
+                const offset = 25;
+                const tx = x2 + offset * Math.cos(angle);
+                const ty = y2 + offset * Math.sin(angle);
+                ctx.strokeText(label, tx, ty);
+                ctx.fillText(label, tx, ty);
+            }
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = 150; // 固定旋轉中心在左側
+            const baseYSlope = canvas.height / 2 + 150; // 斜坡底部的 Y 座標
+            const scale = 2.0; // 放大比例，看得更清楚
+
+            const r_px = radius * scale;
+            const carX = centerX + r_px;
+            const carY = baseYSlope - r_px * Math.tan(theta); // 物體重心座標
+
+            // 1. 繪製中心軸 (旋轉中心)
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(centerX, 50);
+            ctx.lineTo(centerX, baseYSlope + 50);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 2. 繪製斜坡 (固定形狀的直角三角形)
+            // 斜坡寬度設為最大半徑 + 一些空間
+            const maxTrackWidth = 150 * scale + 100;
+            const triangleHeight = maxTrackWidth * Math.tan(theta);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, baseYSlope); // 直角頂點
+            ctx.lineTo(centerX + maxTrackWidth, baseYSlope); // 底部
+            ctx.lineTo(centerX + maxTrackWidth, baseYSlope - triangleHeight); // 垂直邊
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 繪製斜面 (Hypotenuse)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(centerX, baseYSlope);
+            ctx.lineTo(centerX + maxTrackWidth, baseYSlope - triangleHeight);
+            ctx.stroke();
+
+            // 角度標記 θ
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.beginPath();
+            ctx.arc(centerX, baseYSlope, 80, 0, -theta, true);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '20px "Times New Roman"';
+            ctx.fillText('θ', centerX + 90, baseYSlope - 20);
+
+            // 3. 繪製半徑標註 (從中心軸水平連至物體中心)
+            // 統一使用力作用點作為半徑終點
+            const blockW = 50;
+            const blockH = 25;
+            const forceOriginY = carY - (blockH/2) * Math.cos(theta);
+            const forceOriginX = carX + (blockH/2) * Math.sin(theta);
+
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#0ea5e9';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, forceOriginY);
+            ctx.lineTo(forceOriginX, forceOriginY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 半徑標記 "r"
+            ctx.fillStyle = '#0ea5e9';
+            ctx.font = 'italic bold 22px "Times New Roman"';
+            ctx.fillText('r', centerX + (forceOriginX - centerX) / 2, forceOriginY - 12);
+
+            // 4. 繪製物體 (方塊)
+            ctx.save();
+            ctx.translate(carX, carY);
+            ctx.rotate(-theta);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'rgba(14, 165, 233, 0.6)';
+            ctx.fillRect(-blockW/2, -blockH, blockW, blockH); 
+            ctx.restore();
+
+            // 5. 繪製力向量
+            const weightLen = (mass * g) / 15; 
+            const rLen = weightLen / Math.cos(theta);
+            
+            // 計算摩擦力 (f = cosθ * (mv²/r - mg tanθ))
+            const fRequired = Math.cos(theta) * ((mass * speed * speed / radius) - (mass * g * Math.tan(theta)));
+            const fLen = (fRequired / (mass * g)) * weightLen; 
+
+            // W: 重量 (從重心 COM 出發)
+            drawArrow(ctx, forceOriginX, forceOriginY, forceOriginX, forceOriginY + weightLen, '#ef4444', 'W');
+
+            // R: 正向力 (從接觸面 carX, carY 出發)
+            const rx = rLen * Math.sin(theta);
+            const ry = rLen * Math.cos(theta);
+            const rOpacity = showComponents ? 0.2 : 1.0;
+            drawArrow(ctx, carX, carY, carX - rx, carY - ry, '#f472b6', 'R', 3, rOpacity);
+
+            // R 的分量 (從接觸面出發)
+            if (showComponents) {
+                // Rx
+                drawArrow(ctx, carX, carY, carX - rx, carY, 'rgba(14, 165, 233, 0.6)', 'Rₓ', 2);
+                // Ry
+                drawArrow(ctx, carX, carY, carX, carY - ry, 'rgba(14, 165, 233, 0.6)', 'Rᵧ', 2);
+            }
+
+            // f: 摩擦力 (從接觸面 carX, carY 出發)
+            const fx = fLen * Math.cos(theta);
+            const fy = -fLen * Math.sin(theta);
+            if (showFriction && Math.abs(fLen) > 1) {
+                const fOpacity = showFricComponents ? 0.2 : 1.0;
+                drawArrow(ctx, carX, carY, carX - fx, carY - fy, '#fb923c', 'f', 3, fOpacity);
+            }
+
+            // f 的分量 (從接觸面出發)
+            if (showFricComponents && Math.abs(fLen) > 1) {
+                // fx
+                drawArrow(ctx, carX, carY, carX - fx, carY, 'rgba(251, 146, 60, 0.6)', 'fₓ', 2);
+                // fy
+                drawArrow(ctx, carX, carY, carX, carY - fy, 'rgba(251, 146, 60, 0.6)', 'fᵧ', 2);
+            }
+
+            // F_net: 合力 (向心力，從重心 COM 出發)
+            if (showNetForce) {
+                const fcLen = (mass * speed * speed / radius) / (mass * g) * weightLen;
+                drawArrow(ctx, forceOriginX, forceOriginY, forceOriginX - fcLen, forceOriginY, '#10b981', 'Fₙₑₜ');
+            }
+            
+            if (Math.abs(speed - Math.sqrt(radius * g * Math.tan(theta))) < 0.2) {
+                ctx.fillStyle = '#10b981';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 20px "Microsoft JhengHei"';
+                ctx.fillText('✨ 理想速度平衡中 (不需摩擦力)', centerX + maxTrackWidth/2, 100);
+            }
+        }
+
+        function animate(time) {
+            if (isRunning) {
+                // 這裡其實不需要複雜的動畫邏輯，因為剖面圖是靜態的
+                // 但我們可以讓背景或光暈有微弱跳動感
+                animationTime += 0.01;
+            }
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = () => {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            updateValues();
+            animate();
+        };
+    </script>
+</body>
+
+</html>
