@@ -127,6 +127,23 @@
             width: 100%;
             cursor: pointer;
             accent-color: var(--accent-blue);
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            margin: 10px 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            border: 2px solid var(--accent-blue);
         }
 
         .data-item {
@@ -244,9 +261,10 @@
 
             <div class="control-group">
                 <label>
-                    <span>車速 $v$ (m/s):</span>
+                    <span>車速 $v$:</span>
+                    <span id="v-val-display" class="data-value">15.0</span><span> m/s</span>
                 </label>
-                <input type="range" id="v-slider" min="5" max="40" value="15">
+                <input type="range" id="v-slider" min="5" max="40" step="0.1" value="15">
             </div>
 
             <div style="margin-top: 10px;">
@@ -311,9 +329,7 @@
         const thetaSlider = document.getElementById('theta-slider');
         const rSlider = document.getElementById('r-slider');
         const vSlider = document.getElementById('v-slider');
-        const thetaVal = document.getElementById('theta-val');
-        const rVal = document.getElementById('r-val');
-        const vVal = document.getElementById('v-val');
+        const vValDisplay = document.getElementById('v-val-display');
         const idealSpeedBtn = document.getElementById('ideal-speed-btn');
         const startBtn = document.getElementById('start-btn');
         const resetBtn = document.getElementById('reset-btn');
@@ -338,11 +354,29 @@
             theta = thetaSlider.value * Math.PI / 180;
             radius = parseFloat(rSlider.value);
             speed = parseFloat(vSlider.value);
+            
+            vValDisplay.innerText = speed.toFixed(1);
 
             const fc = (mass * speed * speed) / radius;
             const weight = mass * g;
             const r = weight / Math.cos(theta);
             const rx = r * Math.sin(theta);
+
+            // 計算理想速度與 ±0.1 窄區間
+            const idealV = Math.sqrt(radius * g * Math.tan(theta));
+            const vMin = idealV - 0.1;
+            const vMax = idealV + 0.1;
+
+            // 速度拉桿背景視覺化 (極窄區間)
+            const minPct = ((vMin - 5) / (40 - 5)) * 100;
+            const maxPct = ((vMax - 5) / (40 - 5)) * 100;
+            vSlider.style.background = `linear-gradient(to right, 
+                rgba(239, 68, 68, 0.3) 0%, 
+                rgba(239, 68, 68, 0.3) ${minPct}%, 
+                #10b981 ${minPct}%, 
+                #10b981 ${maxPct}%, 
+                rgba(239, 68, 68, 0.3) ${maxPct}%, 
+                rgba(239, 68, 68, 0.3) 100%)`;
 
             // 更新力學條 (以 5000N 為最大參考值)
             const maxForce = 5000;
@@ -390,6 +424,28 @@
         };
 
         thetaSlider.oninput = rSlider.oninput = vSlider.oninput = updateValues;
+
+        function drawSlidingIndicator(ctx, isUp, color, text, carX, carY, centerX, maxTrackWidth) {
+            const ux = Math.cos(theta);
+            const uy = -Math.sin(theta);
+            const slideDir = isUp ? 1 : -1;
+            
+            const bounce = Math.sin(Date.now() * 0.01) * 5;
+            const startDist = 50 + bounce;
+            const arrowLen = 50;
+            
+            const arrowStartX = carX + ux * slideDir * startDist + uy * 30;
+            const arrowStartY = carY + uy * slideDir * startDist - ux * 30;
+            
+            drawArrow(ctx, arrowStartX, arrowStartY, arrowStartX + ux * slideDir * arrowLen, arrowStartY + uy * slideDir * arrowLen, color, '', 5);
+            
+            ctx.fillStyle = color;
+            ctx.font = 'bold 22px "Microsoft JhengHei"';
+            ctx.textAlign = 'center';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.fillText(text, centerX + maxTrackWidth/2, 80);
+        }
 
         /**
          * 繪製帶有標籤的物理向量箭頭
@@ -577,11 +633,26 @@
                 drawArrow(ctx, forceOriginX, forceOriginY, forceOriginX - fcLen, forceOriginY, '#10b981', 'Fₙₑₜ');
             }
             
-            if (Math.abs(speed - Math.sqrt(radius * g * Math.tan(theta))) < 0.2) {
-                ctx.fillStyle = '#10b981';
-                ctx.textAlign = 'center';
-                ctx.font = 'bold 20px "Microsoft JhengHei"';
-                ctx.fillText('✨ 理想速度平衡中 (不需摩擦力)', centerX + maxTrackWidth/2, 100);
+            // 6. 理想速度判定 (±0.1 窄區間) - 僅在顯示摩擦力開啟時顯示指示
+            if (showFriction) {
+                const idealV = Math.sqrt(radius * g * Math.tan(theta));
+                const vMin = idealV - 0.1;
+                const vMax = idealV + 0.1;
+
+                ctx.save();
+                if (speed > vMax) {
+                    drawSlidingIndicator(ctx, true, '#f87171', '⚠️ 速度過快：正向力不足以維持圓周', carX, carY, centerX, maxTrackWidth);
+                } else if (speed < vMin) {
+                    drawSlidingIndicator(ctx, false, '#60a5fa', '⚠️ 速度過慢：正向力大於所需向心力', carX, carY, centerX, maxTrackWidth);
+                } else {
+                    ctx.fillStyle = '#10b981';
+                    ctx.textAlign = 'center';
+                    ctx.font = 'bold 24px "Microsoft JhengHei"';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+                    ctx.fillText('✨ 理想速度平衡中', centerX + maxTrackWidth/2, 80);
+                }
+                ctx.restore();
             }
         }
 
