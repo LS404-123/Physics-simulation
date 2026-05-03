@@ -132,11 +132,13 @@
             background: rgba(255, 255, 255, 0.1);
             outline: none;
             -webkit-appearance: none;
+            appearance: none;
             margin: 10px 0;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
+            appearance: none;
             width: 18px;
             height: 18px;
             border-radius: 50%;
@@ -237,7 +239,7 @@
         <div class="bento-card canvas-box">
             <canvas id="simCanvas"></canvas>
             <div style="position: absolute; top: 20px; left: 20px; pointer-events: none;">
-                <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(135deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">斜坡圓周運動模擬</h1>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(135deg, #fff, #94a3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">斜坡圓周運動模擬</h1>
             </div>
         </div>
 
