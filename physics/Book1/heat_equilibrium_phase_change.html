@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>熱平衡模擬</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --bento-bg: rgba(30, 41, 59, 0.6);
+      --bento-border: 1px solid rgba(255, 255, 255, 0.08);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-color: #38bdf8;
+      --heat-color: #ef4444;
+      --cold-color: #3b82f6;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #app {
+      width: 1100px;
+      height: 650px;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .left-col {
+      width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .right-col {
+      width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .bento {
+      background: var(--bento-bg);
+      border: var(--bento-border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 15px 20px;
+      box-sizing: border-box;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    #sim-panel {
+      height: 380px;
+    }
+
+    #control-panel {
+      height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 30px;
+    }
+
+    #graph-panel {
+      height: 610px;
+    }
+
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-top: 5px;
+    }
+
+    button {
+      background: var(--accent-color);
+      color: #0f172a;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    input[type="range"] {
+      flex-grow: 1;
+      cursor: pointer;
+      accent-color: var(--accent-color);
+    }
+
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    .back-btn {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+      z-index: 100;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <a href="../../index.html" class="back-btn">返回主頁</a>
+
+    <div class="left-col">
+      <div class="bento" id="sim-panel">
+        <h2>混合狀態模擬 (100°C 水蒸氣與 0°C 冰)</h2>
+        <div style="position: relative; width: 510px; height: 310px; margin: 0 auto;">
+          <canvas id="simCanvas" width="510" height="310"></canvas>
+          <div id="eq-cold"
+            style="position: absolute; top: 8px; left: 145px; transform: translateX(-50%); color: #38bdf8; font-size: 0.85rem; font-weight: 600; text-shadow: 0 0 4px rgba(0,0,0,0.8); pointer-events: none; white-space: nowrap;">
+          </div>
+          <div id="eq-hot"
+            style="position: absolute; top: 8px; left: 365px; transform: translateX(-50%); color: #ef4444; font-size: 0.85rem; font-weight: 600; text-shadow: 0 0 4px rgba(0,0,0,0.8); pointer-events: none; white-space: nowrap;">
+          </div>
+        </div>
+      </div>
+      <div class="bento" id="control-panel"
+        style="height: 210px; display: flex; flex-direction: column; gap: 14px; padding: 15px 20px;">
+        <h2 style="margin: 0; font-size: 1.05rem;">控制面板</h2>
+
+        <!-- Row 1: Main Controls -->
+        <div style="display: flex; align-items: center; gap: 15px; width: 100%;">
+          <button id="btn-play"
+            style="flex-shrink: 0; width: 80px; height: 32px; padding: 0; font-size: 0.9rem;">播放</button>
+          <button id="btn-reset"
+            style="flex-shrink: 0; width: 80px; height: 32px; padding: 0; font-size: 0.9rem;">重置</button>
+          <div style="flex-grow: 1; position: relative;">
+            <input type="range" id="time-slider" min="0" max="10" step="0.02" value="0" style="width: 100%; margin: 0;">
+            <div id="slider-markers" style="position: relative; width: 100%; height: 20px; margin-top: 1px;"></div>
+          </div>
+        </div>
+
+        <!-- Row 2: Sliders inside a beautiful nested glass container -->
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; width: 100%; box-sizing: border-box;">
+          <!-- Row 2: Ice Mass Parameter -->
+          <div style="display: flex; align-items: center; gap: 15px; width: 100%;">
+            <span style="font-size: 0.85rem; color: #38bdf8; white-space: nowrap; width: 100px;">初始冰質量:</span>
+            <input type="range" id="param-mass-ice" min="0.01" max="0.20" step="0.01" value="0.10"
+              style="flex-grow: 1; margin: 0;">
+            <span id="val-mass-ice"
+              style="font-family: monospace; font-size: 0.85rem; width: 55px; text-align: right; color: #38bdf8;">0.100 g</span>
+          </div>
+
+          <!-- Row 3: Steam Mass Parameter -->
+          <div style="display: flex; align-items: center; gap: 15px; width: 100%;">
+            <span style="font-size: 0.85rem; color: #ef4444; white-space: nowrap; width: 100px;">初始水蒸氣質量:</span>
+            <input type="range" id="param-mass-steam" min="0.01" max="0.20" step="0.01" value="0.10"
+              style="flex-grow: 1; margin: 0;">
+            <span id="val-mass-steam"
+              style="font-family: monospace; font-size: 0.85rem; width: 55px; text-align: right; color: #ef4444;">0.100 g</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="bento" id="graph-panel">
+        <h2>溫度-熱量圖</h2>
+        <canvas id="graphCanvas" width="400" height="540"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isPlaying = false;
+    let time = 0;
+    let maxTime = 10;
+    let lastFrameTime = performance.now();
+    let fullSimulationData = null;
+    let initMassIce = 0.10;
+    let initMassSteam = 0.10;
+
+    const simCanvas = document.getElementById('simCanvas');
+    const simCtx = simCanvas.getContext('2d');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphCtx = graphCanvas.getContext('2d');
+
+    const dQ_rate = 10;
+    const L_f = 334;
+    const L_v = 2260;
+    const c_w = 4.2;
+
+    function calculateState(targetTime, stopAtEquilibrium = false) {
+      let Q = 0;
+      let cold = { temp: 0, mass_ice: initMassIce, mass_water: 0 };
+      let hot = { temp: 100, mass_steam: initMassSteam, mass_water: 0 };
+      let states = [];
+
+      let t = 0;
+      const dt = 0.05;
+
+      let t_ice_melt = null;
+      let t_steam_condense = null;
+
+      while (t <= targetTime + 0.0001) {
+        states.push({
+          Q: Q,
+          coldTemp: cold.temp,
+          hotTemp: hot.temp,
+          time: t,
+          cold: { ...cold },
+          hot: { ...hot }
+        });
+
+        if (cold.mass_ice <= 0.00001 && t_ice_melt === null) {
+          t_ice_melt = t;
+        }
+        if (hot.mass_steam <= 0.00001 && t_steam_condense === null) {
+          t_steam_condense = t;
+        }
+
+        if (t >= targetTime - 0.00001 && !stopAtEquilibrium) {
+          break;
+        }
+
+        if (cold.temp < hot.temp) {
+          let dQ = dQ_rate * dt;
+
+          let dQ_cold = dQ;
+          if (cold.mass_ice > 0) {
+            let melt_capacity = cold.mass_ice * L_f;
+            if (dQ_cold >= melt_capacity) {
+              cold.mass_water += cold.mass_ice;
+              cold.mass_ice = 0;
+              dQ_cold -= melt_capacity;
+            } else {
+              cold.mass_ice -= dQ_cold / L_f;
+              cold.mass_water += dQ_cold / L_f;
+              dQ_cold = 0;
+            }
+          }
+          if (dQ_cold > 0) {
+            cold.temp += dQ_cold / (cold.mass_water * c_w);
+          }
+
+          let dQ_hot = dQ;
+          if (hot.mass_steam > 0) {
+            let condense_capacity = hot.mass_steam * L_v;
+            if (dQ_hot >= condense_capacity) {
+              hot.mass_water += hot.mass_steam;
+              hot.mass_steam = 0;
+              dQ_hot -= condense_capacity;
+            } else {
+              hot.mass_steam -= dQ_hot / L_v;
+              hot.mass_water += dQ_hot / L_v;
+              dQ_hot = 0;
+            }
+          }
+          if (dQ_hot > 0) {
+            hot.temp -= dQ_hot / (hot.mass_water * c_w);
+          }
+
+          // Clamp: ice present → cold stays at 0; steam present → hot stays at 100
+          if (cold.mass_ice > 0.00001) cold.temp = 0;
+          if (hot.mass_steam > 0.00001) hot.temp = 100;
+
+          if (cold.temp >= hot.temp) {
+            let finalTemp;
+            if (cold.mass_ice > 0.00001) {
+              // Ice still present → equilibrium at 0°C
+              finalTemp = 0;
+            } else {
+              // No ice → weighted average by thermal mass
+              finalTemp = (cold.mass_water * cold.temp + hot.mass_water * hot.temp) / (cold.mass_water + hot.mass_water);
+            }
+            cold.temp = finalTemp;
+            hot.temp = finalTemp;
+            Q += dQ;
+            if (stopAtEquilibrium) {
+              states.push({
+                Q: Q,
+                coldTemp: finalTemp,
+                hotTemp: finalTemp,
+                time: t + dt,
+                cold: { ...cold },
+                hot: { ...hot }
+              });
+              break;
+            }
+          } else {
+            Q += dQ;
+          }
+        } else if (stopAtEquilibrium) {
+          break;
+        }
+        t += dt;
+      }
+
+      return { Q, cold, hot, states, eqTime: t, eqQ: Q, t_ice_melt, t_steam_condense };
+    }
+
+    function getFrameState(targetTime) {
+      if (!fullSimulationData) return null;
+      let index = Math.floor(targetTime / 0.05);
+      if (index >= fullSimulationData.states.length) index = fullSimulationData.states.length - 1;
+      if (index < 0) index = 0;
+
+      let currentState = fullSimulationData.states[index];
+      return {
+        Q: currentState.Q,
+        cold: currentState.cold,
+        hot: currentState.hot,
+        states: fullSimulationData.states.slice(0, index + 1)
+      };
+    }
+
+    function drawGraph(state) {
+      graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+      const padX = 45, padY = 40;
+      const w = graphCanvas.width - padX - 20;
+      const h = graphCanvas.height - padY - 15;
+
+      graphCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+      graphCtx.lineWidth = 1;
+      graphCtx.beginPath();
+      for (let i = 0; i <= 120; i += 20) {
+        let y = 15 + h - (i / 120) * h;
+        graphCtx.moveTo(padX, y);
+        graphCtx.lineTo(padX + w, y);
+      }
+      graphCtx.stroke();
+
+      graphCtx.strokeStyle = '#94a3b8';
+      graphCtx.lineWidth = 1.5;
+      graphCtx.beginPath();
+      graphCtx.moveTo(padX, 15);
+      graphCtx.lineTo(padX, 15 + h);
+      graphCtx.lineTo(padX + w, 15 + h);
+      graphCtx.stroke();
+
+      graphCtx.fillStyle = '#94a3b8';
+      graphCtx.font = '11px Inter';
+      graphCtx.textAlign = 'right';
+      graphCtx.textBaseline = 'middle';
+      graphCtx.fillText('100', padX - 5, 15 + h - (100 / 120) * h);
+      graphCtx.fillText('0', padX - 5, 15 + h);
+      graphCtx.fillText('120', padX - 5, 15);
+
+      let Q_eq = fullSimulationData.eqQ;
+      let maxQ = Q_eq * 2;
+
+      graphCtx.textAlign = 'center';
+      graphCtx.textBaseline = 'top';
+      graphCtx.fillText('0 J', padX, 15 + h + 8);
+      graphCtx.fillText(Q_eq.toFixed(1) + ' J', padX + w / 2, 15 + h + 8);
+      graphCtx.fillText((maxQ).toFixed(1) + ' J', padX + w, 15 + h + 8);
+      graphCtx.fillText('轉移能量 Q (J)', padX + w / 2, 15 + h + 25);
+
+      graphCtx.save();
+      graphCtx.translate(12, 15 + h / 2);
+      graphCtx.rotate(-Math.PI / 2);
+      graphCtx.textAlign = 'center';
+      graphCtx.fillText('溫度 (°C)', 0, 0);
+      graphCtx.restore();
+
+      // Ice Fill
+      graphCtx.beginPath();
+      for (let i = 0; i < state.states.length; i++) {
+        let s = state.states[i];
+        let px = padX + (s.Q / maxQ) * w;
+        let py = 15 + h - (s.coldTemp / 120) * h;
+        if (i === 0) graphCtx.moveTo(px, py);
+        else graphCtx.lineTo(px, py);
+      }
+      let lastS = state.states[state.states.length - 1];
+      let iceLastPx = padX + (lastS.Q / maxQ) * w;
+      let iceLastPy = 15 + h - (lastS.coldTemp / 120) * h;
+      graphCtx.lineTo(iceLastPx, 15 + h);
+      graphCtx.lineTo(padX, 15 + h);
+      graphCtx.closePath();
+
+      let coldGrad = graphCtx.createLinearGradient(0, 15, 0, 15 + h);
+      coldGrad.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
+      coldGrad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+      graphCtx.fillStyle = coldGrad;
+      graphCtx.fill();
+
+      // Ice Stroke
+      graphCtx.strokeStyle = '#38bdf8';
+      graphCtx.lineWidth = 3;
+      graphCtx.beginPath();
+
+      for (let i = 0; i < state.states.length; i++) {
+        let s = state.states[i];
+        let px = padX + (s.Q / maxQ) * w;
+        let py = 15 + h - (s.coldTemp / 120) * h;
+        if (i === 0) graphCtx.moveTo(px, py);
+        else graphCtx.lineTo(px, py);
+      }
+      graphCtx.stroke();
+
+      // Steam Fill
+      graphCtx.beginPath();
+      for (let i = 0; i < state.states.length; i++) {
+        let s = state.states[i];
+        let px = padX + w - (s.Q / maxQ) * w;
+        let py = 15 + h - (s.hotTemp / 120) * h;
+        if (i === 0) graphCtx.moveTo(px, py);
+        else graphCtx.lineTo(px, py);
+      }
+      let steamLastPx = padX + w - (lastS.Q / maxQ) * w;
+      let steamLastPy = 15 + h - (lastS.hotTemp / 120) * h;
+      graphCtx.lineTo(steamLastPx, 15 + h);
+      graphCtx.lineTo(padX + w, 15 + h);
+      graphCtx.closePath();
+
+      let hotGrad = graphCtx.createLinearGradient(0, 15, 0, 15 + h);
+      hotGrad.addColorStop(0, 'rgba(239, 68, 68, 0.25)');
+      hotGrad.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+      graphCtx.fillStyle = hotGrad;
+      graphCtx.fill();
+
+      // Steam Stroke
+      graphCtx.strokeStyle = '#ef4444';
+      graphCtx.lineWidth = 3;
+      graphCtx.beginPath();
+      for (let i = 0; i < state.states.length; i++) {
+        let s = state.states[i];
+        let px = padX + w - (s.Q / maxQ) * w;
+        let py = 15 + h - (s.hotTemp / 120) * h;
+        if (i === 0) graphCtx.moveTo(px, py);
+        else graphCtx.lineTo(px, py);
+      }
+      graphCtx.stroke();
+
+      // Ice Tracker
+      graphCtx.beginPath();
+      graphCtx.arc(iceLastPx, iceLastPy, 4.5, 0, Math.PI * 2);
+      graphCtx.fillStyle = '#0f172a';
+      graphCtx.fill();
+      graphCtx.strokeStyle = '#38bdf8';
+      graphCtx.lineWidth = 2.5;
+      graphCtx.stroke();
+
+      // Steam Tracker
+      graphCtx.beginPath();
+      graphCtx.arc(steamLastPx, steamLastPy, 4.5, 0, Math.PI * 2);
+      graphCtx.fillStyle = '#0f172a';
+      graphCtx.fill();
+      graphCtx.strokeStyle = '#ef4444';
+      graphCtx.lineWidth = 2.5;
+      graphCtx.stroke();
+
+      graphCtx.fillStyle = '#38bdf8';
+      graphCtx.textAlign = 'left';
+      graphCtx.textBaseline = 'middle';
+      graphCtx.fillText('冰', padX + 20, 15 + h - 20);
+
+      graphCtx.fillStyle = '#ef4444';
+      graphCtx.fillText('水蒸氣', padX + w - 60, 15 + h - (100 / 120) * h - 15);
+    }
+
+    function drawSimulation(state) {
+      simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+
+      const cx = simCanvas.width / 2;
+      const cy = simCanvas.height / 2 + 5;
+
+      const coldX = cx - 110;
+      const hotX = cx + 110;
+
+      drawThermometer(simCtx, coldX, cy, state.cold.temp, "冷物質 (冰)");
+      drawThermometer(simCtx, hotX, cy, state.hot.temp, "熱物質 (水蒸氣)");
+
+      if (time > 0 && state.cold.temp < state.hot.temp && time < maxTime) {
+        const startX = cx + 50;
+        const endX = cx - 50;
+
+        simCtx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+        simCtx.lineWidth = 4;
+
+        simCtx.setLineDash([15, 10]);
+        simCtx.lineDashOffset = -time * 50;
+
+        simCtx.beginPath();
+        simCtx.moveTo(startX, cy);
+        simCtx.lineTo(endX, cy);
+        simCtx.stroke();
+
+        simCtx.setLineDash([]);
+        simCtx.beginPath();
+        simCtx.moveTo(endX, cy);
+        simCtx.lineTo(endX + 15, cy - 10);
+        simCtx.lineTo(endX + 15, cy + 10);
+        simCtx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+        simCtx.fill();
+
+        let text = `Q = ${state.Q.toFixed(1)} J`;
+        simCtx.font = '600 15px monospace';
+        let textWidth = simCtx.measureText(text).width;
+
+        simCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        simCtx.beginPath();
+        simCtx.roundRect(cx - textWidth / 2 - 10, cy - 34, textWidth + 20, 24, 12);
+        simCtx.fill();
+        simCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        simCtx.lineWidth = 1;
+        simCtx.stroke();
+
+        simCtx.fillStyle = '#fff';
+        simCtx.textAlign = 'center';
+        simCtx.textBaseline = 'middle';
+        simCtx.fillText(text, cx, cy - 21);
+        simCtx.textBaseline = 'alphabetic';
+      }
+
+      simCtx.fillStyle = '#38bdf8';
+      simCtx.font = '14px Inter';
+      simCtx.textAlign = 'center';
+
+      let iceProcess = "";
+      if (state.cold.mass_ice > 0) iceProcess = "Q = m l_f \\text{ (熔化)}";
+      else if (state.cold.temp < 100 && state.cold.temp < state.hot.temp) iceProcess = "Q = m c \\Delta T \\text{ (升溫)}";
+      else iceProcess = "\\text{熱平衡}";
+
+      if (window.lastIceProcess !== iceProcess) {
+        document.getElementById('eq-cold').innerHTML = katex.renderToString(iceProcess);
+        window.lastIceProcess = iceProcess;
+      }
+
+      let hotProcess = "";
+      if (state.hot.mass_steam > 0) hotProcess = "Q = m l_v \\text{ (凝結)}";
+      else if (state.cold.temp < state.hot.temp) hotProcess = "Q = m c \\Delta T \\text{ (降溫)}";
+      else hotProcess = "\\text{熱平衡}";
+
+      if (window.lastHotProcess !== hotProcess) {
+        document.getElementById('eq-hot').innerHTML = katex.renderToString(hotProcess);
+        window.lastHotProcess = hotProcess;
+      }
+
+      const r = 35;
+
+      // Cold substance visual
+      simCtx.save();
+      simCtx.beginPath();
+      simCtx.arc(coldX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.clip();
+
+      simCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      simCtx.fill();
+
+      let waterRatioCold = state.cold.mass_water / initMassIce;
+      if (waterRatioCold > 0) {
+        let fillHeight = waterRatioCold * (2 * r);
+        simCtx.fillStyle = 'rgba(56, 189, 248, 0.8)';
+        simCtx.fillRect(coldX - 25 - r, cy + r - fillHeight, 2 * r, fillHeight);
+      }
+      simCtx.restore();
+
+      simCtx.beginPath();
+      simCtx.arc(coldX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+      simCtx.lineWidth = 2;
+      simCtx.stroke();
+
+      simCtx.fillStyle = '#94a3b8';
+      simCtx.font = '12px Inter';
+      simCtx.textAlign = 'center';
+      let textY = cy + r + 20;
+      simCtx.fillText(`冰: ${state.cold.mass_ice.toFixed(3)} g`, coldX - 25, textY);
+      simCtx.fillText(`水: ${state.cold.mass_water.toFixed(3)} g`, coldX - 25, textY + 16);
+
+      // Hot substance visual
+      simCtx.save();
+      simCtx.beginPath();
+      simCtx.arc(hotX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.clip();
+
+      simCtx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+      simCtx.fill();
+
+      let waterRatioHot = state.hot.mass_water / initMassSteam;
+      if (waterRatioHot > 0) {
+        let fillHeight = waterRatioHot * (2 * r);
+        simCtx.fillStyle = 'rgba(56, 189, 248, 0.8)';
+        simCtx.fillRect(hotX - 25 - r, cy + r - fillHeight, 2 * r, fillHeight);
+      }
+      simCtx.restore();
+
+      simCtx.beginPath();
+      simCtx.arc(hotX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+      simCtx.lineWidth = 2;
+      simCtx.stroke();
+
+      simCtx.fillStyle = '#94a3b8';
+      textY = cy + r + 20;
+      simCtx.fillText(`水蒸氣: ${state.hot.mass_steam.toFixed(3)} g`, hotX - 25, textY);
+      simCtx.fillText(`水: ${state.hot.mass_water.toFixed(3)} g`, hotX - 25, textY + 16);
+    }
+
+    function drawThermometer(ctx, x, y, temp, label) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.beginPath();
+      ctx.roundRect(x - 80, y - 120, 160, 260, 12);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const tx = x + 45;
+      const ty = y - 10;
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(tx, ty + 60, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(tx - 4, ty - 40, 8, 100);
+
+      let fillHeight = (temp / 100) * 90;
+      ctx.fillStyle = temp > 50 ? '#ef4444' : '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(tx, ty + 60, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(tx - 2, ty + 50 - fillHeight, 4, fillHeight + 10);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(temp.toFixed(1) + ' °C', tx, ty - 55);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px Inter';
+      ctx.fillText(label, x, y + 125);
+    }
+
+    function render() {
+      let state = getFrameState(time);
+      if (!state) return;
+      drawGraph(state);
+      drawSimulation(state);
+    }
+
+    function loop(now) {
+      const delta = (now - lastFrameTime) / 1000;
+      lastFrameTime = now;
+
+      if (isPlaying) {
+        time += delta;
+        if (time > maxTime) {
+          time = maxTime;
+          isPlaying = false;
+          document.getElementById('btn-play').innerText = '播放';
+        }
+        document.getElementById('time-slider').value = time;
+      }
+
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+      if (time >= maxTime) time = 0;
+      isPlaying = !isPlaying;
+      document.getElementById('btn-play').innerText = isPlaying ? '暫停' : '播放';
+      lastFrameTime = performance.now();
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      isPlaying = false;
+      time = 0;
+      document.getElementById('btn-play').innerText = '播放';
+      document.getElementById('time-slider').value = 0;
+      render();
+    });
+
+    document.getElementById('time-slider').addEventListener('input', (e) => {
+      time = parseFloat(e.target.value);
+      render();
+    });
+
+    function updateSliderMarkers() {
+      let container = document.getElementById('slider-markers');
+      container.innerHTML = '';
+
+      let markers = [];
+      if (fullSimulationData.t_ice_melt !== null && fullSimulationData.t_ice_melt < maxTime) {
+        markers.push({ time: fullSimulationData.t_ice_melt, label: '冰全熔', color: '#38bdf8' });
+      }
+      if (fullSimulationData.t_steam_condense !== null && fullSimulationData.t_steam_condense < maxTime) {
+        markers.push({ time: fullSimulationData.t_steam_condense, label: '汽全凝', color: '#ef4444' });
+      }
+      markers.push({ time: fullSimulationData.eqTime, label: '熱平衡', color: '#cbd5e1' });
+
+      for (let m of markers) {
+        let pct = (m.time / maxTime) * 100;
+        let el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.left = `${pct}%`;
+        el.style.transform = 'translateX(-50%)';
+        el.style.color = m.color;
+        el.style.fontSize = '9px';
+        el.style.whiteSpace = 'nowrap';
+        el.style.top = '0px';
+        el.style.textAlign = 'center';
+        el.style.lineHeight = '1.1';
+        el.innerHTML = `▲<br>${m.label}`;
+        container.appendChild(el);
+      }
+    }
+
+    function initSimulation() {
+      maxTime = calculateState(100, true).eqTime + 1.0;
+      fullSimulationData = calculateState(100, true);
+
+      let lastS = fullSimulationData.states[fullSimulationData.states.length - 1];
+      let t_extra = lastS.time;
+      while (t_extra < maxTime + 0.05) {
+        t_extra += 0.05;
+        fullSimulationData.states.push({
+          ...lastS,
+          time: t_extra
+        });
+      }
+
+      document.getElementById('time-slider').max = maxTime;
+      updateSliderMarkers();
+      time = 0;
+      document.getElementById('time-slider').value = 0;
+      render();
+    }
+
+    document.getElementById('param-mass-ice').addEventListener('input', (e) => {
+      initMassIce = parseFloat(e.target.value);
+      document.getElementById('val-mass-ice').innerText = initMassIce.toFixed(3) + ' g';
+      initSimulation();
+    });
+
+    document.getElementById('param-mass-steam').addEventListener('input', (e) => {
+      initMassSteam = parseFloat(e.target.value);
+      document.getElementById('val-mass-steam').innerText = initMassSteam.toFixed(3) + ' g';
+      initSimulation();
+    });
+
+    initSimulation();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+
+</html>
