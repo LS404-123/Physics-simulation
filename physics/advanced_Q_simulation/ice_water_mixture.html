@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>熱相變平衡模擬：冰水混合的抉擇</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --bento-bg: rgba(17, 24, 39, 0.7);
+      --bento-border: 1px solid rgba(255, 255, 255, 0.08);
+      --bento-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --accent-color: #38bdf8;
+      --accent-warm: #f97316;
+      --accent-cold: #06b6d4;
+      --panel-padding: 14px 18px;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at 50% 50%, #111827 0%, #030712 100%);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #app {
+      width: 1100px;
+      height: 650px;
+      display: flex;
+      gap: 15px;
+      padding: 15px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .left-col {
+      width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .right-col {
+      width: 490px;
+      height: 615px; /* 與左側雙 Bento 箱等高齊平 */
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .bento {
+      background: var(--bento-bg);
+      border: var(--bento-border);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: var(--panel-padding);
+      box-sizing: border-box;
+      box-shadow: var(--bento-glow);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    h2 {
+      margin: 0 0 8px 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Simulation Panel */
+    #sim-panel {
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Control Panel */
+    #control-panel {
+      height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Guide Panel */
+    #guide-panel {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .scroll-content {
+      flex-grow: 1;
+      overflow: hidden;
+      padding-right: 0;
+    }
+
+    /* Graph Panel */
+    #graph-panel {
+      flex-grow: 1;
+      display: none; /* 初始完全隱藏，釋放所有空間給 guide-panel */
+      flex-direction: column;
+    }
+
+    .param-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .param-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .param-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      width: 120px;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      flex-grow: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      cursor: pointer;
+      accent-color: var(--accent-color);
+    }
+
+    .param-val {
+      font-family: monospace;
+      font-size: 0.82rem;
+      width: 60px;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    /* Challenge Overlay */
+    .challenge-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(11, 15, 25, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 30px;
+      box-sizing: border-box;
+      text-align: center;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .challenge-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      color: var(--accent-color);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .challenge-desc {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin-bottom: 22px;
+      line-height: 1.5;
+    }
+
+    .challenge-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .option-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      text-align: left;
+    }
+
+    .option-card:hover {
+      background: rgba(56, 189, 248, 0.06);
+      border-color: var(--accent-color);
+      transform: translateY(-1px);
+    }
+
+    .option-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.8rem;
+      color: var(--accent-color);
+    }
+
+    .option-text {
+      font-size: 0.82rem;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    /* Info Badge Alert */
+    .alert-box {
+      background: rgba(249, 115, 22, 0.1);
+      border: 1px solid rgba(249, 115, 22, 0.2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: #fdba74;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    /* Equation Step display */
+    .step-card {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 9px 12px;
+      margin-bottom: 8px;
+      opacity: 0.35;
+      transition: all 0.3s ease;
+    }
+
+    .step-card.active {
+      opacity: 1;
+      border-color: var(--accent-color);
+      background: rgba(56, 189, 248, 0.02);
+    }
+
+    .step-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--accent-color);
+      margin-bottom: 3px;
+    }
+
+    .step-math {
+      display: flex;
+      justify-content: center;
+      margin: 2px 0 0 0;
+      font-size: 1.05rem;
+    }
+
+    /* 消除 KaTeX 默認自帶的巨量上下外邊距 */
+    .step-math .katex-display {
+      margin: 0 !important;
+    }
+
+    .nav-header {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 60;
+    }
+
+    .back-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      transition: background 0.2s;
+    }
+
+    .back-link:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    button {
+      background: linear-gradient(135deg, var(--accent-color) 0%, #0284c7 100%);
+      color: #0b0f19;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Outfit', sans-serif;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: none;
+    }
+
+    /* CSS Animations for View Transitions */
+    .fade-in {
+      animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div class="nav-header">
+      <a href="../index.html" class="back-link">返回主頁</a>
+    </div>
+
+    <!-- 左半邊列 -->
+    <div class="left-col">
+      <!-- 區塊 A：混合模擬動態 (含天平與容器雙視圖切換) -->
+      <div class="bento" id="sim-panel">
+        
+        <!-- 視圖 1：思考天平分析 (Phase 1) -->
+        <div id="balance-view" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #fbbf24;">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+              <line x1="4" y1="22" x2="4" y2="15"/>
+            </svg>
+            第一階段：思考天平理論預判
+          </h2>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
+            <svg id="largeBalanceSvg" width="530" height="220" viewBox="0 0 530 250">
+              <!-- Base Stand -->
+              <path d="M 265 145 L 242 215 L 288 215 Z" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
+              <line x1="220" y1="215" x2="310" y2="215" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="265" cy="145" r="5" fill="var(--text-primary)"/>
+              
+              <!-- Beam & Pans Group -->
+              <g id="largeBeamGroup">
+                <!-- Main Beam Line -->
+                <line x1="85" y1="145" x2="445" y2="145" stroke="rgba(255,255,255,0.65)" stroke-width="4.5"/>
+                
+                <!-- Left Pan (Water Release) -->
+                <g id="lPanGroup">
+                  <line x1="85" y1="145" x2="85" y2="185" stroke="rgba(255,255,255,0.3)" stroke-width="1.8"/>
+                  <path d="M 50 185 L 120 185 C 120 198, 50 198, 50 185 Z" fill="rgba(249, 115, 22, 0.22)" stroke="#f97316" stroke-width="2"/>
+                  <!-- Water Droplet inside pan -->
+                  <path id="lPanWater" d="M 85 162 Q 76 179, 85 179 Q 94 179, 85 162 Z" fill="#f97316" style="opacity: 0; transition: opacity 0.3s;"/>
+                </g>
+                
+                <!-- Right Pan (Ice Demand) -->
+                <g id="rPanGroup">
+                  <line x1="445" y1="145" x2="445" y2="185" stroke="rgba(255,255,255,0.3)" stroke-width="1.8"/>
+                  <path d="M 410 185 L 480 185 C 480 198, 410 198, 410 185 Z" fill="rgba(56, 189, 248, 0.22)" stroke="#38bdf8" stroke-width="2"/>
+                  <!-- Ice Cube inside pan -->
+                  <rect id="rPanIce" x="432" y="171" width="26" height="13" rx="3" fill="#38bdf8" style="opacity: 0; transition: opacity 0.3s;"/>
+                </g>
+              </g>
+
+              <!-- Text labels inside SVG (大尺寸，位置更開闊) -->
+              <g id="lPanLabels" style="opacity: 0; transition: opacity 0.3s;">
+                <text x="85" y="45" fill="#fdba74" font-size="11.5" text-anchor="middle" font-weight="600">假設水降至 0°C</text>
+                <text x="85" y="62" fill="#f97316" font-size="12.5" text-anchor="middle" font-weight="bold">最大釋熱 $Q_{\text{release}}$</text>
+                <text id="lbl-lpan-val" x="85" y="85" fill="#f97316" font-size="16" font-family="monospace" text-anchor="middle" font-weight="bold">0 J</text>
+              </g>
+
+              <g id="rPanLabels" style="opacity: 0; transition: opacity 0.3s;">
+                <text x="445" y="45" fill="#93c5fd" font-size="11.5" text-anchor="middle" font-weight="600">假設冰完全熔化</text>
+                <text x="445" y="62" fill="#38bdf8" font-size="12.5" text-anchor="middle" font-weight="bold">最大需熱 $Q_{\text{melt}}$</text>
+                <text id="lbl-rpan-val" x="445" y="85" fill="#38bdf8" font-size="16" font-family="monospace" text-anchor="middle" font-weight="bold">0 J</text>
+              </g>
+
+              <!-- central comparison operator -->
+              <g id="centralCompare" style="opacity: 0; transition: opacity 0.3s;">
+                <rect x="245" y="32" width="40" height="26" rx="6" fill="#1e293b" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+                <text id="lbl-compare-val" x="265" y="50" fill="#fbbf24" font-size="18" font-weight="bold" text-anchor="middle">?</text>
+              </g>
+            </svg>
+
+            <!-- 能量極限即時對比條 (能量條) -->
+            <div id="energy-bar-comparison" style="width: 100%; margin-top: -15px; padding: 0 45px 12px 45px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; opacity: 0; transition: opacity 0.5s;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600;">
+                  <span style="color: #fdba74;">🍊 溫水降溫最大釋熱能力 ($Q_{\text{release, max}}$)</span>
+                  <span id="bar-val-release" style="color: #f97316; font-family: monospace; font-weight: 700; font-size: 0.82rem;">0 J</span>
+                </div>
+                <div style="width: 100%; height: 7px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                  <div id="bar-fill-release" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ea580c, #f97316); box-shadow: 0 0 8px rgba(249, 115, 22, 0.45); transition: width 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28);"></div>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600;">
+                  <span style="color: #93c5fd;">❄️ 冰塊完全熔解需熱門檻 ($Q_{\text{melt, all}}$)</span>
+                  <span id="bar-val-melt" style="color: #38bdf8; font-family: monospace; font-weight: 700; font-size: 0.82rem;">0 J</span>
+                </div>
+                <div style="width: 100%; height: 7px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                  <div id="bar-fill-melt" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.45); transition: width 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 視圖 2：真實熱傳導燒杯模擬 (Phase 2) -->
+        <div id="simulation-view" style="width: 100%; height: 100%; display: none; flex-direction: column;">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-color);">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            第二階段：真實傳熱物理演化 (燒杯與滾動熱流)
+          </h2>
+          <div style="position: relative; flex-grow: 1; display: flex; justify-content: center; align-items: center;">
+            <canvas id="simCanvas" width="540" height="310"></canvas>
+            <div id="eq-cold" style="position: absolute; top: 12px; left: 145px; transform: translateX(-50%); color: #38bdf8; font-size: 0.88rem; font-weight: 600; text-shadow: 0 0 4px rgba(0,0,0,0.85); pointer-events: none; white-space: nowrap;"></div>
+            <div id="eq-hot" style="position: absolute; top: 12px; left: 395px; transform: translateX(-50%); color: #f97316; font-size: 0.88rem; font-weight: 600; text-shadow: 0 0 4px rgba(0,0,0,0.85); pointer-events: none; white-space: nowrap;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 區塊 B：控制面板 -->
+      <div class="bento" id="control-panel">
+        <h2 style="margin-bottom: 2px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          實驗控制面板
+        </h2>
+        
+        <!-- 播控列 (僅在 Phase 2 顯示) -->
+        <div id="sim-controls-row" style="display: none; align-items: center; gap: 12px; margin-bottom: 5px; width: 100%;">
+          <button id="btn-play" style="flex-shrink: 0; width: 85px; height: 30px; padding: 0; font-size: 0.82rem;">播放模擬</button>
+          <button id="btn-reset" class="btn-secondary" style="flex-shrink: 0; width: 85px; height: 30px; padding: 0; font-size: 0.82rem;">重置時間</button>
+          <div style="flex-grow: 1; position: relative; display: flex; align-items: center; gap: 8px;">
+            <input type="range" id="time-slider" min="0" max="10" step="0.05" value="0">
+            <span id="time-val" style="display: none;">0.0s</span>
+          </div>
+        </div>
+
+        <div id="sim-tip-row" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">
+          💡 拖動下方滑桿參數，全系統最終平衡狀態、天平與推導公式將<b>即時同步</b>。
+        </div>
+
+        <div class="param-box">
+          <div class="param-row">
+            <span class="param-label" style="color: #f97316;">初始水質量 $m_w$:</span>
+            <input type="range" id="param-mass-water" min="0.10" max="0.50" step="0.05" value="0.30">
+            <span id="val-mass-water" class="param-val" style="color: #f97316;">0.30 kg</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label" style="color: #fdba74;">初始水溫度 $T_w$:</span>
+            <input type="range" id="param-temp-water" min="10" max="80" step="5" value="50">
+            <span id="val-temp-water" class="param-val" style="color: #fdba74;">50 °C</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label" style="color: #38bdf8;">初始冰質量 $m_i$:</span>
+            <input type="range" id="param-mass-ice" min="0.05" max="0.30" step="0.05" value="0.20">
+            <span id="val-mass-ice" class="param-val" style="color: #38bdf8;">0.20 kg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右半邊列 -->
+    <div class="right-col">
+      <!-- 區塊 C：能量天平與公式指引 -->
+      <div class="bento" id="guide-panel">
+        <!-- 猜測與驗證挑戰遮罩 -->
+        <div class="challenge-overlay" id="challenge-overlay">
+          <div class="challenge-title">🧠 物理名師的解題挑戰</div>
+          <div class="challenge-desc">
+            混合 <b><span id="ch-mw">0.30</span> kg <span id="ch-tw">50</span>°C 的水</b> 與 <b><span id="ch-mi">0.20</span> kg 0°C 的冰</b>。<br>
+            在深入計算之前，請先大膽預測此混合系統的「最終物理狀態」會是什麼？
+          </div>
+          <div class="challenge-options">
+            <div class="option-card" data-answer="ice-remains">
+              <div class="option-badge">A</div>
+              <div class="option-text">
+                <b>冰塊並未完全熔化</b><br>
+                呈冰水共存狀態，最終溫度必定是 0 °C。
+              </div>
+            </div>
+            <div class="option-card" data-answer="all-melted">
+              <div class="option-badge">B</div>
+              <div class="option-text">
+                <b>冰塊完全熔化</b><br>
+                所有冰塊化為水，最終溫度高於 0 °C。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="guide-header-area">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #fbbf24;">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+              <line x1="4" y1="22" x2="4" y2="15"/>
+            </svg>
+            解題思考與逐步引導
+          </h2>
+        </div>
+
+        <div class="scroll-content" id="guide-scroll">
+
+
+          <!-- 步驟卡片 Step 1, 2, 3 -->
+          <div class="step-card" id="step1-card">
+            <div class="step-title">步驟一：溫水冷卻至 $0\text{ °C}$ 的最大釋熱能力 $Q_{\text{release, max}}$</div>
+            <div class="step-math" id="math-step1"></div>
+          </div>
+
+          <div class="step-card" id="step2-card">
+            <div class="step-title">步驟二：冰塊完全熔解的最大需熱門檻 $Q_{\text{melt, all}}$</div>
+            <div class="step-math" id="math-step2"></div>
+          </div>
+
+          <div class="step-card" id="step3-card">
+            <div class="step-title" id="step3-title">步驟三：比對兩者能量差值 $\Delta Q$</div>
+            <div class="step-math" id="math-step3"></div>
+          </div>
+
+          <!-- 第一階段：互動分析按鈕 -->
+          <div id="analysis-buttons-area" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+            <button id="btn-next-step" style="width: 100%; height: 36px;">計算步驟一：溫水降溫釋熱能力</button>
+          </div>
+
+          <!-- 第二階段：物理模擬運作指示與返回鍵 -->
+          <div id="sim-instructions-area" style="margin-top: 15px; display: none; flex-direction: column; gap: 10px;">
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 10px; padding: 10px; font-size: 0.76rem; color: #34d399; line-height: 1.45;">
+              ✨ <b>已啟動傳熱模擬演化：</b><br>
+              左側展示<b>雙瓶容器傳熱</b>。紅色箭頭粒子代表熱量流動過程。你可以使用控制面板中的「播放/暫停」或拖動時間 Slider，觀察圖表中點點是如何隨時間逼近最終<b>熱平衡交會點</b>！
+            </div>
+            <button id="btn-back-to-analysis" class="btn-secondary" style="width: 100%; height: 34px;">↩️ 返回第一階段：天平理論分析</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 區塊 D：溫度-時間/熱量 圖表 -->
+      <div class="bento" id="graph-panel">
+        <h2 id="graph-title-text">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cold);">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          特性圖表
+        </h2>
+        <div style="position: relative; flex-grow: 1; min-height: 0; margin-top: 10px;" id="graph-container">
+          <canvas id="graphCanvas" width="454" height="165"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 物理常數
+    const c_w = 4200;    // 水的比熱容 J/(kg*°C)
+    const L_f = 334000;  // 冰的熔解比潛熱 J/kg
+
+    // 系統狀態變數
+    let appPhase = 'analysis'; // 'analysis' (天平逐步) or 'simulation' (容器模擬)
+    let stepIndex = 0; // 0: prediction, 1: Q_release computed, 2: Q_melt computed, 3: comparison & decision done
+
+    // 模擬動態控制
+    let isPlaying = false;
+    let time = 0;
+    let maxTime = 10;
+    let lastFrameTime = performance.now();
+
+    // 初始參數設定
+    let initMassWater = 0.30;
+    let initTempWater = 50;
+    let initMassIce = 0.20;
+
+    let simulationData = null; // 包含平衡及解析解數據
+
+    // 取得 DOM
+    const simCanvas = document.getElementById('simCanvas');
+    const simCtx = simCanvas.getContext('2d');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphCtx = graphCanvas.getContext('2d');
+
+    // 1. 真實物理平衡與隨時間演化解析解計算
+    // 將實際熱平衡過程平滑分布在 8s 內完成 (其餘 2s 維持平衡)，使動畫播放完美精確
+    function runPhysicsSimulation() {
+      const Q_release_max = initMassWater * c_w * initTempWater;
+      const Q_melt_all = initMassIce * L_f;
+      const isAllMelted = Q_release_max >= Q_melt_all;
+
+      let finalTemp = 0;
+      let meltedMass = 0;
+      let remainingIce = 0;
+      let Q_actual = 0;
+
+      if (isAllMelted) {
+        meltedMass = initMassIce;
+        remainingIce = 0;
+        finalTemp = (Q_release_max - Q_melt_all) / ((initMassIce + initMassWater) * c_w);
+        Q_actual = initMassWater * c_w * (initTempWater - finalTemp);
+      } else {
+        meltedMass = Q_release_max / L_f;
+        remainingIce = initMassIce - meltedMass;
+        finalTemp = 0;
+        Q_actual = Q_release_max;
+      }
+
+      // 計算各個關鍵物理事件的時間標記點
+      const eqTime = 8.0; // 平衡點定在第 8 秒
+      let t_ice_melt = null;
+      if (isAllMelted) {
+        // 冰完全熔化發生的時間點
+        t_ice_melt = (Q_melt_all / Q_actual) * eqTime;
+      }
+
+      return { Q_release_max, Q_melt_all, isAllMelted, finalTemp, meltedMass, remainingIce, Q_actual, eqTime, t_ice_melt };
+    }
+
+    // 2. 獲取特定模擬時間 t 下的實時物理參數狀態 (採用解析解，保證數值 100% 穩定精密)
+    function getPhysicsStateAtTime(t) {
+      const { Q_actual, Q_melt_all, isAllMelted, finalTemp, eqTime } = simulationData;
+      
+      // 已轉移的熱量 Q(t)
+      let q_trans = 0;
+      if (t >= eqTime) {
+        q_trans = Q_actual;
+      } else {
+        q_trans = (t / eqTime) * Q_actual;
+      }
+
+      let hotTemp = initTempWater - (q_trans / (initMassWater * c_w));
+      if (hotTemp < finalTemp) hotTemp = finalTemp; // 防止浮點數微幅超出
+
+      let coldTemp = 0;
+      let iceMass = initMassIce;
+      let isEquil = t >= eqTime;
+
+      if (q_trans < Q_melt_all) {
+        // 冰塊熔解中，溫度維持 0°C
+        let melted = q_trans / L_f;
+        iceMass = initMassIce - melted;
+        coldTemp = 0;
+      } else {
+        // 冰已完全熔化
+        iceMass = 0;
+        if (isAllMelted && Q_actual > Q_melt_all) {
+          // 多餘熱量讓熔化後的水升溫
+          coldTemp = finalTemp * (q_trans - Q_melt_all) / (Q_actual - Q_melt_all);
+        } else {
+          coldTemp = 0;
+        }
+      }
+
+      // 當熱平衡時，強製溫度與冰量對齊精確最終值
+      if (isEquil) {
+        hotTemp = finalTemp;
+        coldTemp = finalTemp;
+        iceMass = simulationData.remainingIce;
+      }
+
+      return {
+        time: t,
+        qTransferred: q_trans,
+        hotTemp: hotTemp,
+        coldTemp: coldTemp,
+        iceMass: iceMass,
+        meltedMass: initMassIce - iceMass,
+        isEquilibrium: isEquil
+      };
+    }
+
+    // 3. 第一階段：天平步驟引導介面更新
+    function updateAnalysisView() {
+      const q_rel = simulationData.Q_release_max;
+      const q_melt = simulationData.Q_melt_all;
+
+      // 天平各個元件
+      const largeBeamGroup = document.getElementById('largeBeamGroup');
+      const lPanGroup = document.getElementById('lPanGroup');
+      const rPanGroup = document.getElementById('rPanGroup');
+      
+      const lPanWater = document.getElementById('lPanWater');
+      const rPanIce = document.getElementById('rPanIce');
+      
+      const lPanLabels = document.getElementById('lPanLabels');
+      const rPanLabels = document.getElementById('rPanLabels');
+      const centralCompare = document.getElementById('centralCompare');
+      
+      const lblLPanVal = document.getElementById('lbl-lpan-val');
+      const lblRPanVal = document.getElementById('lbl-rpan-val');
+      const lblCompareVal = document.getElementById('lbl-compare-val');
+      
+      const step1Card = document.getElementById('step1-card');
+      const step2Card = document.getElementById('step2-card');
+      const step3Card = document.getElementById('step3-card');
+      const btnNextStep = document.getElementById('btn-next-step');
+
+      // 能量條元件
+      const energyBarComparison = document.getElementById('energy-bar-comparison');
+      const barValRelease = document.getElementById('bar-val-release');
+      const barValMelt = document.getElementById('bar-val-melt');
+      const barFillRelease = document.getElementById('bar-fill-release');
+      const barFillMelt = document.getElementById('bar-fill-melt');
+
+      // 清除可能存在的延遲定時器，避免快速操作時重疊衝突
+      if (window.balanceTimeout1) clearTimeout(window.balanceTimeout1);
+      if (window.balanceTimeout2) clearTimeout(window.balanceTimeout2);
+
+      // 步驟零：猜測挑戰階段 (一開始)
+      if (stepIndex === 0) {
+        largeBeamGroup.style.transform = `rotate(0deg)`;
+        largeBeamGroup.style.transformOrigin = '265px 145px';
+        lPanGroup.setAttribute('transform', 'rotate(0 85 145)');
+        rPanGroup.setAttribute('transform', 'rotate(0 445 145)');
+
+        lPanWater.style.opacity = '0';
+        rPanIce.style.opacity = '0';
+        lPanLabels.style.opacity = '0';
+        rPanLabels.style.opacity = '0';
+        centralCompare.style.opacity = '0';
+
+        step1Card.classList.remove('active');
+        step2Card.classList.remove('active');
+        step3Card.classList.remove('active');
+
+        document.getElementById('math-step1').innerHTML = '';
+        document.getElementById('math-step2').innerHTML = '';
+        document.getElementById('math-step3').innerHTML = '';
+        
+        btnNextStep.style.display = 'block';
+        btnNextStep.textContent = '計算步驟一：溫水降溫釋熱能力';
+        btnNextStep.className = '';
+
+        // 重置能量條
+        energyBarComparison.style.opacity = '0';
+        barFillRelease.style.width = '0%';
+        barFillMelt.style.width = '0%';
+        barValRelease.textContent = '0 J';
+        barValMelt.textContent = '0 J';
+
+        // 重置為初始漸變色與陰影
+        barFillRelease.style.background = 'linear-gradient(90deg, #ea580c, #f97316)';
+        barFillRelease.style.boxShadow = '0 0 8px rgba(249, 115, 22, 0.45)';
+        barFillMelt.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
+        barFillMelt.style.boxShadow = '0 0 8px rgba(56, 189, 248, 0.45)';
+
+        // 移除可能存在的動態模擬鍵
+        const startSimBtn = document.getElementById('btn-start-sim');
+        if (startSimBtn) startSimBtn.remove();
+      }
+      
+      // 步驟一：溫水降溫極限
+      else if (stepIndex === 1) {
+        // 右側公式卡片立即亮起並顯露對齊的三行 LaTeX 算式
+        step1Card.classList.add('active');
+        step2Card.classList.remove('active');
+        step3Card.classList.remove('active');
+
+        document.getElementById('math-step1').innerHTML = katex.renderToString(
+          `\\begin{aligned}
+          Q_{\\text{release, max}} &= m_w \\cdot c_w \\cdot \\Delta T \\\\
+          &= ${initMassWater.toFixed(2)} \\cdot 4200 \\cdot (${initTempWater} - 0) \\\\
+          &= {\\color{#f97316}${q_rel.toLocaleString()}\\text{ J}}
+          \\end{aligned}`, { throwOnError: false }
+        );
+
+        // 天平左側此時維持水平與空載，0.8秒後能量才放上天平 (After the step)
+        lPanWater.style.opacity = '0';
+        lPanLabels.style.opacity = '0';
+        largeBeamGroup.style.transform = `rotate(0deg)`;
+        lPanGroup.setAttribute('transform', 'rotate(0 85 145)');
+        rPanGroup.setAttribute('transform', 'rotate(0 445 145)');
+
+        // 顯示能量條底板，但進度條為空
+        energyBarComparison.style.opacity = '1';
+        barFillRelease.style.width = '0%';
+        barFillMelt.style.width = '0%';
+        barValRelease.textContent = '計算中...';
+        barValMelt.textContent = '0 J';
+
+        barFillRelease.style.background = 'linear-gradient(90deg, #ea580c, #f97316)';
+        barFillRelease.style.boxShadow = '0 0 8px rgba(249, 115, 22, 0.45)';
+        barFillMelt.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
+        barFillMelt.style.boxShadow = '0 0 8px rgba(56, 189, 248, 0.45)';
+
+        window.balanceTimeout1 = setTimeout(() => {
+          if (stepIndex === 1 && appPhase === 'analysis') {
+            lblLPanVal.textContent = q_rel.toLocaleString() + ' J';
+            lPanWater.style.opacity = '1';
+            lPanLabels.style.opacity = '1';
+
+            // 天平向左傾斜
+            largeBeamGroup.style.transform = `rotate(-7deg)`;
+            largeBeamGroup.style.transformOrigin = '265px 145px';
+            largeBeamGroup.style.transition = 'transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+            
+            lPanGroup.setAttribute('transform', 'rotate(7 85 145)');
+            lPanGroup.style.transition = 'transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+            rPanGroup.setAttribute('transform', 'rotate(7 445 145)');
+            rPanGroup.style.transition = 'transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+
+            // 實時動態載入能量對比條
+            let maxVal = Math.max(q_rel, q_melt);
+            let relPct = (q_rel / maxVal) * 100;
+            barFillRelease.style.width = relPct + '%';
+            barValRelease.textContent = q_rel.toLocaleString() + ' J';
+
+            renderMathInElement(document.getElementById('largeBalanceSvg'), {
+              delimiters: [{left: '$', right: '$', display: false}],
+              throwOnError: false
+            });
+          }
+        }, 800);
+
+        btnNextStep.style.display = 'block';
+        btnNextStep.textContent = '計算步驟二：冰完全熔化需求';
+      }
+      
+      // 步驟二：冰熔化需求
+      else if (stepIndex === 2) {
+        step1Card.classList.add('active');
+        step2Card.classList.add('active');
+        step3Card.classList.remove('active');
+
+        document.getElementById('math-step2').innerHTML = katex.renderToString(
+          `\\begin{aligned}
+          Q_{\\text{melt, all}} &= m_i \\cdot L_f \\\\
+          &= ${initMassIce.toFixed(2)} \\cdot 334,000 \\\\
+          &= {\\color{#38bdf8}${q_melt.toLocaleString()}\\text{ J}}
+          \\end{aligned}`, { throwOnError: false }
+        );
+
+        // 天平右盤與比對運算子維持隱藏，0.8秒後能量才放上天平 (After the step)
+        rPanIce.style.opacity = '0';
+        rPanLabels.style.opacity = '0';
+        centralCompare.style.opacity = '0';
+
+        // 溫水能量條已經填滿，冰塊能量條此時為空，等待載入
+        energyBarComparison.style.opacity = '1';
+        let maxVal = Math.max(q_rel, q_melt);
+        let relPct = (q_rel / maxVal) * 100;
+        barFillRelease.style.width = relPct + '%';
+        barValRelease.textContent = q_rel.toLocaleString() + ' J';
+        barFillMelt.style.width = '0%';
+        barValMelt.textContent = '計算中...';
+
+        barFillRelease.style.background = 'linear-gradient(90deg, #ea580c, #f97316)';
+        barFillRelease.style.boxShadow = '0 0 8px rgba(249, 115, 22, 0.45)';
+        barFillMelt.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
+        barFillMelt.style.boxShadow = '0 0 8px rgba(56, 189, 248, 0.45)';
+
+        window.balanceTimeout2 = setTimeout(() => {
+          if (stepIndex === 2 && appPhase === 'analysis') {
+            lblRPanVal.textContent = q_melt.toLocaleString() + ' J';
+            rPanIce.style.opacity = '1';
+            rPanLabels.style.opacity = '1';
+
+            // 根據兩端大小比對，天平進行真實物理偏角擺動
+            let targetAngle = q_rel < q_melt ? 11 : (q_rel > q_melt ? -11 : 0);
+            largeBeamGroup.style.transform = `rotate(${targetAngle}deg)`;
+            lPanGroup.setAttribute('transform', `rotate(${-targetAngle} 85 145)`);
+            rPanGroup.setAttribute('transform', `rotate(${-targetAngle} 445 145)`);
+
+            // 中央天平運算符與結果直接亮起！
+            centralCompare.style.opacity = '1';
+            let op = q_rel < q_melt ? '<' : (q_rel > q_melt ? '>' : '=');
+            let opColor = q_rel < q_melt ? '#ef4444' : '#38bdf8';
+            lblCompareVal.textContent = op;
+            lblCompareVal.setAttribute('fill', opColor);
+
+            // 實時載入冰完全熔化門檻能量條
+            let meltPct = (q_melt / maxVal) * 100;
+            barFillMelt.style.width = meltPct + '%';
+            barValMelt.textContent = q_melt.toLocaleString() + ' J';
+
+            renderMathInElement(document.getElementById('largeBalanceSvg'), {
+              delimiters: [{left: '$', right: '$', display: false}],
+              throwOnError: false
+            });
+          }
+        }, 800);
+
+        btnNextStep.style.display = 'block';
+        btnNextStep.textContent = '計算步驟三：比對兩者能量差值';
+      }
+
+      // 步驟三：能量差值比對
+      else if (stepIndex === 3) {
+        step1Card.classList.add('active');
+        step2Card.classList.add('active');
+        step3Card.classList.add('active');
+
+        // 能量條與差值欄位顯示
+        energyBarComparison.style.opacity = '1';
+        let maxVal = Math.max(q_rel, q_melt);
+        let relPct = (q_rel / maxVal) * 100;
+        let meltPct = (q_melt / maxVal) * 100;
+        barFillRelease.style.width = relPct + '%';
+        barValRelease.textContent = q_rel.toLocaleString() + ' J';
+        barFillMelt.style.width = meltPct + '%';
+        barValMelt.textContent = q_melt.toLocaleString() + ' J';
+
+        // 恢復正常漸變，在 0.8 秒後將多餘部分高亮為紫色
+        barFillRelease.style.background = 'linear-gradient(90deg, #ea580c, #f97316)';
+        barFillRelease.style.boxShadow = '0 0 8px rgba(249, 115, 22, 0.45)';
+        barFillMelt.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
+        barFillMelt.style.boxShadow = '0 0 8px rgba(56, 189, 248, 0.45)';
+
+        window.balanceTimeout2 = setTimeout(() => {
+          if (stepIndex === 3 && appPhase === 'analysis') {
+            let q_diff = Math.abs(q_rel - q_melt);
+
+            if (q_rel < q_melt) {
+              // 藍色條（冰需熱）比橘色條（水釋熱）長：藍色條尾端超出部分高亮為紫色！
+              let transitionPoint = relPct.toFixed(2) + '%';
+              barFillMelt.style.background = `linear-gradient(90deg, #0284c7 0%, #38bdf8 ${transitionPoint}, #a855f7 ${transitionPoint}, #c084fc 100%)`;
+              barFillMelt.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.65)';
+
+              document.getElementById('math-step3').innerHTML = katex.renderToString(
+                `\\begin{aligned}
+                Q_{\\text{deficit}} &= Q_{\\text{melt, all}} - Q_{\\text{release, max}} \\\\
+                &= ${q_melt.toLocaleString()} - ${q_rel.toLocaleString()} \\\\
+                &= {\\color{#c084fc}${q_diff.toLocaleString()}\\text{ J (冰塊剩餘，對照藍條紫色段)}}
+                \\end{aligned}`, { throwOnError: false }
+              );
+            } else if (q_rel > q_melt) {
+              // 橘色條比藍色條長：橘色條尾端超出部分高亮為紫色！
+              let transitionPoint = meltPct.toFixed(2) + '%';
+              barFillRelease.style.background = `linear-gradient(90deg, #ea580c 0%, #f97316 ${transitionPoint}, #a855f7 ${transitionPoint}, #c084fc 100%)`;
+              barFillRelease.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.65)';
+
+              document.getElementById('math-step3').innerHTML = katex.renderToString(
+                `\\begin{aligned}
+                Q_{\\text{surplus}} &= Q_{\\text{release, max}} - Q_{\\text{melt, all}} \\\\
+                &= ${q_rel.toLocaleString()} - ${q_melt.toLocaleString()} \\\\
+                &= {\\color{#c084fc}${q_diff.toLocaleString()}\\text{ J (水將升溫，對照橘條紫色段)}}
+                \\end{aligned}`, { throwOnError: false }
+              );
+            } else {
+              document.getElementById('math-step3').innerHTML = katex.renderToString(
+                `\\begin{aligned}
+                \\Delta Q &= 0\\text{ J (剛好完全熔化)}
+                \\end{aligned}`, { throwOnError: false }
+              );
+            }
+
+            renderMathInElement(document.getElementById('largeBalanceSvg'), {
+              delimiters: [{left: '$', right: '$', display: false}],
+              throwOnError: false
+            });
+          }
+        }, 800);
+
+        btnNextStep.style.display = 'block';
+        btnNextStep.textContent = '🚀 進入步驟四：啟動真實傳熱模擬';
+      }
+
+      // 調用 KaTeX 進行即時排版
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+      });
+    }
+
+    // 4. 第二階段：真實傳熱燒杯容器動態繪製 (Canvas)
+    function drawSimulation(state) {
+      simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+
+      const cx = simCanvas.width / 2;
+      const cy = simCanvas.height / 2 + 10;
+      
+      const coldX = cx - 110;
+      const hotX = cx + 110;
+      const r = 38;
+
+      // 繪製冷容器 (燒杯) - 像 heat_equilibrium_phase_change.html 那樣高質感
+      drawThermometer(simCtx, coldX, cy, state.coldTemp, "冷物質 (冰與融化水)");
+      drawThermometer(simCtx, hotX, cy, state.hotTemp, "熱物質 (原有溫水)");
+
+      // 繪製冷容器內的物質相變狀態
+      simCtx.save();
+      simCtx.beginPath();
+      simCtx.arc(coldX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.clip();
+      
+      // 融化水充盈比例
+      let waterRatioCold = state.meltedMass / initMassIce;
+      if (waterRatioCold > 0) {
+        let fillHeight = waterRatioCold * (2 * r);
+        simCtx.fillStyle = 'rgba(56, 189, 248, 0.8)';
+        simCtx.fillRect(coldX - 25 - r, cy + r - fillHeight, 2 * r, fillHeight);
+      }
+      simCtx.restore();
+
+      // 冷容器玻璃邊緣
+      simCtx.beginPath();
+      simCtx.arc(coldX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+      simCtx.lineWidth = 2.5;
+      simCtx.stroke();
+
+      // 在冷容器中繪製浮動冰塊
+      if (state.iceMass > 0.0005) {
+        const scale = Math.pow(state.iceMass / initMassIce, 0.5);
+        const iceW = 35 * scale;
+        const iceH = 20 * scale;
+        const iceX = coldX - 25 - iceW / 2 + Math.sin(time * 2.5) * 3;
+        const iceY = cy - 8 + Math.cos(time * 2.5) * 1.5;
+
+        simCtx.fillStyle = 'rgba(255,255,255,0.85)';
+        simCtx.strokeStyle = '#38bdf8';
+        simCtx.lineWidth = 1.5;
+        simCtx.beginPath();
+        simCtx.roundRect(iceX, iceY, iceW, iceH, 4 * scale);
+        simCtx.fill();
+        simCtx.stroke();
+      }
+
+      // 繪製熱容器內的物質
+      simCtx.save();
+      simCtx.beginPath();
+      simCtx.arc(hotX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.clip();
+
+      // 水的顏色隨降溫漸變
+      const orangeRatio = Math.min(Math.max(state.hotTemp / 50, 0), 1);
+      const gr = Math.round(6 + orangeRatio * 243);
+      const gg = Math.round(182 + orangeRatio * (-67));
+      const gb = Math.round(212 + orangeRatio * (-190));
+      
+      simCtx.fillStyle = `rgba(${gr}, ${gg}, ${gb}, 0.8)`;
+      simCtx.fillRect(hotX - 25 - r, cy - r, 2 * r, 2 * r);
+      simCtx.restore();
+
+      // 熱容器玻璃邊緣
+      simCtx.beginPath();
+      simCtx.arc(hotX - 25, cy, r, 0, Math.PI * 2);
+      simCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+      simCtx.lineWidth = 2.5;
+      simCtx.stroke();
+
+      // 容器下方文字標示
+      simCtx.fillStyle = '#9ca3af';
+      simCtx.font = '10.5px Inter';
+      simCtx.textAlign = 'center';
+      simCtx.fillText(`冰: ${state.iceMass.toFixed(3)} kg`, coldX - 25, cy + r + 20);
+      simCtx.fillText(`水: ${state.meltedMass.toFixed(3)} kg`, coldX - 25, cy + r + 33);
+
+      simCtx.fillText(`水: ${initMassWater.toFixed(3)} kg`, hotX - 25, cy + r + 20);
+      simCtx.fillText(`溫度: ${state.hotTemp.toFixed(1)} °C`, hotX - 25, cy + r + 33);
+
+      // 5. 中間熱流滾動箭頭粒子動畫 (極具動感科技感)
+      if (time > 0 && !state.isEquilibrium) {
+        const startX = hotX - 25 - r - 5;
+        const endX = coldX - 25 + r + 5;
+
+        simCtx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+        simCtx.lineWidth = 3.5;
+
+        // 滾動虛線
+        simCtx.setLineDash([12, 8]);
+        simCtx.lineDashOffset = -time * 40;
+        simCtx.beginPath();
+        simCtx.moveTo(startX, cy);
+        simCtx.lineTo(endX, cy);
+        simCtx.stroke();
+        simCtx.setLineDash([]); // 重置
+
+        // 箭頭
+        simCtx.beginPath();
+        simCtx.moveTo(endX, cy);
+        simCtx.lineTo(endX + 12, cy - 7);
+        simCtx.lineTo(endX + 12, cy + 7);
+        simCtx.fillStyle = 'rgba(239, 68, 68, 0.85)';
+        simCtx.fill();
+
+        // 浮動發光熱量數值面框
+        let qText = `Q = ${state.qTransferred.toLocaleString(undefined, {maximumFractionDigits:0})} J`;
+        simCtx.font = 'bold 12.5px monospace';
+        let wQ = simCtx.measureText(qText).width;
+
+        simCtx.fillStyle = 'rgba(11, 15, 25, 0.9)';
+        simCtx.beginPath();
+        simCtx.roundRect(cx - wQ / 2 - 8, cy - 30, wQ + 16, 20, 8);
+        simCtx.fill();
+        simCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        simCtx.lineWidth = 1;
+        simCtx.stroke();
+
+        simCtx.fillStyle = '#fff';
+        simCtx.textAlign = 'center';
+        simCtx.textBaseline = 'middle';
+        simCtx.fillText(qText, cx, cy - 20);
+        simCtx.textBaseline = 'alphabetic'; // 還原
+      }
+
+      // 動態浮現燒杯上方的物理公式 KaTeX 公式對齊
+      let iceProcess = "";
+      if (state.iceMass > 0) iceProcess = "Q = m l_f \\text{ (冰熔化)}";
+      else if (state.coldTemp < simulationData.finalTemp && !state.isEquilibrium) iceProcess = "Q = m c \\Delta T \\text{ (升溫)}";
+      else iceProcess = "\\text{熱平衡狀態}";
+
+      if (window.lastIceProcess !== iceProcess) {
+        document.getElementById('eq-cold').innerHTML = katex.renderToString(iceProcess);
+        window.lastIceProcess = iceProcess;
+      }
+
+      let hotProcess = "";
+      if (state.hotTemp > simulationData.finalTemp && !state.isEquilibrium) hotProcess = "Q = m c \\Delta T \\text{ (降溫)}";
+      else hotProcess = "\\text{熱平衡狀態}";
+
+      if (window.lastHotProcess !== hotProcess) {
+        document.getElementById('eq-hot').innerHTML = katex.renderToString(hotProcess);
+        window.lastHotProcess = hotProcess;
+      }
+
+      // 熱平衡標記
+      if (state.isEquilibrium) {
+        simCtx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+        simCtx.beginPath();
+        simCtx.roundRect(cx - 36, cy + 50, 72, 32, 6);
+        simCtx.fill();
+        simCtx.strokeStyle = '#10b981';
+        simCtx.lineWidth = 1.2;
+        simCtx.stroke();
+
+        simCtx.fillStyle = '#34d399';
+        simCtx.font = 'bold 9.5px Inter';
+        simCtx.textAlign = 'center';
+        simCtx.fillText("已達熱平衡", cx, cy + 70);
+      }
+    }
+
+    // 繪製細緻的燒杯旁邊的溫度計
+    function drawThermometer(ctx, x, y, temp, label) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.beginPath();
+      ctx.roundRect(x - 72, y - 105, 144, 215, 10);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const tx = x + 38;
+      const ty = y - 12;
+
+      ctx.fillStyle = '#4b5563';
+      ctx.beginPath();
+      ctx.arc(tx, ty + 50, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(tx - 3, ty - 40, 6, 90);
+
+      let fillHeight = (Math.max(Math.min(temp, 80), 0) / 80) * 80;
+      ctx.fillStyle = temp > 0 ? '#ef4444' : '#38bdf8';
+      
+      ctx.beginPath();
+      ctx.arc(tx, ty + 50, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(tx - 1.5, ty + 45 - fillHeight, 3, fillHeight + 5);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(temp.toFixed(1) + ' °C', tx, ty - 50);
+
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '10px Inter';
+      ctx.fillText(label, x - 10, y + 95);
+    }
+
+    // 6. 特性圖表動態繪製 (連動時間 slider 的漸進畫線)
+    function drawGraph() {
+      graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+      const padX = 45, padY = 26;
+      const w = graphCanvas.width - padX - 20;
+      const h = graphCanvas.height - padY - 8;
+
+      const q_rel_max = simulationData.Q_release_max;
+      const q_melt_all = simulationData.Q_melt_all;
+      const q_actual = simulationData.Q_actual;
+      const finalTemp = simulationData.finalTemp;
+
+      // 圖表 X 軸上限，確保大於 2 * q_actual 防止熱水起點逸出
+      const maxQ = Math.max(q_rel_max, q_melt_all, q_actual * 2.05) * 1.12;
+
+      // 網格刻度
+      graphCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+      graphCtx.lineWidth = 1;
+      graphCtx.beginPath();
+      for (let i = 0; i <= 80; i += 20) {
+        let y = 8 + h - (i / 80) * h;
+        graphCtx.moveTo(padX, y);
+        graphCtx.lineTo(padX + w, y);
+      }
+      graphCtx.stroke();
+
+      // 坐標軸線
+      graphCtx.strokeStyle = '#6b7280';
+      graphCtx.lineWidth = 1.2;
+      graphCtx.beginPath();
+      graphCtx.moveTo(padX, 8);
+      graphCtx.lineTo(padX, 8 + h);
+      graphCtx.lineTo(padX + w, 8 + h);
+      graphCtx.stroke();
+
+      // Y軸文字
+      graphCtx.fillStyle = '#9ca3af';
+      graphCtx.font = '9px Inter';
+      graphCtx.textAlign = 'right';
+      graphCtx.textBaseline = 'middle';
+      graphCtx.fillText('80', padX - 5, 8);
+      graphCtx.fillText('0', padX - 5, 8 + h);
+      graphCtx.fillText('40', padX - 5, 8 + h / 2);
+
+      // X軸文字
+      graphCtx.textAlign = 'center';
+      graphCtx.textBaseline = 'top';
+      graphCtx.fillText('0', padX, 8 + h + 4);
+      graphCtx.fillText((maxQ * 0.5).toLocaleString(undefined, {maximumFractionDigits:0}) + ' J', padX + w * 0.5, 8 + h + 4);
+      graphCtx.fillText(maxQ.toLocaleString(undefined, {maximumFractionDigits:0}) + ' J', padX + w, 8 + h + 4);
+
+      // Y軸標籤
+      graphCtx.save();
+      graphCtx.translate(10, 8 + h / 2);
+      graphCtx.rotate(-Math.PI / 2);
+      graphCtx.textAlign = 'center';
+      graphCtx.fillText('溫度 (°C)', 0, 0);
+      graphCtx.restore();
+
+      // 決定當前時間點已達成的熱量
+      const activeState = getPhysicsStateAtTime(time);
+      const q_curr = activeState.qTransferred;
+      const hotTemp_curr = activeState.hotTemp;
+      const coldTemp_curr = activeState.coldTemp;
+
+      if (appPhase === 'analysis') {
+        // 第一階段：畫完整的靜態特性曲線
+        // 1. 熱水降溫線 (橘色，起點在右側，往左下斜切)
+        graphCtx.strokeStyle = '#f97316';
+        graphCtx.lineWidth = 2.5;
+        graphCtx.beginPath();
+        graphCtx.moveTo(padX + 2 * (q_actual / maxQ) * w, 8 + h - (initTempWater / 80) * h);
+        graphCtx.lineTo(padX + (q_actual / maxQ) * w, 8 + h - (finalTemp / 80) * h);
+        graphCtx.stroke();
+
+        // 2. 冰相變與升溫線 (藍色，起點在左側，往右上延伸)
+        graphCtx.strokeStyle = '#38bdf8';
+        graphCtx.lineWidth = 2.5;
+        graphCtx.beginPath();
+        graphCtx.moveTo(padX, 8 + h);
+        const q_melt_act = Math.min(q_actual, q_melt_all);
+        graphCtx.lineTo(padX + (q_melt_act / maxQ) * w, 8 + h);
+        if (simulationData.isAllMelted) {
+          graphCtx.lineTo(padX + (q_actual / maxQ) * w, 8 + h - (finalTemp / 80) * h);
+        }
+        graphCtx.stroke();
+
+        // 3. 平衡點
+        const eqX = padX + (q_actual / maxQ) * w;
+        const eqY = 8 + h - (finalTemp / 80) * h;
+        graphCtx.beginPath();
+        graphCtx.arc(eqX, eqY, 5.5, 0, Math.PI * 2);
+        graphCtx.fillStyle = '#fbbf24';
+        graphCtx.fill();
+        graphCtx.strokeStyle = '#0b0f19';
+        graphCtx.lineWidth = 1.5;
+        graphCtx.stroke();
+
+        graphCtx.fillStyle = '#fbbf24';
+        graphCtx.font = 'bold 9px Inter';
+        graphCtx.textAlign = 'left';
+        graphCtx.fillText(`熱平衡點 (${finalTemp.toFixed(2)} °C)`, eqX + 8, eqY - 2);
+      } else {
+        // 第二階段：隨播放時間，漸進式地動態畫線，效果爆表！
+        // 1. 動態繪製溫水線 (橘色，從右往左延伸)
+        const wStartX = padX + 2 * (q_actual / maxQ) * w;
+        const wStartY = 8 + h - (initTempWater / 80) * h;
+        const wEndX = padX + (2 * q_actual - q_curr) / maxQ * w;
+        const wEndY = 8 + h - (hotTemp_curr / 80) * h;
+
+        graphCtx.strokeStyle = '#f97316';
+        graphCtx.lineWidth = 2.5;
+        graphCtx.beginPath();
+        graphCtx.moveTo(wStartX, wStartY);
+        graphCtx.lineTo(wEndX, wEndY);
+        graphCtx.stroke();
+
+        // 2. 動態繪製冰相變/升溫線 (藍色，從左往右延伸)
+        const iceStartX = padX;
+        const iceStartY = 8 + h; // 0°C
+        
+        const q_melt_curr = Math.min(q_curr, q_melt_all);
+        const iceMidX = padX + (q_melt_curr / maxQ) * w;
+        const iceMidY = 8 + h;
+
+        graphCtx.strokeStyle = '#38bdf8';
+        graphCtx.lineWidth = 2.5;
+        graphCtx.beginPath();
+        graphCtx.moveTo(iceStartX, iceStartY);
+        graphCtx.lineTo(iceMidX, iceMidY);
+
+        let iceEndX = iceMidX;
+        let iceEndY = iceMidY;
+
+        if (q_curr > q_melt_all && simulationData.isAllMelted) {
+          // 冰全融後，升溫曲線漸進伸展
+          iceEndX = padX + (q_curr / maxQ) * w;
+          iceEndY = 8 + h - (coldTemp_curr / 80) * h;
+          graphCtx.lineTo(iceEndX, iceEndY);
+        }
+        graphCtx.stroke();
+
+        // 3. 動態發光追蹤球 (雙軌合璧動效)
+        if (q_curr < q_actual) {
+          // 冷端小藍球
+          graphCtx.beginPath();
+          graphCtx.arc(iceEndX, iceEndY, 4.5, 0, Math.PI * 2);
+          graphCtx.fillStyle = '#38bdf8';
+          graphCtx.shadowColor = '#38bdf8';
+          graphCtx.shadowBlur = 6;
+          graphCtx.fill();
+          graphCtx.shadowBlur = 0;
+          graphCtx.strokeStyle = '#0b0f19';
+          graphCtx.lineWidth = 1.2;
+          graphCtx.stroke();
+
+          // 熱端小橘球
+          graphCtx.beginPath();
+          graphCtx.arc(wEndX, wEndY, 4.5, 0, Math.PI * 2);
+          graphCtx.fillStyle = '#f97316';
+          graphCtx.shadowColor = '#f97316';
+          graphCtx.shadowBlur = 6;
+          graphCtx.fill();
+          graphCtx.shadowBlur = 0;
+          graphCtx.strokeStyle = '#0b0f19';
+          graphCtx.lineWidth = 1.2;
+          graphCtx.stroke();
+
+          // 顯示熱水溫度標註
+          graphCtx.fillStyle = '#f97316';
+          graphCtx.font = 'bold 9.5px Inter';
+          graphCtx.textAlign = 'left';
+          graphCtx.fillText(`${hotTemp_curr.toFixed(1)} °C`, wEndX + 8, wEndY - 2);
+        } else {
+          // 達平衡，合體為大黃球
+          graphCtx.beginPath();
+          graphCtx.arc(wEndX, wEndY, 6, 0, Math.PI * 2);
+          graphCtx.fillStyle = '#fbbf24';
+          graphCtx.shadowColor = '#fbbf24';
+          graphCtx.shadowBlur = 10;
+          graphCtx.fill();
+          graphCtx.shadowBlur = 0;
+          graphCtx.strokeStyle = '#0b0f19';
+          graphCtx.lineWidth = 1.5;
+          graphCtx.stroke();
+
+          graphCtx.fillStyle = '#fbbf24';
+          graphCtx.font = 'bold 9.5px Inter';
+          graphCtx.textAlign = 'left';
+          graphCtx.fillText(`熱平衡點 (${finalTemp.toFixed(2)} °C)`, wEndX + 8, wEndY - 2);
+        }
+      }
+    }
+
+    // 7. 兩階段切換與事件核心機
+    function resizeGraphCanvas() {
+      const container = document.getElementById('graph-container');
+      if (container) {
+        graphCanvas.width = container.clientWidth;
+        graphCanvas.height = container.clientHeight;
+      }
+    }
+
+    // 視窗尺寸改變時自適應調整圖表大小
+    window.addEventListener('resize', () => {
+      if (appPhase === 'simulation') {
+        resizeGraphCanvas();
+        renderFrame();
+      }
+    });
+
+    function switchToSimulationPhase() {
+      appPhase = 'simulation';
+      
+      // 動態淡入淡出 View
+      document.getElementById('balance-view').style.display = 'none';
+      const simView = document.getElementById('simulation-view');
+      simView.style.display = 'flex';
+      simView.classList.add('fade-in');
+
+      // 關鍵排版切換：隱藏步驟引導卡，將圖表展開為右側滿版 615px 高度！
+      document.getElementById('guide-panel').style.display = 'none';
+      const graphPanel = document.getElementById('graph-panel');
+      graphPanel.style.display = 'flex';
+      
+      // 實時重新計算 Canvas 解析度，完美貼合滿版大容器
+      resizeGraphCanvas();
+
+      // 控制面板與說明控制轉換
+      document.getElementById('sim-tip-row').style.display = 'none';
+      document.getElementById('sim-controls-row').style.display = 'flex';
+      document.getElementById('analysis-buttons-area').style.display = 'none';
+      document.getElementById('sim-instructions-area').style.display = 'flex';
+
+      // 標題轉換
+      document.getElementById('graph-title-text').innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cold);">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        系統溫度 - 轉移熱量 ($T-Q$) 動態追蹤圖
+      `;
+
+      // 重置時間為 0s，但不自動播放，讓用戶自主點選「播放模擬」開始傳熱！
+      time = 0;
+      isPlaying = false; // 保持暫停狀態！
+      document.getElementById('btn-play').textContent = '播放模擬';
+      lastFrameTime = performance.now();
+      
+      initSimulation();
+    }
+
+    function switchToAnalysisPhase() {
+      appPhase = 'analysis';
+
+      document.getElementById('simulation-view').style.display = 'none';
+      const balView = document.getElementById('balance-view');
+      balView.style.display = 'flex';
+      balView.classList.add('fade-in');
+
+      // 關鍵排版切換：隱藏圖表，將步驟引導卡恢復展開為右側滿版！
+      document.getElementById('graph-panel').style.display = 'none';
+      document.getElementById('guide-panel').style.display = 'flex';
+
+      document.getElementById('sim-controls-row').style.display = 'none';
+      document.getElementById('sim-tip-row').style.display = 'block';
+      document.getElementById('sim-instructions-area').style.display = 'none';
+      document.getElementById('analysis-buttons-area').style.display = 'flex';
+
+      // 圖表標題還原
+      document.getElementById('graph-title-text').innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cold);">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        系統溫度 - 轉移熱量 ($T-Q$) 特性圖表
+      `;
+
+      isPlaying = false;
+      initSimulation();
+    }
+
+    // 重新渲染當前畫面影格
+    function renderFrame() {
+      if (appPhase === 'analysis') {
+        updateAnalysisView();
+      } else {
+        const state = getPhysicsStateAtTime(time);
+        document.getElementById('time-val').textContent = time.toFixed(1) + 's';
+        drawSimulation(state);
+      }
+      drawGraph();
+    }
+
+    // 模擬播放主迴圈
+    function animLoop(now) {
+      if (isPlaying && appPhase === 'simulation') {
+        const delta = (now - lastFrameTime) / 1000;
+        lastFrameTime = now;
+
+        time += delta;
+        if (time >= maxTime) {
+          time = maxTime;
+          isPlaying = false;
+          document.getElementById('btn-play').textContent = '播放模擬';
+        }
+        document.getElementById('time-slider').value = time;
+        renderFrame();
+      }
+      requestAnimationFrame(animLoop);
+    }
+
+    // 初始化模擬計算
+    function initSimulation() {
+      simulationData = runPhysicsSimulation();
+      
+      // 動態獲取 Slider 終點
+      maxTime = 10;
+      document.getElementById('time-slider').max = maxTime;
+
+      renderFrame();
+    }
+
+    // 8. 註冊兩階段按鈕與滑桿控制事件
+    document.getElementById('btn-next-step').addEventListener('click', () => {
+      if (stepIndex < 3) {
+        stepIndex++;
+        
+        // 天平與公式進行下一步
+        updateAnalysisView();
+
+        // 震動微反饋動畫
+        const btn = document.getElementById('btn-next-step');
+        btn.style.transform = 'scale(0.97)';
+        setTimeout(() => btn.style.transform = 'none', 100);
+      } else if (stepIndex === 3) {
+        // 進入第四步驟：啟動真實傳熱模擬
+        switchToSimulationPhase();
+      }
+    });
+
+    document.getElementById('btn-back-to-analysis').addEventListener('click', () => {
+      stepIndex = 3; // 直接保留在得出結論與差值比對階段
+      switchToAnalysisPhase();
+    });
+
+    // 播控列事件 (Phase 2)
+    document.getElementById('btn-play').addEventListener('click', () => {
+      if (time >= maxTime) time = 0;
+      isPlaying = !isPlaying;
+      document.getElementById('btn-play').textContent = isPlaying ? '暫停模擬' : '播放模擬';
+      lastFrameTime = performance.now();
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      isPlaying = false;
+      time = 0;
+      document.getElementById('btn-play').textContent = '播放模擬';
+      document.getElementById('time-slider').value = 0;
+      renderFrame();
+    });
+
+    document.getElementById('time-slider').addEventListener('input', (e) => {
+      time = parseFloat(e.target.value);
+      renderFrame();
+    });
+
+    // 參數滑桿即時連動監聽
+    document.getElementById('param-mass-water').addEventListener('input', (e) => {
+      initMassWater = parseFloat(e.target.value);
+      document.getElementById('val-mass-water').textContent = initMassWater.toFixed(2) + ' kg';
+      updateChallengeOverlayText();
+      
+      // 當在理論分析時，調整參數直接重置步驟，讓學生重新進行天平分析！
+      if (appPhase === 'analysis') {
+        stepIndex = 0; 
+        // 移除上一輪的 startSim 進入模擬鍵
+        const startSimBtn = document.getElementById('btn-start-sim');
+        if (startSimBtn) startSimBtn.remove();
+      }
+      initSimulation();
+    });
+
+    document.getElementById('param-temp-water').addEventListener('input', (e) => {
+      initTempWater = parseInt(e.target.value);
+      document.getElementById('val-temp-water').textContent = initTempWater + ' °C';
+      updateChallengeOverlayText();
+      
+      if (appPhase === 'analysis') {
+        stepIndex = 0;
+        const startSimBtn = document.getElementById('btn-start-sim');
+        if (startSimBtn) startSimBtn.remove();
+      }
+      initSimulation();
+    });
+
+    document.getElementById('param-mass-ice').addEventListener('input', (e) => {
+      initMassIce = parseFloat(e.target.value);
+      document.getElementById('val-mass-ice').textContent = initMassIce.toFixed(2) + ' kg';
+      updateChallengeOverlayText();
+      
+      if (appPhase === 'analysis') {
+        stepIndex = 0;
+        const startSimBtn = document.getElementById('btn-start-sim');
+        if (startSimBtn) startSimBtn.remove();
+      }
+      initSimulation();
+    });
+
+    // 預測挑戰互動
+    function updateChallengeOverlayText() {
+      document.getElementById('ch-mw').textContent = initMassWater.toFixed(2);
+      document.getElementById('ch-tw').textContent = initTempWater;
+      document.getElementById('ch-mi').textContent = initMassIce.toFixed(2);
+    }
+
+    document.querySelectorAll('.option-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        const answer = card.getAttribute('data-answer');
+        const isMelted = simulationData.isAllMelted;
+        
+        card.style.transform = 'scale(0.97)';
+        setTimeout(() => card.style.transform = 'none', 100);
+
+        let correct = false;
+        if (answer === 'ice-remains' && !isMelted) correct = true;
+        if (answer === 'all-melted' && isMelted) correct = true;
+
+        const overlay = document.getElementById('challenge-overlay');
+        overlay.style.opacity = '0';
+        overlay.style.transform = 'scale(0.94)';
+        overlay.style.pointerEvents = 'none';
+        setTimeout(() => overlay.style.display = 'none', 400);
+
+        // 觸發天平分析第一步
+        stepIndex = 1;
+        updateAnalysisView();
+
+        if (correct) {
+          showFloatingTeacherMessage("🎉 答得非常好！你的物理直覺極之精準！一齊黎睇下思考天平點樣傾斜！");
+        } else {
+          showFloatingTeacherMessage("🧠 唔緊要，呢個正正就係最容易中招嘅概念陷阱！一齊黎睇下一步步嘅天平分析！");
+        }
+      });
+    });
+
+    // 浮動老師提示氣泡
+    function showFloatingTeacherMessage(msg) {
+      let div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.top = '15px';
+      div.style.left = '50%';
+      div.style.transform = 'translateX(-50%) translateY(-20px)';
+      div.style.background = 'rgba(11, 15, 25, 0.96)';
+      div.style.border = '1px solid var(--accent-color)';
+      div.style.borderRadius = '10px';
+      div.style.padding = '10px 18px';
+      div.style.fontSize = '0.8rem';
+      div.style.fontWeight = '600';
+      div.style.color = '#fff';
+      div.style.zIndex = '100';
+      div.style.opacity = '0';
+      div.style.transition = 'all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+      div.style.boxShadow = '0 0 16px rgba(56, 189, 248, 0.4)';
+      div.innerHTML = msg;
+
+      document.body.appendChild(div);
+
+      setTimeout(() => {
+        div.style.transform = 'translateX(-50%) translateY(0)';
+        div.style.opacity = '1';
+      }, 50);
+
+      setTimeout(() => {
+        div.style.transform = 'translateX(-50%) translateY(-20px)';
+        div.style.opacity = '0';
+        setTimeout(() => {
+          div.remove();
+        }, 400);
+      }, 5000);
+    }
+
+    // 啟動加載
+    updateChallengeOverlayText();
+    initSimulation();
+    requestAnimationFrame(animLoop);
+  </script>
+</body>
+
+</html>
